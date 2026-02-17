@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- NuGet Package Metadata -->
+    <PackageId>TelegramBotFlow.Core</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>SachkovTech</Authors>
+    <Company>SachkovTech</Company>
+    <Product>TelegramBotFlow</Product>
+    <Description>Framework для создания Telegram-ботов на .NET с middleware pipeline и Minimal API стилем регистрации обработчиков</Description>
+    <PackageTags>telegram;bot;framework;middleware;dotnet;aspnetcore</PackageTags>
+    <RepositoryType>git</RepositoryType>
+    
+    <!-- Optional: Symbols for debugging -->
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    
+    <!-- Optional: XML documentation for IntelliSense -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="TelegramBotFlow.Core.Tests" />
+    <InternalsVisibleTo Include="TelegramBotFlow.IntegrationTests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Telegram.Bot" />
+    <PackageReference Include="StackExchange.Redis" />
+  </ItemGroup>
+
+</Project>

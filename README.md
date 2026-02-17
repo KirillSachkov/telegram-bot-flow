@@ -1,93 +1,249 @@
-# telegram-bot-flow
+# Telegram Bot Flow
 
+Template-проект для создания Telegram-ботов на .NET 10 с middleware pipeline и Minimal API-стилем регистрации обработчиков.
 
+## Концепция
 
-## Getting started
+Бот выступает **тонким клиентом** — вся бизнес-логика на бэкенде, бот занимается UI, маршрутизацией команд и вызовом backend API. Проект копируется целиком в новый репозиторий и адаптируется под конкретного бота.
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+## Запуск в режиме разработки
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+### Предварительные требования
 
-## Add your files
+- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
+- Telegram-бот, созданный через [@BotFather](https://t.me/BotFather)
+- Docker (опционально — для Seq логирования)
 
-* [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-* [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
+### Шаг 1. Клонировать проект
+
+```bash
+git clone <repo-url> my-bot
+cd my-bot
+```
+
+### Шаг 2. Получить токен бота
+
+1. Откройте [@BotFather](https://t.me/BotFather) в Telegram
+2. Отправьте `/newbot` и следуйте инструкциям
+3. Скопируйте полученный токен (формат: `123456789:ABCdefGHIjklMNOpqrsTUVwxyz`)
+
+### Шаг 3. Настроить токен
+
+Откройте `src/TelegramBotFlow.App/appsettings.Development.json` и вставьте токен:
+
+```json
+{
+  "Bot": {
+    "Token": "123456789:ABCdefGHIjklMNOpqrsTUVwxyz",
+    "Mode": "Polling"
+  },
+  "Serilog": {
+    "MinimumLevel": {
+      "Default": "Debug"
+    }
+  }
+}
+```
+
+> **Важно:** Никогда не коммитьте токен в git. Файл `appsettings.Development.json` уже содержит placeholder `YOUR_BOT_TOKEN_HERE` — замените его на реальный токен только локально.
+
+Альтернативный способ — через переменную окружения:
+
+```bash
+export Bot__Token="123456789:ABCdefGHIjklMNOpqrsTUVwxyz"
+```
+
+### Шаг 4. Запустить бота
+
+```bash
+dotnet run --project src/TelegramBotFlow.App
+```
+
+В консоли должно появиться:
 
 ```
-cd existing_repo
-git remote add origin https://gitlab.com/sachkovtech/kernel/telegram-bot-flow.git
-git branch -M main
-git push -uf origin main
+[INF] Bot @your_bot_username started in polling mode
 ```
 
-## Integrate with your tools
+Теперь откройте бота в Telegram и отправьте `/start`.
 
-* [Set up project integrations](https://gitlab.com/sachkovtech/kernel/telegram-bot-flow/-/settings/integrations)
+### Шаг 5 (опционально). Запустить Seq для просмотра логов
 
-## Collaborate with your team
+Seq — веб-интерфейс для структурированных логов. Запускается через Docker:
 
-* [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-* [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-* [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-* [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-* [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
+```bash
+docker compose -f docker-compose-infra.yml up -d
+```
 
-## Test and Deploy
+После запуска откройте http://localhost:8081 — все логи бота будут отображаться в реальном времени.
 
-Use the built-in continuous integration in GitLab.
+### Шаг 6. Запустить тесты
 
-* [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/)
-* [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-* [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-* [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-* [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+```bash
+dotnet test
+```
 
-***
+## Структура проекта
 
-# Editing this README
+```
+src/
+  TelegramBotFlow.Core/          — framework (не нужно менять при копировании)
+    Context/                     — UpdateContext (контекст запроса)
+    Endpoints/                   — IBotEndpoint, auto-discovery
+    Extensions/                  — DI-регистрация сервисов
+    Flows/                       — FlowBuilder, FlowManager, Validators
+    Hosting/                     — BotApplication, Polling, Webhook
+    Pipeline/                    — Middleware pipeline
+    Pipeline/Middlewares/        — ErrorHandling, Logging, Session, Flow
+    Routing/                     — UpdateRouter, RouteEntry
+    Sessions/                    — ISessionStore, InMemorySessionStore
+    UI/                          — InlineKeyboard, ReplyKeyboard, MenuBuilder
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+  TelegramBotFlow.App/           — ваш бот (точка кастомизации)
+    Program.cs                   — конфигурация pipeline и middleware
+    Endpoints/                   — обработчики команд, callback, flows
+    appsettings.json             — конфигурация (токен, режим, логирование)
 
-## Suggestions for a good README
+tests/
+  TelegramBotFlow.Core.Tests/    — unit-тесты framework
+```
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+## Как устроен Program.cs
 
-## Name
-Choose a self-explaining name for your project.
+```csharp
+var builder = BotApplication.CreateBuilder(args);
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+// Регистрация сервисов
+builder.Services.AddBotEndpoints(Assembly.GetExecutingAssembly());
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+var app = BotApplication.Build(builder);
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+// Middleware pipeline (порядок важен!)
+app.UseErrorHandling();  // 1. Ловит все ошибки
+app.UseLogging();        // 2. Логирует вход/выход + время
+app.UseSession();        // 3. Загружает сессию пользователя
+app.UseFlows();          // 4. Перехватывает ввод в активных flow
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+// Меню бота (кнопка "/" в Telegram)
+app.SetMenu(menu => menu
+    .Command("start", "Главное меню")
+    .Command("help", "Справка"));
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+// Auto-discovery всех IBotEndpoint из текущей сборки
+app.MapBotEndpoints();
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+await app.RunAsync();
+```
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+## Как создать свой endpoint
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+Создайте класс в `Endpoints/`, реализующий `IBotEndpoint`:
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+```csharp
+public sealed class MyCommandEndpoint : IBotEndpoint
+{
+    public void MapEndpoint(BotApplication app)
+    {
+        app.MapCommand("/mycommand", async ctx =>
+        {
+            await ctx.ReplyAsync("Ответ на команду!");
+        });
+    }
+}
+```
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+Endpoint будет автоматически найден и зарегистрирован через `AddBotEndpoints` + `MapBotEndpoints`.
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+## Типы обработчиков
 
-## License
-For open source projects, say how it is licensed.
+| Метод                    | Что обрабатывает            | Пример                                                             |
+| ------------------------ | --------------------------- | ------------------------------------------------------------------ |
+| `MapCommand`             | Команды (`/start`, `/help`) | `app.MapCommand("/start", handler)`                                |
+| `MapCallback`            | Нажатия InlineKeyboard      | `app.MapCallback("profile", handler)`                              |
+| `MapCallback` (wildcard) | Callback с префиксом        | `app.MapCallback("order:*", handler)`                              |
+| `MapMessage`             | Текст по предикату          | `app.MapMessage(ctx => ctx.MessageText == "Привет", handler)`      |
+| `MapUpdate`              | Любой тип Update            | `app.MapUpdate(ctx => ctx.Update.Message?.Photo != null, handler)` |
+| `MapFlow`                | Пошаговый диалог            | `app.MapFlow("/register", flow => flow.Ask(...).OnComplete(...))`  |
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+## UI-элементы
+
+### InlineKeyboard (кнопки под сообщением)
+
+```csharp
+var keyboard = new InlineKeyboard()
+    .Button("Текст кнопки", "callback_data")  // callback-кнопка
+    .Url("Ссылка", "https://example.com")      // кнопка-ссылка
+    .Row()                                      // новая строка
+    .Button("Ещё кнопка", "another")
+    .Build();
+
+await ctx.ReplyAsync("Сообщение:", keyboard);
+
+// Shortcut для одной кнопки:
+InlineKeyboard.SingleButton("Текст", "data");
+InlineKeyboard.SingleUrl("Текст", "https://...");
+```
+
+### ReplyKeyboard (кнопки вместо клавиатуры)
+
+```csharp
+var keyboard = new ReplyKeyboard()
+    .Button("Вариант 1")                       // текстовая кнопка
+    .Button("Вариант 2")
+    .Row()                                      // новая строка
+    .RequestContact("Отправить телефон")        // запрос контакта
+    .RequestLocation("Отправить геолокацию")    // запрос геолокации
+    .OneTime()                                  // скрыть после нажатия
+    .Build();
+
+await ctx.ReplyAsync("Выберите:", keyboard);
+
+// Убрать ReplyKeyboard:
+await ctx.ReplyAsync("Готово", ReplyKeyboard.Remove());
+```
+
+## Режимы работы
+
+| Режим       | Когда использовать             | Конфигурация        |
+| ----------- | ------------------------------ | ------------------- |
+| **Polling** | Разработка, нет публичного URL | `"Mode": "Polling"` |
+| **Webhook** | Production, есть HTTPS URL     | `"Mode": "Webhook"` |
+
+Настройка в `appsettings.json`:
+
+```json
+{
+  "Bot": {
+    "Token": "...",
+    "Mode": "Polling",
+    "WebhookUrl": "https://example.com",
+    "WebhookPath": "/api/bot/webhook"
+  }
+}
+```
+
+## Запуск через Docker (production)
+
+```bash
+# Создать .env с токеном
+cp .env.example .env
+# Вписать BOT_TOKEN в .env
+
+# Запустить бот + Seq
+docker compose up -d --build
+```
+
+## Стек
+
+- .NET 10, ASP.NET Core
+- [Telegram.Bot](https://github.com/TelegramBots/Telegram.Bot) 22.9.0
+- Serilog (Console + Seq)
+- xUnit + NSubstitute + FluentAssertions (тесты)
+- Docker Compose
+
+## Расширение
+
+- **Новый endpoint**: создать класс `IBotEndpoint` в `Endpoints/` — найдётся автоматически
+- **Новый middleware**: реализовать `IUpdateMiddleware`, зарегистрировать через `app.Use<T>()`
+- **Другое хранилище сессий**: реализовать `ISessionStore`
+- **Backend API**: добавить `HttpClient` через `builder.Services.AddHttpClient<T>()`

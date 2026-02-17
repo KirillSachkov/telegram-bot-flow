@@ -1,0 +1,26 @@
+services:
+  bot:
+    build:
+      context: .
+      dockerfile: src/TelegramBotFlow.App/Dockerfile
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - Bot__Token=${BOT_TOKEN}
+      - Bot__Mode=Polling
+    depends_on:
+      - seq
+    restart: unless-stopped
+
+  seq:
+    image: datalust/seq:latest
+    environment:
+      - ACCEPT_EULA=Y
+    ports:
+      - "5341:5341"
+      - "8081:80"
+    volumes:
+      - seq-data:/data
+    restart: unless-stopped
+
+volumes:
+  seq-data:
