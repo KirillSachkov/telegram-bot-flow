@@ -1,6 +1,0 @@
-# Cursor project rules
-
-- Keep diffs small and focused.
-- Respect architecture boundaries.
-- Ask for missing context before major edits.
-- Run relevant checks after code changes.

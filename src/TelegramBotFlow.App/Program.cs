@@ -1,6 +1,7 @@
 using System.Reflection;
 using Serilog;
 using TelegramBotFlow.Core.Endpoints;
+using TelegramBotFlow.Core.Extensions;
 using TelegramBotFlow.Core.Hosting;
 
 Log.Logger = new LoggerConfiguration()
@@ -16,6 +17,9 @@ try
 
     builder.Services.AddBotEndpoints(Assembly.GetExecutingAssembly());
 
+    // Rate limiting (защита от флуда)
+    builder.Services.AddThrottling(builder.WebAppBuilder.Configuration);
+
     // Redis session store (раскомментировать для продакшена):
     // builder.Services.AddRedisSessionStore(builder.WebAppBuilder.Configuration);
 
@@ -23,6 +27,7 @@ try
 
     app.UseErrorHandling();
     app.UseLogging();
+    app.UseThrottling();  // Rate limiting — защита от флуда
     app.UseSession();
     app.UseFlows();
 

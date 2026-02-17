@@ -108,6 +108,17 @@ public sealed class BotApplication
         return this;
     }
 
+    public BotApplication UseThrottling()
+    {
+        _middlewares.Add(next => async context =>
+        {
+            var middleware = context.Services.GetRequiredService<ThrottlingMiddleware>();
+            await middleware.InvokeAsync(context, next);
+        });
+
+        return this;
+    }
+
     // -- Route registration (Minimal API style) --
 
     public BotApplication MapCommand(string command, Func<UpdateContext, Task> handler)

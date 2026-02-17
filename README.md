@@ -116,13 +116,17 @@ var builder = BotApplication.CreateBuilder(args);
 // Регистрация сервисов
 builder.Services.AddBotEndpoints(Assembly.GetExecutingAssembly());
 
+// Rate limiting (защита от флуда)
+builder.Services.AddThrottling(builder.WebAppBuilder.Configuration);
+
 var app = BotApplication.Build(builder);
 
 // Middleware pipeline (порядок важен!)
 app.UseErrorHandling();  // 1. Ловит все ошибки
 app.UseLogging();        // 2. Логирует вход/выход + время
-app.UseSession();        // 3. Загружает сессию пользователя
-app.UseFlows();          // 4. Перехватывает ввод в активных flow
+app.UseThrottling();     // 3. Rate limiting — защита от флуда
+app.UseSession();        // 4. Загружает сессию пользователя
+app.UseFlows();          // 5. Перехватывает ввод в активных flow
 
 // Меню бота (кнопка "/" в Telegram)
 app.SetMenu(menu => menu
@@ -218,6 +222,37 @@ await ctx.ReplyAsync("Готово", ReplyKeyboard.Remove());
     "Mode": "Polling",
     "WebhookUrl": "https://example.com",
     "WebhookPath": "/api/bot/webhook"
+  }
+}
+```
+
+## Rate Limiting (защита от флуда)
+
+Бот автоматически защищён от флуда через встроенный `System.Threading.RateLimiting`.
+
+Настройка в `appsettings.json`:
+
+```json
+{
+  "Throttling": {
+    "PermitLimit": 10,          // Максимум сообщений
+    "WindowSeconds": 60,         // В течение 60 секунд
+    "SegmentsPerWindow": 2,      // Сегменты скользящего окна
+    "SendThrottleMessage": true,
+    "ThrottleMessage": "⚠️ Слишком много сообщений. Подождите немного.",
+    "WhitelistedUserIds": []     // Пользователи без ограничений
+  }
+}
+```
+
+**Пример:** 10 сообщений в минуту = каждые 6 секунд можно отправить сообщение.
+
+**Whitelist для админов:**
+
+```json
+{
+  "Throttling": {
+    "WhitelistedUserIds": [123456789, 987654321]
   }
 }
 ```
