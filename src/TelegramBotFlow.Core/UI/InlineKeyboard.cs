@@ -1,4 +1,4 @@
-using Telegram.Bot.Types.ReplyMarkups;
+﻿using Telegram.Bot.Types.ReplyMarkups;
 
 namespace TelegramBotFlow.Core.UI;
 
@@ -30,12 +30,15 @@ public sealed class InlineKeyboard
         return this;
     }
 
+    public bool HasButtons => _rows.Count > 0 || _currentRow.Count > 0;
+
     public InlineKeyboardMarkup Build()
     {
+        List<List<InlineKeyboardButton>> rows = [.. _rows];
         if (_currentRow.Count > 0)
-            _rows.Add(_currentRow);
+            rows.Add(_currentRow);
 
-        return new InlineKeyboardMarkup(_rows);
+        return new InlineKeyboardMarkup(rows);
     }
 
     public static InlineKeyboardMarkup SingleButton(string text, string callbackData) =>

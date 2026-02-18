@@ -1,4 +1,4 @@
-using TelegramBotFlow.Core.Context;
+﻿using TelegramBotFlow.Core.Context;
 using TelegramBotFlow.Core.Sessions;
 
 namespace TelegramBotFlow.Core.Pipeline.Middlewares;
@@ -20,7 +20,7 @@ public sealed class SessionMiddleware : IUpdateMiddleware
             return;
         }
 
-        var session = await _sessionStore.GetOrCreateAsync(context.UserId, context.CancellationToken);
+        UserSession session = await _sessionStore.GetOrCreateAsync(context.UserId, context.CancellationToken);
         context.Session = session;
 
         await next(context);

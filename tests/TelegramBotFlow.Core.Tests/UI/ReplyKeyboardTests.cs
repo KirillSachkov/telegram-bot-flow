@@ -8,7 +8,7 @@ public sealed class ReplyKeyboardTests
     [Fact]
     public void Build_CreatesCorrectLayout()
     {
-        var markup = new ReplyKeyboard()
+        Telegram.Bot.Types.ReplyMarkups.ReplyKeyboardMarkup markup = new ReplyKeyboard()
             .Button("Menu")
             .Button("Help")
             .Row()
@@ -23,7 +23,7 @@ public sealed class ReplyKeyboardTests
     [Fact]
     public void Build_DefaultsResizeToTrue()
     {
-        var markup = new ReplyKeyboard()
+        Telegram.Bot.Types.ReplyMarkups.ReplyKeyboardMarkup markup = new ReplyKeyboard()
             .Button("Test")
             .Build();
 
@@ -33,7 +33,7 @@ public sealed class ReplyKeyboardTests
     [Fact]
     public void OneTime_SetsFlag()
     {
-        var markup = new ReplyKeyboard()
+        Telegram.Bot.Types.ReplyMarkups.ReplyKeyboardMarkup markup = new ReplyKeyboard()
             .Button("Test")
             .OneTime()
             .Build();

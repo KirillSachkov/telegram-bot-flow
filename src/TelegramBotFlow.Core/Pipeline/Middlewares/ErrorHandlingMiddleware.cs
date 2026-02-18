@@ -1,15 +1,24 @@
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using TelegramBotFlow.Core.Context;
+using TelegramBotFlow.Core.Hosting;
 
 namespace TelegramBotFlow.Core.Pipeline.Middlewares;
 
 public sealed class ErrorHandlingMiddleware : IUpdateMiddleware
 {
     private readonly ILogger<ErrorHandlingMiddleware> _logger;
+    private readonly IUpdateResponder _responder;
+    private readonly string _errorMessage;
 
-    public ErrorHandlingMiddleware(ILogger<ErrorHandlingMiddleware> logger)
+    public ErrorHandlingMiddleware(
+        ILogger<ErrorHandlingMiddleware> logger,
+        IUpdateResponder responder,
+        IOptions<BotConfiguration> config)
     {
         _logger = logger;
+        _responder = responder;
+        _errorMessage = config.Value.ErrorMessage;
     }
 
     public async Task InvokeAsync(UpdateContext context, UpdateDelegate next)
@@ -35,13 +44,13 @@ public sealed class ErrorHandlingMiddleware : IUpdateMiddleware
         }
     }
 
-    private static async Task TryNotifyUser(UpdateContext context)
+    private async Task TryNotifyUser(UpdateContext context)
     {
         try
         {
             if (context.ChatId != 0)
             {
-                await context.ReplyAsync("Произошла ошибка. Попробуйте позже.");
+                await _responder.ReplyAsync(context, _errorMessage);
             }
         }
         catch

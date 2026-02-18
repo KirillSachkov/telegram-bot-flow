@@ -1,7 +1,7 @@
-using System.Reflection;
-using Serilog;
+﻿using Serilog;
+using TelegramBotFlow.Core.Data;
+using TelegramBotFlow.Core.Data.Middleware;
 using TelegramBotFlow.Core.Endpoints;
-using TelegramBotFlow.Core.Extensions;
 using TelegramBotFlow.Core.Hosting;
 
 Log.Logger = new LoggerConfiguration()
@@ -10,32 +10,24 @@ Log.Logger = new LoggerConfiguration()
 
 try
 {
-    var builder = BotApplication.CreateBuilder(args);
+    BotApplicationBuilder builder = BotApplication.CreateBuilder(args);
 
     builder.WebAppBuilder.Host.UseSerilog((context, config) =>
         config.ReadFrom.Configuration(context.Configuration));
 
-    builder.Services.AddBotEndpoints(Assembly.GetExecutingAssembly());
+    builder.Services.AddBotCoreData(builder.Configuration);
 
-    // Rate limiting (защита от флуда)
-    builder.Services.AddThrottling(builder.WebAppBuilder.Configuration);
-
-    // Redis session store (раскомментировать для продакшена):
-    // builder.Services.AddRedisSessionStore(builder.WebAppBuilder.Configuration);
-
-    var app = BotApplication.Build(builder);
+    BotApplication app = builder.Build();
 
     app.UseErrorHandling();
     app.UseLogging();
-    app.UseThrottling();  // Rate limiting — защита от флуда
     app.UseSession();
-    app.UseFlows();
+    app.UseAccessPolicy();
+    app.Use<UserTrackingMiddleware>();
 
     app.SetMenu(menu => menu
-        .Command("start", "Главное меню (InlineKeyboard)")
-        .Command("help", "Справка по командам и UI")
-        .Command("settings", "Настройки (ReplyKeyboard)")
-        .Command("register", "Регистрация (Flow + ReplyKeyboard)"));
+        .Command("start", "Главное меню")
+        .Command("help", "Справка"));
 
     app.MapBotEndpoints();
 
@@ -50,5 +42,4 @@ finally
     await Log.CloseAndFlushAsync();
 }
 
-// Expose Program for integration tests
 public partial class Program;

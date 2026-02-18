@@ -1,4 +1,5 @@
-using FluentAssertions;
+﻿using FluentAssertions;
+using TelegramBotFlow.Core.Context;
 using TelegramBotFlow.Core.Pipeline;
 
 namespace TelegramBotFlow.Core.Tests.Pipeline;
@@ -8,7 +9,7 @@ public sealed class UpdatePipelineTests
     [Fact]
     public async Task ProcessAsync_WithNoMiddlewares_CallsTerminal()
     {
-        var terminalCalled = false;
+        bool terminalCalled = false;
 
         var pipeline = UpdatePipeline.Build([], _ =>
         {
@@ -16,7 +17,7 @@ public sealed class UpdatePipelineTests
             return Task.CompletedTask;
         });
 
-        var ctx = TestHelpers.CreateMessageContext("/start");
+        UpdateContext ctx = TestHelpers.CreateMessageContext("/start");
 
         await pipeline.ProcessAsync(ctx);
 
@@ -46,7 +47,7 @@ public sealed class UpdatePipelineTests
             return Task.CompletedTask;
         });
 
-        var ctx = TestHelpers.CreateMessageContext("/test");
+        UpdateContext ctx = TestHelpers.CreateMessageContext("/test");
 
         await pipeline.ProcessAsync(ctx);
 
@@ -56,7 +57,7 @@ public sealed class UpdatePipelineTests
     [Fact]
     public async Task ProcessAsync_MiddlewareCanShortCircuit()
     {
-        var terminalCalled = false;
+        bool terminalCalled = false;
 
         Func<UpdateDelegate, UpdateDelegate> shortCircuit = _ => _ => Task.CompletedTask;
 
@@ -66,7 +67,7 @@ public sealed class UpdatePipelineTests
             return Task.CompletedTask;
         });
 
-        var ctx = TestHelpers.CreateMessageContext("/test");
+        UpdateContext ctx = TestHelpers.CreateMessageContext("/test");
 
         await pipeline.ProcessAsync(ctx);
 

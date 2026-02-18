@@ -17,7 +17,7 @@ public sealed class UpdatePipeline
         IReadOnlyList<Func<UpdateDelegate, UpdateDelegate>> middlewares,
         UpdateDelegate terminal)
     {
-        var pipeline = terminal;
+        UpdateDelegate pipeline = terminal;
 
         for (int i = middlewares.Count - 1; i >= 0; i--)
         {

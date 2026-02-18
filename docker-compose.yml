@@ -7,8 +7,22 @@ services:
       - ASPNETCORE_ENVIRONMENT=Production
       - Bot__Token=${BOT_TOKEN}
       - Bot__Mode=Polling
+      - ConnectionStrings__Database=Host=postgres;Database=telegram_bot_flow;Username=botflow;Password=${DB_PASSWORD}
     depends_on:
+      - postgres
       - seq
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=botflow
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=telegram_bot_flow
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
     restart: unless-stopped
 
   seq:
@@ -23,4 +37,5 @@ services:
     restart: unless-stopped
 
 volumes:
+  postgres-data:
   seq-data:

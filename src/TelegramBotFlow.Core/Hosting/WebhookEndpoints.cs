@@ -1,5 +1,4 @@
-using Telegram.Bot;
-using Telegram.Bot.Types;
+﻿using Telegram.Bot.Types;
 using TelegramBotFlow.Core.Context;
 using TelegramBotFlow.Core.Pipeline;
 
@@ -9,12 +8,11 @@ public static class WebhookEndpoints
 {
     public static async Task HandleWebhookUpdate(
         Update update,
-        ITelegramBotClient bot,
         UpdatePipeline pipeline,
         IServiceProvider services,
         CancellationToken cancellationToken)
     {
-        var context = new UpdateContext(update, bot, services, cancellationToken);
+        var context = new UpdateContext(update, services, cancellationToken);
         await pipeline.ProcessAsync(context);
     }
 }

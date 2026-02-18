@@ -1,8 +1,5 @@
-using Telegram.Bot;
-using Telegram.Bot.Types;
+﻿using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
-using Telegram.Bot.Types.ReplyMarkups;
-using ReplyMarkup = Telegram.Bot.Types.ReplyMarkups.ReplyMarkup;
 using TelegramBotFlow.Core.Sessions;
 
 namespace TelegramBotFlow.Core.Context;
@@ -10,33 +7,28 @@ namespace TelegramBotFlow.Core.Context;
 public sealed class UpdateContext
 {
     public Update Update { get; }
-    public ITelegramBotClient Bot { get; }
-    public IServiceProvider Services { get; }
+    internal IServiceProvider RequestServices { get; }
     public CancellationToken CancellationToken { get; }
 
     public UserSession? Session { get; set; }
+    public bool IsAdmin { get; set; }
 
     public long ChatId { get; }
     public long UserId { get; }
     public int? MessageId { get; }
     public string? CallbackData { get; }
     public string? MessageText { get; }
+    public string? CommandArgument { get; }
     public UpdateType UpdateType { get; }
     public string? Screen => Session?.CurrentScreen;
 
-    public void ClearScreen() => Session?.ClearScreen();
-
-    private readonly Dictionary<string, object> _items = new();
-
     public UpdateContext(
         Update update,
-        ITelegramBotClient bot,
-        IServiceProvider services,
+        IServiceProvider requestServices,
         CancellationToken cancellationToken = default)
     {
         Update = update;
-        Bot = bot;
-        Services = services;
+        RequestServices = requestServices;
         CancellationToken = cancellationToken;
 
         UpdateType = update.Type;
@@ -45,77 +37,10 @@ public sealed class UpdateContext
         MessageId = ExtractMessageId(update);
         CallbackData = update.CallbackQuery?.Data;
         MessageText = update.Message?.Text;
+        CommandArgument = ExtractCommandArgument(MessageText);
     }
 
-    public T Resolve<T>() where T : notnull =>
-        (T)Services.GetService(typeof(T))!;
-
-    public void Set(string key, object value) => _items[key] = value;
-
-    public T? Get<T>(string key) =>
-        _items.TryGetValue(key, out var value) ? (T)value : default;
-
-    public async Task ReplyAsync(
-        string text,
-        ReplyMarkup? replyMarkup = null,
-        ParseMode parseMode = default)
-    {
-        await Bot.SendMessage(
-            ChatId,
-            text,
-            replyMarkup: replyMarkup,
-            parseMode: parseMode,
-            cancellationToken: CancellationToken);
-    }
-
-    public async Task ReplyWithScreenAsync(
-        string screen,
-        string text,
-        ReplyMarkup? replyMarkup = null,
-        ParseMode parseMode = default)
-    {
-        if (Session is not null)
-            Session.CurrentScreen = screen;
-
-        await ReplyAsync(text, replyMarkup, parseMode);
-    }
-
-    public async Task EditMessageAsync(
-        string text,
-        InlineKeyboardMarkup? replyMarkup = null,
-        ParseMode parseMode = default)
-    {
-        if (MessageId is null)
-            return;
-
-        await Bot.EditMessageText(
-            ChatId,
-            MessageId.Value,
-            text,
-            replyMarkup: replyMarkup,
-            parseMode: parseMode,
-            cancellationToken: CancellationToken);
-    }
-
-    public async Task AnswerCallbackAsync(string? text = null, bool showAlert = false)
-    {
-        if (Update.CallbackQuery is null)
-            return;
-
-        await Bot.AnswerCallbackQuery(
-            Update.CallbackQuery.Id,
-            text: text,
-            showAlert: showAlert,
-            cancellationToken: CancellationToken);
-    }
-
-    public async Task DeleteMessageAsync()
-    {
-        if (MessageId is null)
-            return;
-
-        await Bot.DeleteMessage(ChatId, MessageId.Value, CancellationToken);
-    }
+    // -- Extractors --
 
     private static long ExtractChatId(Update update) =>
         update.Type switch
@@ -144,4 +69,17 @@ public sealed class UpdateContext
             UpdateType.EditedMessage => update.EditedMessage!.Id,
             _ => null
         };
+
+    private static string? ExtractCommandArgument(string? messageText)
+    {
+        if (messageText is null || !messageText.StartsWith('/'))
+            return null;
+
+        int spaceIndex = messageText.IndexOf(' ');
+        if (spaceIndex < 0)
+            return null;
+
+        string argument = messageText[(spaceIndex + 1)..].Trim();
+        return argument.Length > 0 ? argument : null;
+    }
 }

@@ -1,4 +1,5 @@
-using FluentAssertions;
+﻿using FluentAssertions;
+using TelegramBotFlow.Core.Context;
 using TelegramBotFlow.Core.Pipeline;
 using TelegramBotFlow.Core.Routing;
 
@@ -18,7 +19,7 @@ public sealed class RouteEntryTests
     public void Command_MatchesCorrectly(string routeCommand, string messageText, bool expected)
     {
         var route = RouteEntry.Command(routeCommand, NoOp);
-        var ctx = TestHelpers.CreateMessageContext(messageText);
+        UpdateContext ctx = TestHelpers.CreateMessageContext(messageText);
 
         route.Matches(ctx).Should().Be(expected);
     }
@@ -27,7 +28,7 @@ public sealed class RouteEntryTests
     public void Command_WithArguments_Matches()
     {
         var route = RouteEntry.Command("/start", NoOp);
-        var ctx = TestHelpers.CreateMessageContext("/start some arguments");
+        UpdateContext ctx = TestHelpers.CreateMessageContext("/start some arguments");
 
         route.Matches(ctx).Should().BeTrue();
     }
@@ -44,7 +45,7 @@ public sealed class RouteEntryTests
     public void Callback_MatchesCorrectly(string routePattern, string callbackData, bool expected)
     {
         var route = RouteEntry.Callback(routePattern, NoOp);
-        var ctx = TestHelpers.CreateCallbackContext(callbackData);
+        UpdateContext ctx = TestHelpers.CreateCallbackContext(callbackData);
 
         route.Matches(ctx).Should().Be(expected);
     }
@@ -56,8 +57,8 @@ public sealed class RouteEntryTests
             ctx => ctx.MessageText?.Contains("привет") == true,
             NoOp);
 
-        var matchCtx = TestHelpers.CreateMessageContext("привет мир");
-        var noMatchCtx = TestHelpers.CreateMessageContext("до свидания");
+        UpdateContext matchCtx = TestHelpers.CreateMessageContext("привет мир");
+        UpdateContext noMatchCtx = TestHelpers.CreateMessageContext("до свидания");
 
         route.Matches(matchCtx).Should().BeTrue();
         route.Matches(noMatchCtx).Should().BeFalse();
@@ -67,7 +68,7 @@ public sealed class RouteEntryTests
     public void Command_DoesNotMatchCallbackUpdate()
     {
         var route = RouteEntry.Command("/start", NoOp);
-        var ctx = TestHelpers.CreateCallbackContext("start");
+        UpdateContext ctx = TestHelpers.CreateCallbackContext("start");
 
         route.Matches(ctx).Should().BeFalse();
     }
@@ -80,31 +81,31 @@ public sealed class RouteEntryTests
             NoOp);
 
         // Correct screen + correct text = match
-        var matchCtx = TestHelpers.CreateMessageContext("Язык");
-        matchCtx.Session = new TelegramBotFlow.Core.Sessions.UserSession(1)
+        UpdateContext matchCtx = TestHelpers.CreateMessageContext("Язык");
+        matchCtx.Session = new Core.Sessions.UserSession(1)
         {
             CurrentScreen = "settings:main"
         };
         route.Matches(matchCtx).Should().BeTrue();
 
         // Wrong screen + correct text = no match
-        var wrongScreenCtx = TestHelpers.CreateMessageContext("Язык");
-        wrongScreenCtx.Session = new TelegramBotFlow.Core.Sessions.UserSession(2)
+        UpdateContext wrongScreenCtx = TestHelpers.CreateMessageContext("Язык");
+        wrongScreenCtx.Session = new Core.Sessions.UserSession(2)
         {
             CurrentScreen = "settings:lang"
         };
         route.Matches(wrongScreenCtx).Should().BeFalse();
 
         // Correct screen + wrong text = no match
-        var wrongTextCtx = TestHelpers.CreateMessageContext("Назад");
-        wrongTextCtx.Session = new TelegramBotFlow.Core.Sessions.UserSession(3)
+        UpdateContext wrongTextCtx = TestHelpers.CreateMessageContext("Назад");
+        wrongTextCtx.Session = new Core.Sessions.UserSession(3)
         {
             CurrentScreen = "settings:main"
         };
         route.Matches(wrongTextCtx).Should().BeFalse();
 
         // No session (Screen = null) + correct text = no match
-        var noSessionCtx = TestHelpers.CreateMessageContext("Язык");
+        UpdateContext noSessionCtx = TestHelpers.CreateMessageContext("Язык");
         route.Matches(noSessionCtx).Should().BeFalse();
     }
 }

@@ -1,7 +1,9 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using FluentAssertions;
 using StackExchange.Redis;
+using TelegramBotFlow.Core.Screens;
 using TelegramBotFlow.Core.Sessions;
+using TelegramBotFlow.Core.Sessions.Redis;
 
 namespace TelegramBotFlow.Core.Tests.Sessions;
 
@@ -12,19 +14,21 @@ public sealed class RedisSessionStoreTests
     {
         var session = new UserSession(42)
         {
-            CurrentFlowId = "reg",
-            CurrentStepId = "name",
-            CurrentScreen = "settings:main"
+            CurrentScreen = "settings:main",
+            NavMessageId = 100,
+            CurrentMediaType = ScreenMediaType.Photo,
         };
+        session.NavigationStack.Add("main");
 
-        var entries = RedisSessionStore.Serialize(session);
-        var dict = ToDictionary(entries);
+        HashEntry[] entries = RedisSessionStore.Serialize(session);
+        Dictionary<string, string> dict = ToDictionary(entries);
 
         dict.Should().ContainKey(RedisSessionStore.FieldCreatedAt);
         dict.Should().ContainKey(RedisSessionStore.FieldLastActivity);
-        dict[RedisSessionStore.FieldFlowId].Should().Be("reg");
-        dict[RedisSessionStore.FieldStepId].Should().Be("name");
         dict[RedisSessionStore.FieldScreen].Should().Be("settings:main");
+        dict[RedisSessionStore.FieldNavMessageId].Should().Be("100");
+        dict[RedisSessionStore.FieldMediaType].Should().Be("Photo");
+        dict[RedisSessionStore.FieldNavigationStack].Should().Contain("main");
     }
 
     [Fact]
@@ -34,11 +38,11 @@ public sealed class RedisSessionStoreTests
         session.Set("city", "Moscow");
         session.Set("lang", "ru");
 
-        var entries = RedisSessionStore.Serialize(session);
-        var dict = ToDictionary(entries);
+        HashEntry[] entries = RedisSessionStore.Serialize(session);
+        Dictionary<string, string> dict = ToDictionary(entries);
 
         dict.Should().ContainKey(RedisSessionStore.FieldUserData);
-        var data = JsonSerializer.Deserialize<Dictionary<string, string>>(dict[RedisSessionStore.FieldUserData]);
+        Dictionary<string, string>? data = JsonSerializer.Deserialize<Dictionary<string, string>>(dict[RedisSessionStore.FieldUserData]);
         data.Should().ContainKey("city").WhoseValue.Should().Be("Moscow");
         data.Should().ContainKey("lang").WhoseValue.Should().Be("ru");
     }
@@ -48,8 +52,8 @@ public sealed class RedisSessionStoreTests
     {
         var session = new UserSession(42);
 
-        var entries = RedisSessionStore.Serialize(session);
-        var dict = ToDictionary(entries);
+        HashEntry[] entries = RedisSessionStore.Serialize(session);
+        Dictionary<string, string> dict = ToDictionary(entries);
 
         dict[RedisSessionStore.FieldUserData].Should().BeEmpty();
     }
@@ -59,12 +63,11 @@ public sealed class RedisSessionStoreTests
     {
         var session = new UserSession(42);
 
-        var entries = RedisSessionStore.Serialize(session);
-        var dict = ToDictionary(entries);
+        HashEntry[] entries = RedisSessionStore.Serialize(session);
+        Dictionary<string, string> dict = ToDictionary(entries);
 
-        dict[RedisSessionStore.FieldFlowId].Should().BeEmpty();
-        dict[RedisSessionStore.FieldStepId].Should().BeEmpty();
         dict[RedisSessionStore.FieldScreen].Should().BeEmpty();
+        dict[RedisSessionStore.FieldNavMessageId].Should().BeEmpty();
     }
 
     [Fact]
@@ -74,8 +77,8 @@ public sealed class RedisSessionStoreTests
         var fixedTime = new DateTime(2025, 6, 15, 10, 30, 0, DateTimeKind.Utc);
         session.LastActivity = fixedTime;
 
-        var entries = RedisSessionStore.Serialize(session);
-        var dict = ToDictionary(entries);
+        HashEntry[] entries = RedisSessionStore.Serialize(session);
+        Dictionary<string, string> dict = ToDictionary(entries);
 
         dict[RedisSessionStore.FieldLastActivity].Should().Be(fixedTime.ToString("O"));
     }
@@ -85,31 +88,31 @@ public sealed class RedisSessionStoreTests
     {
         var original = new UserSession(42)
         {
-            CurrentFlowId = "reg",
-            CurrentStepId = "email",
-            CurrentScreen = "contact:share"
+            CurrentScreen = "contact:share",
+            NavMessageId = 55,
+            CurrentMediaType = ScreenMediaType.Video
         };
+        original.NavigationStack.Add("main");
+        original.NavigationStack.Add("settings");
 
-        var entries = RedisSessionStore.Serialize(original);
-        var restored = RedisSessionStore.Deserialize(42, entries);
+        HashEntry[] entries = RedisSessionStore.Serialize(original);
+        UserSession restored = RedisSessionStore.Deserialize(42, entries);
 
         restored.UserId.Should().Be(42);
-        restored.CurrentFlowId.Should().Be("reg");
-        restored.CurrentStepId.Should().Be("email");
         restored.CurrentScreen.Should().Be("contact:share");
-        restored.IsInFlow.Should().BeTrue();
+        restored.NavMessageId.Should().Be(55);
+        restored.CurrentMediaType.Should().Be(ScreenMediaType.Video);
+        restored.NavigationStack.Should().HaveCount(2);
     }
 
     [Fact]
     public void Deserialize_RestoresCreatedAt()
     {
         var original = new UserSession(42);
-        var originalCreatedAt = original.CreatedAt;
+        DateTime originalCreatedAt = original.CreatedAt;
 
-        var entries = RedisSessionStore.Serialize(original);
-
-        // Simulate delay — new UserSession(42) would set a different CreatedAt
-        var restored = RedisSessionStore.Deserialize(42, entries);
+        HashEntry[] entries = RedisSessionStore.Serialize(original);
+        UserSession restored = RedisSessionStore.Deserialize(42, entries);
 
         restored.CreatedAt.Should().BeCloseTo(originalCreatedAt, TimeSpan.FromMilliseconds(1));
     }
@@ -121,8 +124,8 @@ public sealed class RedisSessionStoreTests
         var fixedTime = new DateTime(2025, 3, 10, 8, 0, 0, DateTimeKind.Utc);
         original.LastActivity = fixedTime;
 
-        var entries = RedisSessionStore.Serialize(original);
-        var restored = RedisSessionStore.Deserialize(42, entries);
+        HashEntry[] entries = RedisSessionStore.Serialize(original);
+        UserSession restored = RedisSessionStore.Deserialize(42, entries);
 
         restored.LastActivity.Should().Be(fixedTime);
     }
@@ -131,14 +134,14 @@ public sealed class RedisSessionStoreTests
     public void Deserialize_RestoresUserData()
     {
         var original = new UserSession(42);
-        original.Set("flow:reg:name", "John");
-        original.Set("flow:reg:email", "john@test.com");
+        original.Set("name", "John");
+        original.Set("email", "john@test.com");
 
-        var entries = RedisSessionStore.Serialize(original);
-        var restored = RedisSessionStore.Deserialize(42, entries);
+        HashEntry[] entries = RedisSessionStore.Serialize(original);
+        UserSession restored = RedisSessionStore.Deserialize(42, entries);
 
-        restored.GetString("flow:reg:name").Should().Be("John");
-        restored.GetString("flow:reg:email").Should().Be("john@test.com");
+        restored.GetString("name").Should().Be("John");
+        restored.GetString("email").Should().Be("john@test.com");
     }
 
     [Fact]
@@ -146,13 +149,11 @@ public sealed class RedisSessionStoreTests
     {
         var original = new UserSession(42);
 
-        var entries = RedisSessionStore.Serialize(original);
-        var restored = RedisSessionStore.Deserialize(42, entries);
+        HashEntry[] entries = RedisSessionStore.Serialize(original);
+        UserSession restored = RedisSessionStore.Deserialize(42, entries);
 
-        restored.CurrentFlowId.Should().BeNull();
-        restored.CurrentStepId.Should().BeNull();
         restored.CurrentScreen.Should().BeNull();
-        restored.IsInFlow.Should().BeFalse();
+        restored.NavMessageId.Should().BeNull();
     }
 
     [Fact]
@@ -160,20 +161,22 @@ public sealed class RedisSessionStoreTests
     {
         var original = new UserSession(99)
         {
-            CurrentFlowId = "onboarding",
-            CurrentStepId = "step2",
-            CurrentScreen = "settings:lang"
+            CurrentScreen = "settings:lang",
+            NavMessageId = 77,
+            CurrentMediaType = ScreenMediaType.Photo,
         };
+        original.NavigationStack.Add("main");
         original.Set("age", "25");
         original.Set("name", "Alice");
 
-        var entries = RedisSessionStore.Serialize(original);
-        var restored = RedisSessionStore.Deserialize(99, entries);
+        HashEntry[] entries = RedisSessionStore.Serialize(original);
+        UserSession restored = RedisSessionStore.Deserialize(99, entries);
 
         restored.UserId.Should().Be(99);
-        restored.CurrentFlowId.Should().Be("onboarding");
-        restored.CurrentStepId.Should().Be("step2");
         restored.CurrentScreen.Should().Be("settings:lang");
+        restored.NavMessageId.Should().Be(77);
+        restored.CurrentMediaType.Should().Be(ScreenMediaType.Photo);
+        restored.NavigationStack.Should().ContainSingle().Which.Should().Be("main");
         restored.GetString("age").Should().Be("25");
         restored.GetString("name").Should().Be("Alice");
         restored.GetAll().Should().HaveCount(2);
@@ -186,19 +189,16 @@ public sealed class RedisSessionStoreTests
         session.Set("temp_code", "1234");
         session.Set("city", "Moscow");
 
-        // First save — both keys present
-        var entries1 = RedisSessionStore.Serialize(session);
-        var dict1 = ToDictionary(entries1);
-        var data1 = JsonSerializer.Deserialize<Dictionary<string, string>>(dict1[RedisSessionStore.FieldUserData]);
+        HashEntry[] entries1 = RedisSessionStore.Serialize(session);
+        Dictionary<string, string> dict1 = ToDictionary(entries1);
+        Dictionary<string, string>? data1 = JsonSerializer.Deserialize<Dictionary<string, string>>(dict1[RedisSessionStore.FieldUserData]);
         data1.Should().ContainKey("temp_code");
         data1.Should().ContainKey("city");
 
-        // Simulate remove
         session.Remove("temp_code");
 
-        // Second save — temp_code is gone
-        var entries2 = RedisSessionStore.Serialize(session);
-        var restored = RedisSessionStore.Deserialize(42, entries2);
+        HashEntry[] entries2 = RedisSessionStore.Serialize(session);
+        UserSession restored = RedisSessionStore.Deserialize(42, entries2);
 
         restored.GetString("temp_code").Should().BeNull();
         restored.Has("temp_code").Should().BeFalse();
@@ -211,10 +211,9 @@ public sealed class RedisSessionStoreTests
     {
         var session = new UserSession(42);
 
-        var entries = RedisSessionStore.Serialize(session);
+        HashEntry[] entries = RedisSessionStore.Serialize(session);
 
-        // 6 system fields + user_data
-        entries.Should().HaveCount(6);
+        entries.Should().HaveCount(7);
     }
 
     private static Dictionary<string, string> ToDictionary(HashEntry[] entries) =>

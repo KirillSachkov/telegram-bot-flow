@@ -23,7 +23,7 @@ public class EndpointsRegistrationTests : IClassFixture<BotWebApplicationFactory
     public void Should_Register_Endpoints_From_TelegramBotFlow_App_Assembly()
     {
         // Arrange
-        var expectedEndpointTypes = GetEndpointTypesFromAppAssembly();
+        List<Type> expectedEndpointTypes = GetEndpointTypesFromAppAssembly();
         expectedEndpointTypes.Should().NotBeEmpty(
             "TelegramBotFlow.App assembly should contain endpoint implementations");
 
@@ -40,10 +40,10 @@ public class EndpointsRegistrationTests : IClassFixture<BotWebApplicationFactory
     public void All_Registered_Endpoints_Should_Implement_IBotEndpoint()
     {
         // Arrange & Act
-        var endpoints = _factory.Services.GetServices<IBotEndpoint>();
+        IEnumerable<IBotEndpoint> endpoints = _factory.Services.GetServices<IBotEndpoint>();
 
         // Assert
-        foreach (var endpoint in endpoints)
+        foreach (IBotEndpoint endpoint in endpoints)
         {
             endpoint.Should().BeAssignableTo<IBotEndpoint>();
             endpoint.Should().NotBeNull();
@@ -71,12 +71,12 @@ public class EndpointsRegistrationTests : IClassFixture<BotWebApplicationFactory
     public void Each_Endpoint_Should_Have_MapEndpoint_Method()
     {
         // Arrange
-        var endpoints = _factory.Services.GetServices<IBotEndpoint>();
+        IEnumerable<IBotEndpoint> endpoints = _factory.Services.GetServices<IBotEndpoint>();
 
         // Act & Assert
-        foreach (var endpoint in endpoints)
+        foreach (IBotEndpoint endpoint in endpoints)
         {
-            var mapMethod = endpoint.GetType().GetMethod("MapEndpoint");
+            MethodInfo? mapMethod = endpoint.GetType().GetMethod("MapEndpoint");
             mapMethod.Should().NotBeNull(
                 $"{endpoint.GetType().Name} should implement MapEndpoint method");
             
@@ -92,7 +92,7 @@ public class EndpointsRegistrationTests : IClassFixture<BotWebApplicationFactory
     public void Should_Discover_All_Concrete_Endpoint_Types_From_App_Assembly()
     {
         // Arrange & Act
-        var endpointTypes = GetEndpointTypesFromAppAssembly();
+        List<Type> endpointTypes = GetEndpointTypesFromAppAssembly();
 
         // Assert
         endpointTypes.Should().NotBeEmpty();
@@ -109,11 +109,11 @@ public class EndpointsRegistrationTests : IClassFixture<BotWebApplicationFactory
     public void Should_Resolve_Endpoints_Multiple_Times_Without_Errors()
     {
         // Arrange & Act
-        var action = () =>
+        Action action = () =>
         {
             for (int i = 0; i < 50; i++)
             {
-                var endpoints = _factory.Services.GetServices<IBotEndpoint>();
+                IEnumerable<IBotEndpoint> endpoints = _factory.Services.GetServices<IBotEndpoint>();
                 endpoints.Should().NotBeEmpty();
             }
         };
@@ -127,12 +127,12 @@ public class EndpointsRegistrationTests : IClassFixture<BotWebApplicationFactory
     public void Endpoints_Should_Have_Meaningful_Names()
     {
         // Arrange
-        var endpoints = _factory.Services.GetServices<IBotEndpoint>();
+        IEnumerable<IBotEndpoint> endpoints = _factory.Services.GetServices<IBotEndpoint>();
 
         // Act & Assert
-        foreach (var endpoint in endpoints)
+        foreach (IBotEndpoint endpoint in endpoints)
         {
-            var typeName = endpoint.GetType().Name;
+            string typeName = endpoint.GetType().Name;
             
             typeName.Should().NotBeNullOrEmpty();
             typeName.Length.Should().BeGreaterThan(3,
@@ -147,10 +147,10 @@ public class EndpointsRegistrationTests : IClassFixture<BotWebApplicationFactory
         var endpoints = _factory.Services.GetServices<IBotEndpoint>().ToList();
 
         // Act
-        var typeGroups = endpoints.GroupBy(e => e.GetType());
+        IEnumerable<IGrouping<Type, IBotEndpoint>> typeGroups = endpoints.GroupBy(e => e.GetType());
 
         // Assert
-        foreach (var group in typeGroups)
+        foreach (IGrouping<Type, IBotEndpoint> group in typeGroups)
         {
             group.Should().ContainSingle(
                 $"endpoint type {group.Key.Name} should be registered exactly once");

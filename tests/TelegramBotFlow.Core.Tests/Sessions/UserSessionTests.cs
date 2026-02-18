@@ -1,4 +1,5 @@
-using FluentAssertions;
+﻿using FluentAssertions;
+using TelegramBotFlow.Core.Screens;
 using TelegramBotFlow.Core.Sessions;
 
 namespace TelegramBotFlow.Core.Tests.Sessions;
@@ -55,21 +56,21 @@ public sealed class UserSessionTests
     }
 
     [Fact]
-    public void Clear_RemovesAllDataAndResetsFlowAndScreen()
+    public void Clear_RemovesAllDataAndResetsNavigation()
     {
         var session = new UserSession(1);
         session.Set("key", "value");
-        session.CurrentFlowId = "reg";
-        session.CurrentStepId = "step1";
         session.CurrentScreen = "settings:main";
+        session.NavMessageId = 100;
+        session.NavigationStack.Add("main");
 
         session.Clear();
 
         session.Has("key").Should().BeFalse();
-        session.CurrentFlowId.Should().BeNull();
-        session.CurrentStepId.Should().BeNull();
         session.CurrentScreen.Should().BeNull();
-        session.IsInFlow.Should().BeFalse();
+        session.NavMessageId.Should().BeNull();
+        session.NavigationStack.Should().BeEmpty();
+        session.CurrentMediaType.Should().Be(ScreenMediaType.None);
     }
 
     [Fact]
@@ -85,14 +86,40 @@ public sealed class UserSessionTests
     }
 
     [Fact]
-    public void IsInFlow_ReflectsCurrentFlowId()
+    public void PushScreen_AddsCurrentScreenToStack()
     {
         var session = new UserSession(1);
 
-        session.IsInFlow.Should().BeFalse();
+        session.PushScreen("main");
+        session.CurrentScreen.Should().Be("main");
+        session.NavigationStack.Should().BeEmpty();
 
-        session.CurrentFlowId = "flow1";
+        session.PushScreen("settings");
+        session.CurrentScreen.Should().Be("settings");
+        session.NavigationStack.Should().ContainSingle().Which.Should().Be("main");
 
-        session.IsInFlow.Should().BeTrue();
+        session.PushScreen("lang");
+        session.CurrentScreen.Should().Be("lang");
+        session.NavigationStack.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public void PopScreen_ReturnsToLastScreen()
+    {
+        var session = new UserSession(1);
+        session.PushScreen("main");
+        session.PushScreen("settings");
+        session.PushScreen("lang");
+
+        string? popped = session.PopScreen();
+        popped.Should().Be("settings");
+        session.CurrentScreen.Should().Be("settings");
+
+        popped = session.PopScreen();
+        popped.Should().Be("main");
+        session.CurrentScreen.Should().Be("main");
+
+        popped = session.PopScreen();
+        popped.Should().BeNull();
     }
 }

@@ -8,7 +8,7 @@ public sealed class InMemorySessionStore : ISessionStore
 
     public Task<UserSession> GetOrCreateAsync(long userId, CancellationToken cancellationToken = default)
     {
-        var session = _sessions.GetOrAdd(userId, id => new UserSession(id));
+        UserSession session = _sessions.GetOrAdd(userId, id => new UserSession(id));
         session.LastActivity = DateTime.UtcNow;
 
         return Task.FromResult(session);

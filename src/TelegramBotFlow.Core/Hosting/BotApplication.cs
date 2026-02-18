@@ -1,15 +1,11 @@
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
-using Telegram.Bot;
-using Telegram.Bot.Types;
 using TelegramBotFlow.Core.Context;
 using TelegramBotFlow.Core.Extensions;
-using TelegramBotFlow.Core.Flows;
 using TelegramBotFlow.Core.Pipeline;
 using TelegramBotFlow.Core.Pipeline.Middlewares;
 using TelegramBotFlow.Core.Routing;
+using TelegramBotFlow.Core.Screens;
 using TelegramBotFlow.Core.UI;
 
 namespace TelegramBotFlow.Core.Hosting;
@@ -18,17 +14,17 @@ public sealed class BotApplication
 {
     private readonly WebApplication _app;
     private readonly UpdateRouter _router;
-    private readonly FlowManager _flowManager;
     private readonly List<Func<UpdateDelegate, UpdateDelegate>> _middlewares = [];
     private MenuBuilder? _menuBuilder;
 
     public IServiceProvider Services => _app.Services;
 
-    private BotApplication(WebApplication app, UpdateRouter router, FlowManager flowManager)
+    public WebApplication WebApp => _app;
+
+    private BotApplication(WebApplication app, UpdateRouter router)
     {
         _app = app;
         _router = router;
-        _flowManager = flowManager;
     }
 
     public static BotApplicationBuilder CreateBuilder(string[] args) => new(args);
@@ -37,12 +33,11 @@ public sealed class BotApplication
     {
         builder.Services.AddTelegramBotFlow(builder.Configuration);
 
-        var app = builder.WebAppBuilder.Build();
+        WebApplication app = builder.WebAppBuilder.Build();
 
-        var router = app.Services.GetRequiredService<UpdateRouter>();
-        var flowManager = app.Services.GetRequiredService<FlowManager>();
+        UpdateRouter router = app.Services.GetRequiredService<UpdateRouter>();
 
-        return new BotApplication(app, router, flowManager);
+        return new BotApplication(app, router);
     }
 
     // -- Middleware registration --
@@ -57,7 +52,7 @@ public sealed class BotApplication
     {
         _middlewares.Add(next => async context =>
         {
-            var middleware = context.Services.GetRequiredService<TMiddleware>();
+            TMiddleware middleware = context.RequestServices.GetRequiredService<TMiddleware>();
             await middleware.InvokeAsync(context, next);
         });
 
@@ -68,7 +63,7 @@ public sealed class BotApplication
     {
         _middlewares.Add(next => async context =>
         {
-            var middleware = context.Services.GetRequiredService<ErrorHandlingMiddleware>();
+            ErrorHandlingMiddleware middleware = context.RequestServices.GetRequiredService<ErrorHandlingMiddleware>();
             await middleware.InvokeAsync(context, next);
         });
 
@@ -79,7 +74,7 @@ public sealed class BotApplication
     {
         _middlewares.Add(next => async context =>
         {
-            var middleware = context.Services.GetRequiredService<LoggingMiddleware>();
+            LoggingMiddleware middleware = context.RequestServices.GetRequiredService<LoggingMiddleware>();
             await middleware.InvokeAsync(context, next);
         });
 
@@ -90,90 +85,80 @@ public sealed class BotApplication
     {
         _middlewares.Add(next => async context =>
         {
-            var middleware = context.Services.GetRequiredService<SessionMiddleware>();
+            SessionMiddleware middleware = context.RequestServices.GetRequiredService<SessionMiddleware>();
             await middleware.InvokeAsync(context, next);
         });
 
         return this;
     }
 
-    public BotApplication UseFlows()
+    public BotApplication UseAccessPolicy()
     {
         _middlewares.Add(next => async context =>
         {
-            var middleware = context.Services.GetRequiredService<FlowMiddleware>();
+            AccessPolicyMiddleware middleware = context.RequestServices.GetRequiredService<AccessPolicyMiddleware>();
             await middleware.InvokeAsync(context, next);
         });
 
         return this;
     }
 
-    public BotApplication UseThrottling()
+    // -- Route registration (Minimal API style with DI) --
+
+    public BotApplication MapCommand(string command, Delegate handler)
     {
-        _middlewares.Add(next => async context =>
+        _router.AddRoute(RouteEntry.Command(command, HandlerDelegateFactory.Create(handler)));
+        return this;
+    }
+
+    public BotApplication MapCallback(string pattern, Delegate handler)
+    {
+        _router.AddRoute(RouteEntry.Callback(pattern, HandlerDelegateFactory.Create(handler)));
+        return this;
+    }
+
+    /// <summary>
+    /// Регистрирует обработчик action-кнопки. В отличие от MapCallback:
+    /// - автоматически отвечает на callback (убирает часики с кнопки)
+    /// - если обработчик возвращает <see cref="ScreenView"/>, показывает его
+    ///   в nav-сообщении с поддержкой кнопки "← Назад"
+    /// </summary>
+    public BotApplication MapAction(string callbackId, Delegate handler)
+    {
+        UpdateDelegate inner = HandlerDelegateFactory.CreateForAction(handler, callbackId);
+
+        _router.AddRoute(RouteEntry.Callback(callbackId, async ctx =>
         {
-            var middleware = context.Services.GetRequiredService<ThrottlingMiddleware>();
-            await middleware.InvokeAsync(context, next);
-        });
-
-        return this;
-    }
-
-    // -- Route registration (Minimal API style) --
-
-    public BotApplication MapCommand(string command, Func<UpdateContext, Task> handler)
-    {
-        _router.AddRoute(RouteEntry.Command(command, ctx => handler(ctx)));
-        return this;
-    }
-
-    public BotApplication MapCallback(string pattern, Func<UpdateContext, Task> handler)
-    {
-        _router.AddRoute(RouteEntry.Callback(pattern, ctx => handler(ctx)));
-        return this;
-    }
-
-    public BotApplication MapCallbackGroup(string prefix, Func<UpdateContext, string, Task> handler)
-    {
-        _router.AddRoute(RouteEntry.Callback($"{prefix}:*", async ctx =>
-        {
-            var action = ctx.CallbackData![(prefix.Length + 1)..];
-            await handler(ctx, action);
+            IUpdateResponder responder = ctx.RequestServices.GetRequiredService<IUpdateResponder>();
+            await responder.AnswerCallbackAsync(ctx);
+            await inner(ctx);
         }));
+
         return this;
     }
 
-    public BotApplication MapMessage(Func<UpdateContext, bool> predicate, Func<UpdateContext, Task> handler)
+    public BotApplication MapCallbackGroup(string prefix, Delegate handler)
     {
-        _router.AddRoute(RouteEntry.Message(predicate, ctx => handler(ctx)));
+        _router.AddRoute(RouteEntry.Callback($"{prefix}:*",
+            HandlerDelegateFactory.CreateForCallbackGroup(handler, prefix)));
         return this;
     }
 
-    public BotApplication MapUpdate(Func<UpdateContext, bool> predicate, Func<UpdateContext, Task> handler)
+    public BotApplication MapMessage(Func<UpdateContext, bool> predicate, Delegate handler)
     {
-        _router.AddRoute(RouteEntry.Update(predicate, ctx => handler(ctx)));
+        _router.AddRoute(RouteEntry.Message(predicate, HandlerDelegateFactory.Create(handler)));
         return this;
     }
 
-    public BotApplication MapButton(string screen, string buttonText, Func<UpdateContext, Task> handler)
+    public BotApplication MapUpdate(Func<UpdateContext, bool> predicate, Delegate handler)
     {
-        _router.AddRoute(RouteEntry.Message(
-            ctx => ctx.Screen == screen && ctx.MessageText == buttonText,
-            ctx => handler(ctx)));
+        _router.AddRoute(RouteEntry.Update(predicate, HandlerDelegateFactory.Create(handler)));
         return this;
     }
 
-    public BotApplication MapFlow(string command, Action<FlowBuilder> configure)
+    public BotApplication MapFallback(Delegate handler)
     {
-        var flowBuilder = new FlowBuilder(command);
-        configure(flowBuilder);
-
-        var flow = flowBuilder.Build();
-        _flowManager.Register(flow);
-
-        _router.AddRoute(RouteEntry.Command(command,
-            async ctx => { await _flowManager.StartFlowAsync(ctx, flow.Id); }));
-
+        _router.SetFallback(HandlerDelegateFactory.Create(handler));
         return this;
     }
 
@@ -191,41 +176,8 @@ public sealed class BotApplication
     public async Task RunAsync()
     {
         var pipeline = UpdatePipeline.Build(_middlewares, _router.BuildTerminal());
-
-        var services = _app.Services;
-        ReplaceUpdatePipeline(services, pipeline);
-
-        var config = services.GetRequiredService<IOptions<BotConfiguration>>().Value;
-
-        if (config.Mode == BotMode.Webhook)
-        {
-            _app.MapPost(config.WebhookPath, async (
-                Update update,
-                ITelegramBotClient bot,
-                IServiceProvider sp,
-                CancellationToken ct) =>
-            {
-                await WebhookEndpoints.HandleWebhookUpdate(update, bot, pipeline, sp, ct);
-                return Results.Ok();
-            });
-
-            var bot = services.GetRequiredService<ITelegramBotClient>();
-            await bot.SetWebhook(config.WebhookUrl + config.WebhookPath, allowedUpdates: []);
-        }
-
-        if (_menuBuilder is not null)
-        {
-            var menuBot = services.GetRequiredService<ITelegramBotClient>();
-            await _menuBuilder.ApplyAsync(menuBot);
-        }
-
-        await _app.RunAsync();
-    }
-
-    private static void ReplaceUpdatePipeline(IServiceProvider services, UpdatePipeline pipeline)
-    {
-        var holder = services.GetRequiredService<PipelineHolder>();
-        holder.Pipeline = pipeline;
+        var runtime = new BotRuntime(_app);
+        await runtime.RunAsync(pipeline, _menuBuilder);
     }
 }
 

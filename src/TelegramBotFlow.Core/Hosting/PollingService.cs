@@ -1,4 +1,4 @@
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Telegram.Bot;
@@ -45,9 +45,9 @@ public sealed class PollingService : BackgroundService
 
     private async Task HandleUpdateAsync(Update update, CancellationToken cancellationToken)
     {
-        await using var scope = _scopeFactory.CreateAsyncScope();
+        await using AsyncServiceScope scope = _scopeFactory.CreateAsyncScope();
 
-        var context = new UpdateContext(update, _bot, scope.ServiceProvider, cancellationToken);
+        var context = new UpdateContext(update, scope.ServiceProvider, cancellationToken);
         await _pipeline.ProcessAsync(context);
     }
 

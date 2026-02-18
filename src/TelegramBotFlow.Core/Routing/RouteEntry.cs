@@ -5,10 +5,16 @@ namespace TelegramBotFlow.Core.Routing;
 
 public enum RouteType
 {
-    Command,
-    Callback,
-    Message,
-    Update
+    COMMAND,
+    CALLBACK,
+    MESSAGE,
+    UPDATE
+}
+
+public enum RoutePriority
+{
+    HIGH,
+    NORMAL
 }
 
 public sealed class RouteEntry
@@ -17,33 +23,41 @@ public sealed class RouteEntry
     public string? Pattern { get; }
     public Func<UpdateContext, bool>? Predicate { get; }
     public UpdateDelegate Handler { get; }
+    public RoutePriority Priority { get; }
 
-    private RouteEntry(RouteType type, UpdateDelegate handler, string? pattern, Func<UpdateContext, bool>? predicate)
+    private RouteEntry(
+        RouteType type,
+        UpdateDelegate handler,
+        string? pattern,
+        Func<UpdateContext, bool>? predicate,
+        RoutePriority priority = RoutePriority.NORMAL)
     {
         Type = type;
         Handler = handler;
         Pattern = pattern;
         Predicate = predicate;
+        Priority = priority;
     }
 
     public static RouteEntry Command(string command, UpdateDelegate handler) =>
-        new(RouteType.Command, handler, NormalizeCommand(command), null);
+        new(RouteType.COMMAND, handler, NormalizeCommand(command), null);
 
     public static RouteEntry Callback(string pattern, UpdateDelegate handler) =>
-        new(RouteType.Callback, handler, pattern, null);
+        new(RouteType.CALLBACK, handler, pattern, null);
 
-    public static RouteEntry Message(Func<UpdateContext, bool> predicate, UpdateDelegate handler) =>
-        new(RouteType.Message, handler, null, predicate);
+    public static RouteEntry Message(Func<UpdateContext, bool> predicate, UpdateDelegate handler,
+        RoutePriority priority = RoutePriority.NORMAL) =>
+        new(RouteType.MESSAGE, handler, null, predicate, priority);
 
     public static RouteEntry Update(Func<UpdateContext, bool> predicate, UpdateDelegate handler) =>
-        new(RouteType.Update, handler, null, predicate);
+        new(RouteType.UPDATE, handler, null, predicate);
 
     public bool Matches(UpdateContext context) =>
         Type switch
         {
-            RouteType.Command => MatchesCommand(context),
-            RouteType.Callback => MatchesCallback(context),
-            RouteType.Message or RouteType.Update => Predicate?.Invoke(context) == true,
+            RouteType.COMMAND => MatchesCommand(context),
+            RouteType.CALLBACK => MatchesCallback(context),
+            RouteType.MESSAGE or RouteType.UPDATE => Predicate?.Invoke(context) == true,
             _ => false
         };
 
@@ -52,17 +66,16 @@ public sealed class RouteEntry
         if (context.MessageText is null || Pattern is null)
             return false;
 
-        var text = context.MessageText.Trim();
+        string text = context.MessageText.Trim();
 
         if (!text.StartsWith('/'))
             return false;
 
-        var commandPart = text.Contains(' ')
+        string commandPart = text.Contains(' ')
             ? text[..text.IndexOf(' ')]
             : text;
 
-        // Strip @botname from /command@botname
-        var atIndex = commandPart.IndexOf('@');
+        int atIndex = commandPart.IndexOf('@');
         if (atIndex > 0)
             commandPart = commandPart[..atIndex];
 
@@ -76,7 +89,7 @@ public sealed class RouteEntry
 
         if (Pattern.EndsWith('*'))
         {
-            var prefix = Pattern[..^1];
+            string prefix = Pattern[..^1];
             return context.CallbackData.StartsWith(prefix, StringComparison.Ordinal);
         }
 

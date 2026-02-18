@@ -1,8 +1,7 @@
-using NSubstitute;
-using Telegram.Bot;
+﻿using NSubstitute;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
-using TelegramBotFlow.Core.Context;
+using UpdateContext = TelegramBotFlow.Core.Context.UpdateContext;
 
 namespace TelegramBotFlow.Core.Tests;
 
@@ -26,8 +25,7 @@ internal static class TestHelpers
             }
         };
 
-        var bot = Substitute.For<ITelegramBotClient>();
-        return new UpdateContext(update, bot, services ?? Substitute.For<IServiceProvider>());
+        return new UpdateContext(update, services ?? Substitute.For<IServiceProvider>());
     }
 
     public static UpdateContext CreateCallbackContext(
@@ -53,7 +51,6 @@ internal static class TestHelpers
             }
         };
 
-        var bot = Substitute.For<ITelegramBotClient>();
-        return new UpdateContext(update, bot, services ?? Substitute.For<IServiceProvider>());
+        return new UpdateContext(update, services ?? Substitute.For<IServiceProvider>());
     }
 }

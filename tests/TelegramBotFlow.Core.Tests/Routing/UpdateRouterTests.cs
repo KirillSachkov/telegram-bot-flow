@@ -1,5 +1,6 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
+using TelegramBotFlow.Core.Context;
 using TelegramBotFlow.Core.Routing;
 
 namespace TelegramBotFlow.Core.Tests.Routing;
@@ -25,8 +26,8 @@ public sealed class UpdateRouterTests
             return Task.CompletedTask;
         }));
 
-        var terminal = _router.BuildTerminal();
-        var ctx = TestHelpers.CreateMessageContext("/start");
+        Core.Pipeline.UpdateDelegate terminal = _router.BuildTerminal();
+        UpdateContext ctx = TestHelpers.CreateMessageContext("/start");
 
         await terminal(ctx);
 
@@ -38,10 +39,10 @@ public sealed class UpdateRouterTests
     {
         _router.AddRoute(RouteEntry.Command("/start", _ => Task.CompletedTask));
 
-        var terminal = _router.BuildTerminal();
-        var ctx = TestHelpers.CreateMessageContext("/unknown");
+        Core.Pipeline.UpdateDelegate terminal = _router.BuildTerminal();
+        UpdateContext ctx = TestHelpers.CreateMessageContext("/unknown");
 
-        var act = () => terminal(ctx);
+        Func<Task> act = () => terminal(ctx);
 
         await act.Should().NotThrowAsync();
     }

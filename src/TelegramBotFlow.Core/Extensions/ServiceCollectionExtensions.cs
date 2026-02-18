@@ -1,16 +1,17 @@
-using System.Threading.RateLimiting;
+﻿using System.Reflection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using StackExchange.Redis;
 using Telegram.Bot;
-using TelegramBotFlow.Core.Flows;
+using TelegramBotFlow.Core.Context;
 using TelegramBotFlow.Core.Hosting;
 using TelegramBotFlow.Core.Pipeline;
 using TelegramBotFlow.Core.Pipeline.Middlewares;
 using TelegramBotFlow.Core.Routing;
+using TelegramBotFlow.Core.Screens;
 using TelegramBotFlow.Core.Sessions;
-using TelegramBotFlow.Core.Throttling;
+using TelegramBotFlow.Core.Sessions.Redis;
 
 namespace TelegramBotFlow.Core.Extensions;
 
@@ -20,29 +21,33 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        services.Configure<BotConfiguration>(configuration.GetSection(BotConfiguration.SectionName));
+        services.Configure<BotConfiguration>(configuration.GetSection(BotConfiguration.SECTION_NAME));
 
-        var botConfig = configuration.GetSection(BotConfiguration.SectionName).Get<BotConfiguration>()
-                        ?? throw new InvalidOperationException(
-                            $"Bot configuration section '{BotConfiguration.SectionName}' is missing or invalid.");
+        BotConfiguration botConfig = configuration.GetSection(BotConfiguration.SECTION_NAME).Get<BotConfiguration>()
+                                     ?? throw new InvalidOperationException(
+                                         $"Bot configuration section '{BotConfiguration.SECTION_NAME}' is missing or invalid.");
 
         services.AddSingleton<ITelegramBotClient>(_ => new TelegramBotClient(botConfig.Token));
 
         services.AddSingleton<PipelineHolder>();
-        services.AddSingleton<UpdatePipeline>(sp => sp.GetRequiredService<PipelineHolder>().Pipeline);
+        services.AddSingleton(sp => sp.GetRequiredService<PipelineHolder>().Pipeline);
 
         services.AddSingleton<UpdateRouter>();
-        services.AddSingleton<FlowManager>();
+        services.TryAddSingleton<ScreenRegistry>();
+        services.AddScoped<IUpdateResponder, UpdateResponder>();
+        services.AddScoped<IUserAccessPolicy, BotConfigurationUserAccessPolicy>();
+        services.AddScoped<IScreenMessageRenderer, ScreenMessageRenderer>();
+        services.AddScoped<ScreenManager>();
+        services.AddScoped<IScreenNavigator, ScreenNavigator>();
 
         services.AddSingleton<ISessionStore, InMemorySessionStore>();
 
         services.AddScoped<ErrorHandlingMiddleware>();
         services.AddScoped<LoggingMiddleware>();
         services.AddScoped<SessionMiddleware>();
-        services.AddScoped<FlowMiddleware>();
-        services.AddScoped<ThrottlingMiddleware>();
+        services.AddScoped<AccessPolicyMiddleware>();
 
-        if (botConfig.Mode == BotMode.Polling)
+        if (botConfig.Mode == BotMode.POLLING)
         {
             services.AddHostedService<PollingService>();
         }
@@ -53,7 +58,7 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddSessionStore<TStore>(this IServiceCollection services)
         where TStore : class, ISessionStore
     {
-        var descriptor = services.FirstOrDefault(d => d.ServiceType == typeof(ISessionStore));
+        ServiceDescriptor? descriptor = services.FirstOrDefault(d => d.ServiceType == typeof(ISessionStore));
         if (descriptor is not null)
             services.Remove(descriptor);
 
@@ -62,23 +67,20 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    /// <summary>
-    /// Регистрирует Redis как хранилище сессий.
-    /// Читает настройки из секции "Redis" в конфигурации.
-    /// </summary>
     public static IServiceCollection AddRedisSessionStore(
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        services.Configure<RedisSessionOptions>(configuration.GetSection(RedisSessionOptions.SectionName));
+        services.Configure<RedisSessionOptions>(configuration.GetSection(RedisSessionOptions.SECTION_NAME));
 
-        var options = configuration.GetSection(RedisSessionOptions.SectionName).Get<RedisSessionOptions>()
-                      ?? new RedisSessionOptions();
+        RedisSessionOptions options =
+            configuration.GetSection(RedisSessionOptions.SECTION_NAME).Get<RedisSessionOptions>()
+            ?? new RedisSessionOptions();
 
         services.AddSingleton<IConnectionMultiplexer>(_ =>
             ConnectionMultiplexer.Connect(options.ConnectionString));
 
-        var descriptor = services.FirstOrDefault(d => d.ServiceType == typeof(ISessionStore));
+        ServiceDescriptor? descriptor = services.FirstOrDefault(d => d.ServiceType == typeof(ISessionStore));
         if (descriptor is not null)
             services.Remove(descriptor);
 
@@ -87,64 +89,26 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    /// <summary>
-    /// Добавляет rate limiting для защиты от флуда.
-    /// Использует System.Threading.RateLimiting с in-memory хранилищем.
-    /// </summary>
-    public static IServiceCollection AddThrottling(
-        this IServiceCollection services,
-        IConfiguration configuration,
-        string sectionName = "Throttling")
+    public static IServiceCollection AddScreens(this IServiceCollection services, Assembly assembly)
     {
-        services.Configure<ThrottlingOptions>(configuration.GetSection(sectionName));
+        List<Type> screenTypes = ScreenRegistry.GetScreenTypes(assembly).ToList();
 
-        services.AddSingleton<PartitionedRateLimiter<long>>(sp =>
+        foreach (Type screenType in screenTypes)
+            services.TryAddScoped(screenType);
+
+        // Replace any existing ScreenRegistry registration with a factory
+        // that populates the registry from the discovered types.
+        // This avoids BuildServiceProvider() and works regardless of call order
+        // relative to AddTelegramBotFlow.
+        ServiceDescriptor? existing = services.FirstOrDefault(d => d.ServiceType == typeof(ScreenRegistry));
+        if (existing is not null)
+            services.Remove(existing);
+
+        services.AddSingleton(_ =>
         {
-            var options = sp.GetRequiredService<IOptions<ThrottlingOptions>>().Value;
-
-            return PartitionedRateLimiter.Create<long, long>(userId =>
-            {
-                // Для каждого UserId создаём свой SlidingWindowRateLimiter
-                return RateLimitPartition.GetSlidingWindowLimiter(userId, _ =>
-                    new SlidingWindowRateLimiterOptions
-                    {
-                        PermitLimit = options.PermitLimit,
-                        Window = TimeSpan.FromSeconds(options.WindowSeconds),
-                        SegmentsPerWindow = options.SegmentsPerWindow,
-                        QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-                        QueueLimit = 0 // Не ставим в очередь, сразу отклоняем
-                    });
-            });
-        });
-
-        return services;
-    }
-
-    /// <summary>
-    /// Добавляет rate limiting с кастомной конфигурацией.
-    /// </summary>
-    public static IServiceCollection AddThrottling(
-        this IServiceCollection services,
-        Action<ThrottlingOptions> configure)
-    {
-        services.Configure(configure);
-
-        services.AddSingleton<PartitionedRateLimiter<long>>(sp =>
-        {
-            var options = sp.GetRequiredService<IOptions<ThrottlingOptions>>().Value;
-
-            return PartitionedRateLimiter.Create<long, long>(userId =>
-            {
-                return RateLimitPartition.GetSlidingWindowLimiter(userId, _ =>
-                    new SlidingWindowRateLimiterOptions
-                    {
-                        PermitLimit = options.PermitLimit,
-                        Window = TimeSpan.FromSeconds(options.WindowSeconds),
-                        SegmentsPerWindow = options.SegmentsPerWindow,
-                        QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-                        QueueLimit = 0
-                    });
-            });
+            var registry = new ScreenRegistry();
+            registry.RegisterFromAssembly(assembly);
+            return registry;
         });
 
         return services;

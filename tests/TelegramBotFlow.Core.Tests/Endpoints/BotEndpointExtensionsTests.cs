@@ -14,7 +14,7 @@ public class BotEndpointExtensionsTests
 
         services.AddBotEndpoints(typeof(TestEndpointA).Assembly);
 
-        var provider = services.BuildServiceProvider();
+        ServiceProvider provider = services.BuildServiceProvider();
         var endpoints = provider.GetServices<IBotEndpoint>().ToList();
 
         endpoints.Should().HaveCount(2);
@@ -29,7 +29,7 @@ public class BotEndpointExtensionsTests
 
         services.AddBotEndpoints(typeof(AbstractEndpoint).Assembly);
 
-        var provider = services.BuildServiceProvider();
+        ServiceProvider provider = services.BuildServiceProvider();
         var endpoints = provider.GetServices<IBotEndpoint>().ToList();
 
         endpoints.Should().NotContain(e => e.GetType() == typeof(AbstractEndpoint));
@@ -43,7 +43,7 @@ public class BotEndpointExtensionsTests
         services.AddBotEndpoints(typeof(TestEndpointA).Assembly);
         services.AddBotEndpoints(typeof(TestEndpointA).Assembly);
 
-        var provider = services.BuildServiceProvider();
+        ServiceProvider provider = services.BuildServiceProvider();
         var endpoints = provider.GetServices<IBotEndpoint>().ToList();
 
         endpoints.Should().HaveCount(2);
