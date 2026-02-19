@@ -83,7 +83,7 @@ public sealed record StayResult(string? Notification = null) : IEndpointResult
         IUpdateResponder responder = ctx.RequestServices.GetRequiredService<IUpdateResponder>();
         await responder.DeleteMessageAsync(ctx);
 
-        if (Notification is not null)
+        if (Notification is not null && ctx.Update.CallbackQuery is not null)
             await responder.AnswerCallbackAsync(ctx, Notification);
     }
 }

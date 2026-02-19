@@ -1,7 +1,7 @@
 ﻿using TelegramBotFlow.Core.Context;
 using TelegramBotFlow.Core.Screens;
 
-namespace TelegramBotFlow.App.Screens;
+namespace TelegramBotFlow.App.Features.Profile;
 
 /// <summary>
 /// Экран профиля пользователя с базовой информацией из контекста и сессии.

@@ -1,10 +1,12 @@
-﻿# API Reference
+﻿# Справочник API (API Reference)
 
 ## BotApplication
 
 Центральный класс фреймворка. Создаёт и запускает bot runtime.
 
-### Создание и запуск
+The central framework class. Creates and runs the bot runtime.
+
+### Создание и запуск (Creation & Startup)
 
 ```csharp
 var builder = BotApplication.CreateBuilder(args);
@@ -25,41 +27,43 @@ await app.RunAsync();
 
 ### Middleware
 
-| Метод                | Описание                                               |
-| -------------------- | ------------------------------------------------------ |
-| `UseErrorHandling()` | Ловит исключения, логирует и отправляет error message  |
-| `UseLogging()`       | Логирует вход/выход и время обработки                  |
-| `UseSession()`       | Загружает и сохраняет `UserSession`                    |
-| `UseAccessPolicy()`  | Заполняет `UpdateContext.IsAdmin`                      |
-| `UsePendingInput()`  | Маршрутизирует следующий текст в `MapInput`-обработчик |
-| `Use<TMiddleware>()` | Подключает кастомный `IUpdateMiddleware`               |
+| Метод / Method       | Описание / Description                                                                                   |
+| -------------------- | -------------------------------------------------------------------------------------------------------- |
+| `UseErrorHandling()` | Ловит исключения, логирует и отправляет error message / Catches exceptions, logs and sends error message |
+| `UseLogging()`       | Логирует вход/выход и время обработки / Logs entry/exit and processing time                              |
+| `UseSession()`       | Загружает и сохраняет `UserSession` / Loads and saves `UserSession`                                      |
+| `UseAccessPolicy()`  | Заполняет `UpdateContext.IsAdmin` / Populates `UpdateContext.IsAdmin`                                    |
+| `UsePendingInput()`  | Маршрутизирует следующий текст в `MapInput`-обработчик / Routes next text to `MapInput` handler          |
+| `Use<TMiddleware>()` | Подключает кастомный `IUpdateMiddleware` / Plugs in custom `IUpdateMiddleware`                           |
 
-### Routing
+### Routing (Маршрутизация)
 
-| Метод                               | Что обрабатывает                        | Пример                                                             |
-| ----------------------------------- | --------------------------------------- | ------------------------------------------------------------------ |
-| `MapCommand(command, handler)`      | Команды                                 | `app.MapCommand("/start", handler)`                                |
-| `MapCallback(pattern, handler)`     | Callback-кнопки                         | `app.MapCallback("profile", handler)`                              |
-| `MapAction(callbackId, handler)`    | Action-кнопки (авто-ответ + ScreenView) | `app.MapAction("get_roadmap", handler)`                            |
-| `MapCallbackGroup(prefix, handler)` | Callback с префиксом                    | `app.MapCallbackGroup("broadcast", handler)`                       |
-| `MapInput(actionId, handler)`       | Ожидаемый пользовательский ввод         | `app.MapInput("roadmap_set_message", handler)`                     |
-| `MapMessage(predicate, handler)`    | Сообщения по предикату                  | `app.MapMessage(ctx => ctx.MessageText == "Да", handler)`          |
-| `MapUpdate(predicate, handler)`     | Любой update по предикату               | `app.MapUpdate(ctx => ctx.Update.Message?.Photo != null, handler)` |
-| `MapFallback(handler)`              | Fallback, если route не найден          | `app.MapFallback(handler)`                                         |
+| Метод / Method                      | Что обрабатывает / Handles                                      | Пример / Example                                                   |
+| ----------------------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------ |
+| `MapCommand(command, handler)`      | Команды / Commands                                              | `app.MapCommand("/start", handler)`                                |
+| `MapCallback(pattern, handler)`     | Callback-кнопки / Callback buttons                              | `app.MapCallback("profile", handler)`                              |
+| `MapAction(callbackId, handler)`    | Action-кнопки / Action buttons (авто-ответ + ScreenView)        | `app.MapAction("get_roadmap", handler)`                            |
+| `MapCallbackGroup(prefix, handler)` | Callback с префиксом / Callback by prefix                       | `app.MapCallbackGroup("broadcast", handler)`                       |
+| `MapInput(actionId, handler)`       | Ожидаемый пользовательский ввод / Expected user input           | `app.MapInput("roadmap_set_message", handler)`                     |
+| `MapMessage(predicate, handler)`    | Сообщения по предикату / Messages by predicate                  | `app.MapMessage(ctx => ctx.MessageText == "Да", handler)`          |
+| `MapUpdate(predicate, handler)`     | Любой update по предикату / Any update by predicate             | `app.MapUpdate(ctx => ctx.Update.Message?.Photo != null, handler)` |
+| `MapFallback(handler)`              | Fallback, если route не найден / Fallback when no route matched | `app.MapFallback(handler)`                                         |
 
 #### MapAction
 
 `MapAction` — специализированный `MapCallback` для кнопок-действий:
 
-- автоматически отвечает на callback (убирает часики с кнопки)
-- если обработчик возвращает `ScreenView`, показывает его в nav-сообщении с кнопкой "← Назад"
+`MapAction` is a specialized `MapCallback` for action buttons:
+
+- автоматически отвечает на callback (убирает часики с кнопки) / automatically answers the callback (removes the spinner)
+- если обработчик возвращает `ScreenView`, показывает его в nav-сообщении с кнопкой "← Назад" / if the handler returns a `ScreenView`, displays it in a nav message with a "← Back" button
 
 ```csharp
 app.MapAction("get_roadmap", () =>
     Task.FromResult(new ScreenView("Текст ответа").MenuButton()));
 ```
 
-### SetMenu
+### SetMenu (Меню бота)
 
 ```csharp
 app.SetMenu(menu => menu
@@ -68,14 +72,18 @@ app.SetMenu(menu => menu
 
 Устанавливает список команд бота, отображаемый при нажатии `/` в Telegram.
 
-### Внедрение зависимостей в обработчик
+Sets the bot command list displayed when pressing `/` in Telegram.
+
+### Внедрение зависимостей в обработчик (Handler Dependency Injection)
 
 Параметры обработчика резолвятся автоматически:
 
-- `UpdateContext` передаётся всегда
-- `CancellationToken` берётся из контекста
-- сервисы (например `IUpdateResponder`, `IScreenNavigator`, DbContext) берутся из DI scope update-а
-- для `MapCallbackGroup` первый параметр `string` получает action-часть callback
+Handler parameters are resolved automatically:
+
+- `UpdateContext` передаётся всегда / always provided
+- `CancellationToken` берётся из контекста / taken from context
+- сервисы (например `IUpdateResponder`, `IScreenNavigator`, DbContext) берутся из DI scope update-а / services (e.g. `IUpdateResponder`, `IScreenNavigator`, DbContext) are resolved from the update DI scope
+- для `MapCallbackGroup` первый параметр `string` получает action-часть callback / for `MapCallbackGroup` the first `string` parameter receives the action part of the callback
 
 ```csharp
 app.MapCallbackGroup("nav", async (
@@ -89,45 +97,53 @@ app.MapCallbackGroup("nav", async (
 });
 ```
 
-## UpdateContext
+## UpdateContext (Контекст обновления)
 
 Контекст обновления — только данные update-а и runtime-состояние.
 
-### Свойства
+Update context — only update data and runtime state.
 
-| Свойство            | Тип                 | Описание                                     |
-| ------------------- | ------------------- | -------------------------------------------- |
-| `Update`            | `Update`            | Исходный Telegram update                     |
-| `CancellationToken` | `CancellationToken` | Токен отмены                                 |
-| `Session`           | `UserSession?`      | Текущая сессия (заполняется `UseSession`)    |
-| `IsAdmin`           | `bool`              | Флаг доступа (заполняется `UseAccessPolicy`) |
-| `ChatId`            | `long`              | Chat ID                                      |
-| `UserId`            | `long`              | User ID                                      |
-| `MessageId`         | `int?`              | ID сообщения                                 |
-| `CallbackData`      | `string?`           | Callback data                                |
-| `MessageText`       | `string?`           | Текст сообщения                              |
-| `CommandArgument`   | `string?`           | Аргумент команды после пробела               |
-| `UpdateType`        | `UpdateType`        | Тип update                                   |
-| `Screen`            | `string?`           | Текущий экран из сессии                      |
+### Свойства (Properties)
+
+| Свойство / Property | Тип / Type          | Описание / Description                                                  |
+| ------------------- | ------------------- | ----------------------------------------------------------------------- |
+| `Update`            | `Update`            | Исходный Telegram update / Original Telegram update                     |
+| `CancellationToken` | `CancellationToken` | Токен отмены / Cancellation token                                       |
+| `Session`           | `UserSession?`      | Текущая сессия / Current session (заполняется / filled by `UseSession`) |
+| `IsAdmin`           | `bool`              | Флаг доступа / Access flag (заполняется / filled by `UseAccessPolicy`)  |
+| `ChatId`            | `long`              | Chat ID                                                                 |
+| `UserId`            | `long`              | User ID                                                                 |
+| `MessageId`         | `int?`              | ID сообщения / Message ID                                               |
+| `CallbackData`      | `string?`           | Callback data                                                           |
+| `MessageText`       | `string?`           | Текст сообщения / Message text                                          |
+| `CommandArgument`   | `string?`           | Аргумент команды после пробела / Command argument after space           |
+| `UpdateType`        | `UpdateType`        | Тип update / Update type                                                |
+| `Screen`            | `string?`           | Текущий экран из сессии / Current screen from session                   |
 
 `UpdateContext` больше не содержит методов отправки сообщений и service locator API.
 
-## IUpdateResponder
+`UpdateContext` no longer contains message-sending methods or service locator API.
+
+## IUpdateResponder (Сервис отправки ответов)
 
 Сервис отправки ответов пользователю (вместо методов в `UpdateContext`).
 
-| Метод                                                                 | Описание                        |
-| --------------------------------------------------------------------- | ------------------------------- |
-| `ReplyAsync(context, text, replyMarkup?, parseMode)`                  | Отправить сообщение             |
-| `EditMessageAsync(context, text, replyMarkup?, parseMode)`            | Отредактировать текущее message |
-| `EditMessageAsync(context, messageId, text, replyMarkup?, parseMode)` | Отредактировать message по ID   |
-| `DeleteMessageAsync(context)`                                         | Удалить текущее message         |
-| `DeleteMessageAsync(context, messageId)`                              | Удалить message по ID           |
-| `AnswerCallbackAsync(context, text?, showAlert)`                      | Ответить на callback            |
+Service for sending responses to the user (replaces methods previously in `UpdateContext`).
 
-## IUserAccessPolicy
+| Метод / Method                                                        | Описание / Description                                     |
+| --------------------------------------------------------------------- | ---------------------------------------------------------- |
+| `ReplyAsync(context, text, replyMarkup?, parseMode)`                  | Отправить сообщение / Send a message                       |
+| `EditMessageAsync(context, text, replyMarkup?, parseMode)`            | Отредактировать текущее message / Edit the current message |
+| `EditMessageAsync(context, messageId, text, replyMarkup?, parseMode)` | Отредактировать message по ID / Edit a message by ID       |
+| `DeleteMessageAsync(context)`                                         | Удалить текущее message / Delete the current message       |
+| `DeleteMessageAsync(context, messageId)`                              | Удалить message по ID / Delete a message by ID             |
+| `AnswerCallbackAsync(context, text?, showAlert)`                      | Ответить на callback / Answer a callback                   |
+
+## IUserAccessPolicy (Политика доступа)
 
 Политика доступа администратора:
+
+Admin access policy:
 
 ```csharp
 public interface IUserAccessPolicy
@@ -138,9 +154,13 @@ public interface IUserAccessPolicy
 
 Стандартная реализация: `BotConfigurationUserAccessPolicy`, использует `Bot:AdminUserIds`.
 
-## IBotEndpoint
+Default implementation: `BotConfigurationUserAccessPolicy`, uses `Bot:AdminUserIds`.
+
+## IBotEndpoint (Auto-Discovery)
 
 Интерфейс auto-discovery для endpoint-классов:
+
+Auto-discovery interface for endpoint classes:
 
 ```csharp
 public interface IBotEndpoint
@@ -149,16 +169,18 @@ public interface IBotEndpoint
 }
 ```
 
-Регистрация:
+Регистрация / Registration:
 
 ```csharp
 builder.Services.AddBotEndpoints(Assembly.GetExecutingAssembly());
 app.MapBotEndpoints();
 ```
 
-## IUpdateMiddleware
+## IUpdateMiddleware (Контракт middleware)
 
 Контракт middleware pipeline:
+
+Middleware pipeline contract:
 
 ```csharp
 public interface IUpdateMiddleware
@@ -167,13 +189,13 @@ public interface IUpdateMiddleware
 }
 ```
 
-Подключение:
+Подключение / Usage:
 
 ```csharp
 app.Use<MyMiddleware>();
 ```
 
-## Screens API
+## Screens API (API экранов)
 
 `IScreen`:
 
@@ -195,40 +217,44 @@ Task RefreshScreenAsync(UpdateContext context);
 
 Идентификаторы экранов вычисляются по конвенции:
 
+Screen identifiers are computed by convention:
+
 - `MainMenuScreen` → `main_menu`
 - `ProfileScreen` → `profile`
 - `SettingsLangScreen` → `settings_lang`
 
-### ScreenView
+### ScreenView (Представление экрана)
 
 `ScreenView` — описание содержимого экрана: текст, медиа, кнопки.
 
-#### Конструктор
+`ScreenView` describes screen content: text, media, buttons.
+
+#### Конструктор (Constructor)
 
 ```csharp
 new ScreenView("Текст экрана")
 ```
 
-#### Кнопки навигации
+#### Кнопки навигации (Navigation Buttons)
 
-| Метод                           | Описание                                                      |
-| ------------------------------- | ------------------------------------------------------------- |
-| `NavigateButton<TScreen>(text)` | Кнопка перехода к экрану (`nav:{screenId}`)                   |
-| `Button(text, callbackData)`    | Произвольная callback-кнопка                                  |
-| `UrlButton(text, url)`          | Кнопка-ссылка                                                 |
-| `Row()`                         | Начать новую строку кнопок                                    |
-| `BackButton(text?)`             | Кнопка "← Назад" (pop стека навигации)                        |
-| `CloseButton(text?)`            | Кнопка "← Назад" без изменения стека (для action-результатов) |
-| `MenuButton(text?)`             | Кнопка "☰ Главное меню" (полный сброс истории навигации)     |
+| Метод / Method                  | Описание / Description                                                                    |
+| ------------------------------- | ----------------------------------------------------------------------------------------- |
+| `NavigateButton<TScreen>(text)` | Кнопка перехода к экрану / Navigate to screen button (`nav:{screenId}`)                   |
+| `Button(text, callbackData)`    | Произвольная callback-кнопка / Arbitrary callback button                                  |
+| `UrlButton(text, url)`          | Кнопка-ссылка / URL link button                                                           |
+| `Row()`                         | Начать новую строку кнопок / Start a new button row                                       |
+| `BackButton(text?)`             | Кнопка "← Назад" / "← Back" button (pop навигационного стека / pops nav stack)            |
+| `CloseButton(text?)`            | Кнопка "← Назад" без изменения стека / "← Back" without stack change (for action results) |
+| `MenuButton(text?)`             | Кнопка "☰ Главное меню" / "☰ Main Menu" (полный сброс истории / full history reset)     |
 
-#### Медиа
+#### Медиа (Media)
 
-| Метод                                     | Описание       |
-| ----------------------------------------- | -------------- |
-| `WithPhoto(url)` / `WithPhoto(InputFile)` | Фото           |
-| `WithVideo(InputFile)`                    | Видео          |
-| `WithAnimation(InputFile)`                | GIF / анимация |
-| `WithDocument(InputFile)`                 | Документ       |
+| Метод / Method                            | Описание / Description         |
+| ----------------------------------------- | ------------------------------ |
+| `WithPhoto(url)` / `WithPhoto(InputFile)` | Фото / Photo                   |
+| `WithVideo(InputFile)`                    | Видео / Video                  |
+| `WithAnimation(InputFile)`                | GIF / анимация / GIF/animation |
+| `WithDocument(InputFile)`                 | Документ / Document            |
 
 ```csharp
 new ScreenView("Описание")
@@ -238,18 +264,20 @@ new ScreenView("Описание")
     .BackButton();
 ```
 
-## UserSession
+## UserSession (Сессия пользователя)
 
 `UserSession` — key-value + навигационный state.
 
-### Основные методы
+`UserSession` — key-value store + navigation state.
 
-| Метод                     | Описание                       |
-| ------------------------- | ------------------------------ |
-| `Set/GetString`           | Хранение строковых значений    |
-| `GetInt/GetLong/GetBool`  | Typed чтение                   |
-| `GetState<T>/SetState<T>` | Typed state через JSON         |
-| `Has/Remove`              | Проверка/удаление ключа        |
-| `PushScreen/PopScreen`    | Навигационный стек экранов     |
-| `ClearCurrentScreen`      | Очистка только текущего экрана |
-| `Clear`                   | Полный сброс сессии            |
+### Основные методы (Core Methods)
+
+| Метод / Method            | Описание / Description                                         |
+| ------------------------- | -------------------------------------------------------------- |
+| `Set/GetString`           | Хранение строковых значений / String value storage             |
+| `GetInt/GetLong/GetBool`  | Typed чтение / Typed reading                                   |
+| `GetState<T>/SetState<T>` | Typed state через JSON / Typed state via JSON                  |
+| `Has/Remove`              | Проверка/удаление ключа / Check/remove key                     |
+| `PushScreen/PopScreen`    | Навигационный стек экранов / Navigation screen stack           |
+| `ClearCurrentScreen`      | Очистка только текущего экрана / Clear only the current screen |
+| `Clear`                   | Полный сброс сессии / Full session reset                       |

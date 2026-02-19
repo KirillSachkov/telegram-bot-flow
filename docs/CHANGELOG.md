@@ -1,121 +1,127 @@
-# Changelog
+﻿# Журнал изменений (Changelog)
 
 Все значимые изменения проекта документируются в этом файле.
 
+All notable changes to this project are documented in this file.
+
 Формат основан на [Keep a Changelog](https://keepachangelog.com/ru/1.0.0/).
+
+Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
-### Added
+### Добавлено (Added)
 
-- `IEndpointResult` — единый интерфейс результата обработчика (аналог `IActionResult` в ASP.NET Core):
-    - `ShowViewResult(ScreenView)` — показывает произвольное представление
-    - `NavigateBackResult(notification?)` — якорный возврат на предыдущий экран
-    - `NavigateToResult(Type)` — переход к экрану по типу
-    - `StayResult(notification?)` — остаётся в режиме ожидания ввода (`KeepPending = true`)
-    - `RefreshResult(notification?)` — перерисовывает текущий экран без изменения стека
-- `BotResults` — статическая фабрика результатов (аналог `Results` в ASP.NET Core Minimal APIs):
+- `IEndpointResult` — единый интерфейс результата обработчика (unified handler result interface, similar to `IActionResult` in ASP.NET Core):
+    - `ShowViewResult(ScreenView)` — показывает произвольное представление (shows an arbitrary view)
+    - `NavigateBackResult(notification?)` — якорный возврат на предыдущий экран (navigates back to previous screen)
+    - `NavigateToResult(Type)` — переход к экрану по типу (navigates to screen by type)
+    - `StayResult(notification?)` — остаётся в режиме ожидания ввода (stays in input-awaiting mode, `KeepPending = true`)
+    - `RefreshResult(notification?)` — перерисовывает текущий экран без изменения стека (refreshes current screen without changing stack)
+- `BotResults` — статическая фабрика результатов (static result factory, similar to `Results` in ASP.NET Core Minimal APIs):
     - `BotResults.ShowView(view)`, `Back(notification?)`, `Stay(notification?)`, `NavigateTo<T>()`, `Refresh(notification?)`
-- `IBotAction` — маркерный интерфейс для типизированных точек взаимодействия (кнопки и ввод)
-- `ScreenView.Button<TAction>(text)` — типизированная кнопка действия; callback ID из `typeof(TAction).Name`
-- `ScreenView.AwaitInput<TAction>()` — типизированная версия `AwaitInput`; action ID из `typeof(TAction).Name`
-- `BotApplication.MapAction<TAction>(handler)` — типизированная регистрация action-обработчика
-- `BotApplication.MapInput<TAction>(handler)` — типизированная регистрация input-обработчика
-- Полное XML-документирование (`/// <summary>`, `param`, `returns`) для ключевых классов и методов в `TelegramBotFlow.App` и `TelegramBotFlow.Core`
+- `IBotAction` — маркерный интерфейс для типизированных точек взаимодействия (marker interface for typed interaction points — buttons & input)
+- `ScreenView.Button<TAction>(text)` — типизированная кнопка действия (typed action button); callback ID из `typeof(TAction).Name`
+- `ScreenView.AwaitInput<TAction>()` — типизированная версия `AwaitInput` (typed `AwaitInput`); action ID из `typeof(TAction).Name`
+- `BotApplication.MapAction<TAction>(handler)` — типизированная регистрация action-обработчика (typed action handler registration)
+- `BotApplication.MapInput<TAction>(handler)` — типизированная регистрация input-обработчика (typed input handler registration)
+- Полное XML-документирование (complete XML documentation: `/// <summary>`, `param`, `returns`) для ключевых классов и методов в `TelegramBotFlow.App` и `TelegramBotFlow.Core`
 
-### Changed
+### Изменено (Changed)
 
-- `HandlerDelegateFactory` упрощён: удалён `CreateForAction`, единый `DispatchAsync` для всех путей
-- `MapAction` теперь принимает `Task` (void) и `Task<IEndpointResult>` вместо `Task<ScreenView>`
-- `MapInput` теперь принимает `Task` (void = авто-назад) и `Task<IEndpointResult>` вместо только `Task<InputResult>`
-- `AdminRoadmapHandler` переведён на `MapAction<ClearRoadmapAction>` и `MapInput<SetRoadmapInput>`
-- `AdminRoadmapScreen` переведён на `Button<ClearRoadmapAction>` вместо строкового callback ID
-- `SetRoadmapInputScreen` переведён на `AwaitInput<SetRoadmapInput>()` вместо `ACTION_ID` константы
-- Актуализированы `README.md`, `docs/API.md`, `docs/ARCHITECTURE.md`
+- `HandlerDelegateFactory` упрощён (simplified): удалён `CreateForAction`, единый `DispatchAsync` для всех путей (removed `CreateForAction`, unified `DispatchAsync` for all paths)
+- `MapAction` теперь принимает `Task` (void) и `Task<IEndpointResult>` вместо `Task<ScreenView>` (now accepts `Task` (void) and `Task<IEndpointResult>` instead of `Task<ScreenView>`)
+- `MapInput` теперь принимает `Task` (void = авто-назад) и `Task<IEndpointResult>` вместо только `Task<InputResult>` (now accepts `Task` (void = auto-back) and `Task<IEndpointResult>` instead of only `Task<InputResult>`)
+- `AdminRoadmapHandler` переведён на `MapAction<ClearRoadmapAction>` и `MapInput<SetRoadmapInput>` (migrated to typed actions)
+- `AdminRoadmapScreen` переведён на `Button<ClearRoadmapAction>` вместо строкового callback ID (migrated to `Button<ClearRoadmapAction>` from string callback ID)
+- `SetRoadmapInputScreen` переведён на `AwaitInput<SetRoadmapInput>()` вместо `ACTION_ID` константы (migrated to `AwaitInput<SetRoadmapInput>()` from `ACTION_ID` constant)
+- Актуализированы `README.md`, `docs/API.md`, `docs/ARCHITECTURE.md` (updated documentation)
 
-### Removed
+### Удалено (Removed)
 
-- `InputResult` — заменён на `IEndpointResult` + `BotResults`
-- `ResultStrategy` — логика диспатча перенесена в `IEndpointResult.ExecuteAsync`
-- Легаси-команда `/clear_roadmap` из `AdminRoadmapHandler`
+- `InputResult` — заменён на `IEndpointResult` + `BotResults` (replaced by `IEndpointResult` + `BotResults`)
+- `ResultStrategy` — логика диспатча перенесена в `IEndpointResult.ExecuteAsync` (dispatch logic moved to `IEndpointResult.ExecuteAsync`)
+- Легаси-команда `/clear_roadmap` из `AdminRoadmapHandler` (legacy `/clear_roadmap` command removed from `AdminRoadmapHandler`)
 
 ## [0.2.0] — 2026-02-18
 
-### Added
+### Добавлено (Added)
 
-- Проект `TelegramBotFlow.Core.Data` — data layer фреймворка
-    - `BotUser` — базовая сущность пользователя (наследуемая, по аналогии с ASP.NET Identity)
+- Проект `TelegramBotFlow.Core.Data` — data layer фреймворка (framework data layer)
+    - `BotUser` — базовая сущность пользователя (base user entity, inheritable like ASP.NET Identity)
     - `BotDbContext<TUser>` — generic DbContext
-    - `UserTrackingMiddleware<TUser>` — автоматическое отслеживание пользователей (generic + non-generic)
+    - `UserTrackingMiddleware<TUser>` — автоматическое отслеживание пользователей (automatic user tracking, generic + non-generic)
     - `AddBotCoreData()` / `AddBotCoreData<TUser, TContext>()` — DI extensions
-    - EF Core миграция `InitUsers` (таблица `users`)
-- Модуль рассылок (`TelegramBotFlow.Broadcasts`)
-    - Domain-модели: `Broadcast`, `BroadcastSequence`, `BroadcastSequenceStep`, `UserSequenceProgress`
-    - EF Core + PostgreSQL для хранения данных рассылок
-    - Quartz.NET для фонового выполнения задач (PostgreSQL persistence)
-    - REST API для мониторинга и управления рассылками через Swagger UI
-    - `BroadcastSender` — отправка через `copyMessage` с rate limiting
-    - `SequenceProcessorJob` — обработка последовательных рассылок (каждую минуту)
-    - `BroadcastExecutionJob` — выполнение ручных рассылок
-    - `AdminBroadcastEndpoint` — создание рассылок через Telegram (IBotEndpoint)
-- `MapAction` — новый метод роутинга для action-кнопок
-    - автоматически отвечает на callback (убирает часики с кнопки)
-    - если обработчик возвращает `ScreenView` — показывает его в nav-сообщении
-- `ScreenView` — rich builder для экранов
-    - `NavigateButton<TScreen>(text)` — кнопка навигации по типу экрана
-    - `BackButton()` / `CloseButton()` / `MenuButton()` — стандартные кнопки навигации
-    - `UrlButton(text, url)` — кнопка-ссылка
-    - Медиа-вложения: `WithPhoto()`, `WithVideo()`, `WithAnimation()`, `WithDocument()`
-- `Handlers/` — папка для `IBotEndpoint` классов в App
-    - `StartHandler` — `/start` (навигация на `MainMenuScreen`) и `/help`
-    - `NavigationHandler` — обработчик `nav:*` callback (back, close, menu, навигация по ID)
-    - `RoadmapHandler` — action-кнопка `get_roadmap` с отображением roadmap
-    - `FallbackHandler` — fallback для необработанных сообщений
-- `Screens/` — папка для `IScreen` реализаций в App
-    - `MainMenuScreen`, `ProfileScreen`, `SettingsScreen`, `HelpScreen`
-- `Conversations/` — папка для пошаговых сценариев (placeholder)
-- `IUpdateResponder` / `UpdateResponder` — сервис отправки ответов пользователю
-- `IUserAccessPolicy` / `BotConfigurationUserAccessPolicy` — политика доступа администратора
-- `AccessPolicyMiddleware` — middleware для вычисления `UpdateContext.IsAdmin`
-- `BotRuntime` — класс запуска бота (Polling / Webhook)
-- `HandlerDelegateFactory` — фабрика делегатов для DI-резолюции параметров обработчиков
-- PostgreSQL в docker-compose для хранения данных
-- Документация: `API.md`, `ARCHITECTURE.md`, `CHANGELOG.md`, `INFRASTRUCTURE.md`
+    - EF Core миграция `InitUsers` (migration, таблица / table `users`)
+- Модуль рассылок `TelegramBotFlow.Broadcasts` (Broadcast module)
+    - Domain-модели (domain models): `Broadcast`, `BroadcastSequence`, `BroadcastSequenceStep`, `UserSequenceProgress`
+    - EF Core + PostgreSQL для хранения данных рассылок (for broadcast data storage)
+    - Quartz.NET для фонового выполнения задач (for background job execution, PostgreSQL persistence)
+    - REST API для мониторинга и управления рассылками через Swagger UI (for monitoring & managing broadcasts via Swagger UI)
+    - `BroadcastSender` — отправка через `copyMessage` с rate limiting (sending via `copyMessage` with rate limiting)
+    - `SequenceProcessorJob` — обработка последовательных рассылок каждую минуту (processes sequential broadcasts every minute)
+    - `BroadcastExecutionJob` — выполнение ручных рассылок (executes manual broadcasts)
+    - `AdminBroadcastEndpoint` — создание рассылок через Telegram (broadcast creation via Telegram, IBotEndpoint)
+- `MapAction` — новый метод роутинга для action-кнопок (new routing method for action buttons)
+    - автоматически отвечает на callback (auto-answers callback, removes spinner)
+    - если обработчик возвращает `ScreenView` — показывает его в nav-сообщении (if handler returns `ScreenView` — shows it in nav message)
+- `ScreenView` — rich builder для экранов (rich screen builder)
+    - `NavigateButton<TScreen>(text)` — кнопка навигации по типу экрана (type-based navigation button)
+    - `BackButton()` / `CloseButton()` / `MenuButton()` — стандартные кнопки навигации (standard navigation buttons)
+    - `UrlButton(text, url)` — кнопка-ссылка (URL link button)
+    - Медиа-вложения (media attachments): `WithPhoto()`, `WithVideo()`, `WithAnimation()`, `WithDocument()`
+- `Features/` — папка для `IBotEndpoint` и `IScreen` классов в App (folder for `IBotEndpoint` and `IScreen` classes in App)
+    - `Features/Start/` — `StartHandler` (`/start`, `/help`)
+    - `Features/Navigation/` — `NavigationHandler` — обработчик `nav:*` callback (handler for `nav:*` callbacks: back, close, menu, navigation by ID)
+    - `Features/Roadmap/` — `RoadmapHandler` — action-кнопка `get_roadmap` с отображением roadmap (action button displaying roadmap)
+    - `Features/Roadmap/` — `AdminRoadmapHandler`, `AdminRoadmapScreen`, `SetRoadmapInputScreen`, `ClearRoadmapAction`, `SetRoadmapInput`
+    - `Features/MainMenu/` — `MainMenuScreen`
+    - `Features/Profile/` — `ProfileScreen`
+    - `Features/Settings/` — `SettingsScreen`
+    - `Features/Help/` — `HelpScreen`
+- `IUpdateResponder` / `UpdateResponder` — сервис отправки ответов пользователю (user response service)
+- `IUserAccessPolicy` / `BotConfigurationUserAccessPolicy` — политика доступа администратора (admin access policy)
+- `AccessPolicyMiddleware` — middleware для вычисления `UpdateContext.IsAdmin` (middleware for computing `UpdateContext.IsAdmin`)
+- `BotRuntime` — класс запуска бота (bot startup class, Polling / Webhook)
+- `HandlerDelegateFactory` — фабрика делегатов для DI-резолюции параметров обработчиков (delegate factory for handler DI parameter resolution)
+- PostgreSQL в docker-compose для хранения данных (PostgreSQL in docker-compose for data storage)
+- Документация (documentation): `API.md`, `ARCHITECTURE.md`, `CHANGELOG.md`, `INFRASTRUCTURE.md`, `CODE_STYLE.md`
 
-### Changed
+### Изменено (Changed)
 
-- `IScreen` — удалено свойство `Id`; идентификатор экрана теперь вычисляется автоматически по имени класса: суффикс `Screen` обрезается, результат переводится в `snake_case` (`MainMenuScreen` → `main_menu`, `SettingsLangScreen` → `settings_lang`)
-- `ScreenRegistry` — убран `Activator.CreateInstance` для чтения `Id`; добавлены статические методы `GetIdFromType(Type)` и `GetIdFor<TScreen>()`
-- `AddScreens()` — устранён анти-паттерн `BuildServiceProvider()`; экраны регистрируются через factory-singleton
+- `IScreen` — удалено свойство `Id` (removed `Id` property); идентификатор экрана теперь вычисляется автоматически по имени класса (screen ID now auto-computed from class name): суффикс `Screen` обрезается, результат переводится в `snake_case` (`MainMenuScreen` → `main_menu`, `SettingsLangScreen` → `settings_lang`)
+- `ScreenRegistry` — убран `Activator.CreateInstance` для чтения `Id` (removed `Activator.CreateInstance`); добавлены статические методы `GetIdFromType(Type)` и `GetIdFor<TScreen>()`
+- `AddScreens()` — устранён анти-паттерн `BuildServiceProvider()` (anti-pattern eliminated); экраны регистрируются через factory-singleton (screens registered via factory-singleton)
 - `AddTelegramBotFlow()` — `ScreenRegistry` регистрируется через `TryAddSingleton`
-- `ScreenManager.RenderScreenAsync` — метод стал `internal`; публичный API навигации — только `NavigateToAsync`
-- `UserSession.ClearScreen()` → `ClearCurrentScreen()` — уточнено название метода
-- Пользователи (`BotUser`) вынесены из Broadcasts в Core.Data; `BroadcastsDbContext` содержит только broadcast-специфичные таблицы
-- Посты рассылок теперь создаются через Telegram (`copyMessage`): `Broadcast` и `BroadcastSequenceStep` хранят `FromChatId` + `MessageId` вместо `Content`; удалены `POST /api/broadcasts` и `POST /api/sequences`
-- `UpdateContext` стал data-only объектом: удалены convenience-методы ответа и service locator API; отправка вынесена в `IUpdateResponder`; флаг `IsAdmin` вычисляется в `UseAccessPolicy()`
-- `BotApplication` middleware pipeline: `UseAccessPolicy()` добавлен как стандартный этап
-- `AdminSequenceEndpoint`: Telegram-мастер создания последовательности временно отключён; `/sequence` возвращает инструкцию использовать REST API
-- Redis session store перемещён в подпапку `Sessions/Redis/`
-- `Endpoints/` в App переименован в `Handlers/`; `Screens.cs` разбит на отдельные файлы в `Screens/`
+- `ScreenManager.RenderScreenAsync` — метод стал `internal` (method made `internal`); публичный API навигации / public navigation API — только `NavigateToAsync`
+- `UserSession.ClearScreen()` → `ClearCurrentScreen()` — уточнено название метода (method renamed for clarity)
+- Пользователи (`BotUser`) вынесены из Broadcasts в Core.Data (users moved from Broadcasts to Core.Data); `BroadcastsDbContext` содержит только broadcast-специфичные таблицы (contains only broadcast-specific tables)
+- Посты рассылок теперь создаются через Telegram `copyMessage` (broadcast posts now created via Telegram `copyMessage`): `Broadcast` и `BroadcastSequenceStep` хранят `FromChatId` + `MessageId` вместо `Content` (store `FromChatId` + `MessageId` instead of `Content`); удалены `POST /api/broadcasts` и `POST /api/sequences` (removed)
+- `UpdateContext` стал data-only объектом (became data-only object): удалены convenience-методы ответа и service locator API (removed convenience response methods and service locator API); отправка вынесена в `IUpdateResponder` (sending extracted to `IUpdateResponder`); флаг `IsAdmin` вычисляется в `UseAccessPolicy()` (`IsAdmin` computed in `UseAccessPolicy()`)
+- `BotApplication` middleware pipeline: `UseAccessPolicy()` добавлен как стандартный этап (added as standard stage)
+- `AdminSequenceEndpoint`: Telegram-мастер создания последовательности временно отключён (Telegram sequence creation wizard temporarily disabled); `/sequence` возвращает инструкцию использовать REST API (returns instruction to use REST API)
+- Redis session store перемещён в подпапку `Sessions/Redis/` (moved to `Sessions/Redis/` subfolder)
+- `Handlers/` и `Screens/` в App переименованы в `Features/` (renamed to `Features/`); файлы организованы по фичам (files organized by feature, see [CODE_STYLE.md](CODE_STYLE.md))
+- Принят стиль `SCREAMING_CASE` для констант и enum (adopted `SCREAMING_CASE` for constants and enums, see [CODE_STYLE.md](CODE_STYLE.md))
 
-### Removed
+### Удалено (Removed)
 
-- `FlowBuilder`, `FlowDefinition`, `FlowManager`, `FlowStep`, `Validators` — модуль Flow удалён (заменяется `Conversations/` в будущем)
-- `ThrottlingMiddleware` / `ThrottlingOptions` — Rate limiting удалён из фреймворка
-- `RedisSessionStore` из корня `Sessions/` (перемещён в `Sessions/Redis/`)
+- `FlowBuilder`, `FlowDefinition`, `FlowManager`, `FlowStep`, `Validators` — модуль Flow удалён (Flow module removed, replaced by `Conversations/` in the future)
+- `ThrottlingMiddleware` / `ThrottlingOptions` — Rate limiting удалён из фреймворка (removed from the framework)
+- `RedisSessionStore` из корня `Sessions/` (removed from `Sessions/` root, moved to `Sessions/Redis/`)
 
 ## [0.1.0] — 2025-02-01
 
-### Added
+### Добавлено (Added)
 
-- Базовый фреймворк Telegram Bot Flow
+- Базовый фреймворк Telegram Bot Flow (Base Telegram Bot Flow framework)
     - Middleware pipeline (ErrorHandling, Logging, Throttling, Session, Flow)
-    - Minimal API-стиль роутинга (`MapCommand`, `MapCallback`, `MapMessage`, `MapFlow`)
+    - Minimal API-стиль роутинга (Minimal API-style routing: `MapCommand`, `MapCallback`, `MapMessage`, `MapFlow`)
     - `IBotEndpoint` auto-discovery
-    - `FlowBuilder` для пошаговых диалогов
-    - `InlineKeyboard` / `ReplyKeyboard` UI-компоненты
+    - `FlowBuilder` для пошаговых диалогов (for step-by-step dialogs)
+    - `InlineKeyboard` / `ReplyKeyboard` UI-компоненты (UI components)
     - `ISessionStore` (InMemory / Redis)
     - Rate limiting (Sliding Window, per-user)
-    - Polling / Webhook режимы
-    - Serilog + Seq для логирования
+    - Polling / Webhook режимы (modes)
+    - Serilog + Seq для логирования (for logging)
     - Docker Compose

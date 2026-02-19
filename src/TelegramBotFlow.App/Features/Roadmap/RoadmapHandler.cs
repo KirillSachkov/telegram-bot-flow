@@ -5,7 +5,7 @@ using TelegramBotFlow.Core.Data;
 using TelegramBotFlow.Core.Endpoints;
 using TelegramBotFlow.Core.Hosting;
 
-namespace TelegramBotFlow.App.Handlers;
+namespace TelegramBotFlow.App.Features.Roadmap;
 
 /// <summary>
 /// Обрабатывает кнопку получения roadmap и отправляет связанное сообщение.

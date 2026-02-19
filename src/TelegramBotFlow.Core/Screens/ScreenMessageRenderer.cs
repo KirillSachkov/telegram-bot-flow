@@ -170,9 +170,9 @@ public sealed class ScreenMessageRenderer : IScreenMessageRenderer
         {
             await _bot.DeleteMessage(context.ChatId, messageId, context.CancellationToken);
         }
-        catch
+        catch (Exception ex)
         {
-            // Message might already be deleted or too old
+            _logger.LogDebug(ex, "Could not delete message {MessageId} in chat {ChatId}", messageId, context.ChatId);
         }
     }
 }

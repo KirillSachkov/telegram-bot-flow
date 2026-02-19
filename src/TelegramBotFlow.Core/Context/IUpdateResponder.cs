@@ -19,7 +19,7 @@ public interface IUpdateResponder
     /// <param name="parseMode">Режим парсинга текста.</param>
     /// <returns>Отправленное сообщение Telegram.</returns>
     Task<Message> ReplyAsync(UpdateContext context, string text, ReplyMarkup? replyMarkup = null,
-        ParseMode parseMode = default);
+        ParseMode parseMode = ParseMode.Html);
 
     /// <summary>
     /// Редактирует текущее сообщение, связанное с контекстом.
@@ -29,7 +29,7 @@ public interface IUpdateResponder
     /// <param name="replyMarkup">Inline-клавиатура сообщения.</param>
     /// <param name="parseMode">Режим парсинга текста.</param>
     Task EditMessageAsync(UpdateContext context, string text, InlineKeyboardMarkup? replyMarkup = null,
-        ParseMode parseMode = default);
+        ParseMode parseMode = ParseMode.Html);
 
     /// <summary>
     /// Редактирует сообщение по его идентификатору.
@@ -40,7 +40,7 @@ public interface IUpdateResponder
     /// <param name="replyMarkup">Inline-клавиатура сообщения.</param>
     /// <param name="parseMode">Режим парсинга текста.</param>
     Task EditMessageAsync(UpdateContext context, int messageId, string text, InlineKeyboardMarkup? replyMarkup = null,
-        ParseMode parseMode = default);
+        ParseMode parseMode = ParseMode.Html);
 
     /// <summary>
     /// Удаляет сообщение по идентификатору.

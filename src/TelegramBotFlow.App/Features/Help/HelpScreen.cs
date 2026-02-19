@@ -1,7 +1,7 @@
 ﻿using TelegramBotFlow.Core.Context;
 using TelegramBotFlow.Core.Screens;
 
-namespace TelegramBotFlow.App.Screens;
+namespace TelegramBotFlow.App.Features.Help;
 
 /// <summary>
 /// Экран справки с базовыми командами и ссылкой на Telegram Bot API.

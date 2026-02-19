@@ -1,10 +1,10 @@
-﻿using TelegramBotFlow.App.Screens;
+﻿using TelegramBotFlow.App.Features.MainMenu;
 using TelegramBotFlow.Core.Context;
 using TelegramBotFlow.Core.Endpoints;
 using TelegramBotFlow.Core.Hosting;
 using TelegramBotFlow.Core.Screens;
 
-namespace TelegramBotFlow.App.Handlers;
+namespace TelegramBotFlow.App.Features.Navigation;
 
 /// <summary>
 /// Обрабатывает callback-навигацию <c>nav:*</c> между экранами.

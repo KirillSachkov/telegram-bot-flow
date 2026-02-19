@@ -1,11 +1,8 @@
-using TelegramBotFlow.Core.Context;
+﻿using TelegramBotFlow.Core.Context;
 using TelegramBotFlow.Core.Endpoints;
 using TelegramBotFlow.Core.Screens;
 
-namespace TelegramBotFlow.App.Screens;
-
-/// <summary>Маркер действия ввода Roadmap-сообщения.</summary>
-public struct SetRoadmapInput : IBotAction;
+namespace TelegramBotFlow.App.Features.Roadmap;
 
 /// <summary>
 /// Screen that prompts the admin to send the message they want to use as the roadmap.

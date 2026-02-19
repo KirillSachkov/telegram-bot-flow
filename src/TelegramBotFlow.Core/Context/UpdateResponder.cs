@@ -19,7 +19,7 @@ public sealed class UpdateResponder : IUpdateResponder
         UpdateContext context,
         string text,
         ReplyMarkup? replyMarkup = null,
-        ParseMode parseMode = default)
+        ParseMode parseMode = ParseMode.Html)
     {
         return await _bot.SendMessage(
             context.ChatId,
@@ -33,7 +33,7 @@ public sealed class UpdateResponder : IUpdateResponder
         UpdateContext context,
         string text,
         InlineKeyboardMarkup? replyMarkup = null,
-        ParseMode parseMode = default)
+        ParseMode parseMode = ParseMode.Html)
     {
         if (context.MessageId is null)
             return;
@@ -52,7 +52,7 @@ public sealed class UpdateResponder : IUpdateResponder
         int messageId,
         string text,
         InlineKeyboardMarkup? replyMarkup = null,
-        ParseMode parseMode = default)
+        ParseMode parseMode = ParseMode.Html)
     {
         await _bot.EditMessageText(
             context.ChatId,

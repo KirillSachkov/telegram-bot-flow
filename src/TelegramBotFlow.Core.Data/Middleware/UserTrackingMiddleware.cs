@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using System.Collections.Concurrent;
+using Microsoft.EntityFrameworkCore;
 using TelegramBotFlow.Core.Context;
 using TelegramBotFlow.Core.Pipeline;
 
@@ -11,6 +12,8 @@ namespace TelegramBotFlow.Core.Data.Middleware;
 public sealed class UserTrackingMiddleware<TUser> : IUpdateMiddleware
     where TUser : BotUser, new()
 {
+    private static readonly ConcurrentDictionary<long, byte> _knownUsers = new();
+
     private readonly BotDbContext<TUser> _db;
 
     public UserTrackingMiddleware(BotDbContext<TUser> db)
@@ -22,11 +25,17 @@ public sealed class UserTrackingMiddleware<TUser> : IUpdateMiddleware
     {
         if (context.UserId != 0)
         {
-            bool exists = await _db.Users.AnyAsync(u => u.TelegramId == context.UserId);
-            if (!exists)
+            long userId = context.UserId;
+            if (!_knownUsers.ContainsKey(userId))
             {
-                _db.Users.Add(new TUser { TelegramId = context.UserId });
-                await _db.SaveChangesAsync();
+                bool exists = await _db.Users.AnyAsync(u => u.TelegramId == userId);
+                if (!exists)
+                {
+                    _db.Users.Add(new TUser { TelegramId = userId });
+                    await _db.SaveChangesAsync();
+                }
+
+                _knownUsers.TryAdd(userId, 0);
             }
         }
 

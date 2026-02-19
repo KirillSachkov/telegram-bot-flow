@@ -7,6 +7,7 @@ WORKDIR /src
 COPY ["Directory.Build.props", "."]
 COPY ["Directory.Packages.props", "."]
 COPY ["src/TelegramBotFlow.Core/TelegramBotFlow.Core.csproj", "src/TelegramBotFlow.Core/"]
+COPY ["src/TelegramBotFlow.Core.Data/TelegramBotFlow.Core.Data.csproj", "src/TelegramBotFlow.Core.Data/"]
 COPY ["src/TelegramBotFlow.App/TelegramBotFlow.App.csproj", "src/TelegramBotFlow.App/"]
 RUN dotnet restore "src/TelegramBotFlow.App/TelegramBotFlow.App.csproj"
 COPY . .

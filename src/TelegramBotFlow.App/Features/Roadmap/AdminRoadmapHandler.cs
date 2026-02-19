@@ -1,11 +1,10 @@
-using TelegramBotFlow.App.Screens;
-using TelegramBotFlow.Core.Context;
+﻿using TelegramBotFlow.Core.Context;
 using TelegramBotFlow.Core.Data;
 using TelegramBotFlow.Core.Endpoints;
 using TelegramBotFlow.Core.Hosting;
 using TelegramBotFlow.Core.Routing;
 
-namespace TelegramBotFlow.App.Handlers;
+namespace TelegramBotFlow.App.Features.Roadmap;
 
 /// <summary>
 /// Административные маршруты для управления привязкой roadmap-сообщения.
@@ -35,7 +34,8 @@ public sealed class AdminRoadmapHandler : IBotEndpoint
 
             settings.Roadmap = new RoadmapMessageConfig
             {
-                SourceChatId = ctx.ChatId, SourceMessageId = ctx.MessageId!.Value
+                SourceChatId = ctx.ChatId,
+                SourceMessageId = ctx.MessageId!.Value
             };
 
             await db.SaveChangesAsync(ctx.CancellationToken);

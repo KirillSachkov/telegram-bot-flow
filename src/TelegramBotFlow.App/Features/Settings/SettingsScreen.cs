@@ -1,7 +1,7 @@
 ﻿using TelegramBotFlow.Core.Context;
 using TelegramBotFlow.Core.Screens;
 
-namespace TelegramBotFlow.App.Screens;
+namespace TelegramBotFlow.App.Features.Settings;
 
 /// <summary>
 /// Экран пользовательских настроек.

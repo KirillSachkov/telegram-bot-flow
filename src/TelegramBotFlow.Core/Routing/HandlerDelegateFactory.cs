@@ -1,3 +1,4 @@
+﻿using System.Linq.Expressions;
 using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 using TelegramBotFlow.Core.Context;
@@ -20,11 +21,12 @@ public static class HandlerDelegateFactory
         ValidateReturnType(m.ReturnType);
         Func<UpdateContext, string?, object?>[] resolvers = BuildResolvers(m.GetParameters());
         object? target = handler.Target;
+        Func<object?, object?[], object?> invoker = CompileInvoker(m);
 
         return async context =>
         {
             object?[] args = ApplyResolvers(resolvers, context, callbackAction: null);
-            object? result = m.Invoke(target, args);
+            object? result = invoker(target, args);
             await DispatchAsync(result, context);
         };
     }
@@ -41,13 +43,14 @@ public static class HandlerDelegateFactory
         var resolvers = BuildResolvers(m.GetParameters());
         object? target = handler.Target;
         bool returnsEndpointResult = m.ReturnType == _taskEndpointResultType;
+        Func<object?, object?[], object?> invoker = CompileInvoker(m);
 
         return async context =>
         {
             context.Session?.SetPending(null);
 
             object?[] args = ApplyResolvers(resolvers, context, callbackAction: null);
-            object? result = m.Invoke(target, args);
+            object? result = invoker(target, args);
 
             IEndpointResult er = returnsEndpointResult && result is Task<IEndpointResult> t
                 ? await t
@@ -70,12 +73,13 @@ public static class HandlerDelegateFactory
         MethodInfo m = handler.Method;
         var resolvers = BuildResolvers(m.GetParameters(), hasCallbackAction: true);
         object? target = handler.Target;
+        Func<object?, object?[], object?> invoker = CompileInvoker(m);
 
         return async context =>
         {
             string action = context.CallbackData![(prefix.Length + 1)..];
             object?[] args = ApplyResolvers(resolvers, context, callbackAction: action);
-            object? result = m.Invoke(target, args);
+            object? result = invoker(target, args);
             await DispatchAsync(result, context);
         };
     }
@@ -168,5 +172,35 @@ public static class HandlerDelegateFactory
         for (int i = 0; i < resolvers.Length; i++)
             args[i] = resolvers[i](context, callbackAction);
         return args;
+    }
+
+    /// <summary>
+    /// Компилирует MethodInfo в типизированный делегат через Expression Tree.
+    /// Вызывается один раз при регистрации маршрута, а не на каждый update.
+    /// Это ~20-50x быстрее, чем MethodInfo.Invoke на hot path.
+    /// </summary>
+    private static Func<object?, object?[], object?> CompileInvoker(MethodInfo method)
+    {
+        ParameterExpression target = Expression.Parameter(typeof(object), "target");
+        ParameterExpression args = Expression.Parameter(typeof(object[]), "args");
+
+        ParameterInfo[] parameters = method.GetParameters();
+        Expression[] callArgs = new Expression[parameters.Length];
+        for (int i = 0; i < parameters.Length; i++)
+        {
+            callArgs[i] = Expression.Convert(
+                Expression.ArrayIndex(args, Expression.Constant(i)),
+                parameters[i].ParameterType);
+        }
+
+        Expression call = method.IsStatic
+            ? Expression.Call(method, callArgs)
+            : Expression.Call(Expression.Convert(target, method.DeclaringType!), method, callArgs);
+
+        Expression body = method.ReturnType == typeof(void)
+            ? Expression.Block(call, Expression.Constant(null, typeof(object)))
+            : Expression.Convert(call, typeof(object));
+
+        return Expression.Lambda<Func<object?, object?[], object?>>(body, target, args).Compile();
     }
 }

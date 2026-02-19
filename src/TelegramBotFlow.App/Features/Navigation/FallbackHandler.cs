@@ -2,7 +2,7 @@
 using TelegramBotFlow.Core.Endpoints;
 using TelegramBotFlow.Core.Hosting;
 
-namespace TelegramBotFlow.App.Handlers;
+namespace TelegramBotFlow.App.Features.Navigation;
 
 /// <summary>
 /// Регистрирует fallback-обработчик для обновлений без совпавшего маршрута.

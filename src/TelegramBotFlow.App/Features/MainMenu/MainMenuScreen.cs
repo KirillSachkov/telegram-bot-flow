@@ -1,7 +1,11 @@
-﻿using TelegramBotFlow.Core.Context;
+﻿using TelegramBotFlow.App.Features.Help;
+using TelegramBotFlow.App.Features.Profile;
+using TelegramBotFlow.App.Features.Roadmap;
+using TelegramBotFlow.App.Features.Settings;
+using TelegramBotFlow.Core.Context;
 using TelegramBotFlow.Core.Screens;
 
-namespace TelegramBotFlow.App.Screens;
+namespace TelegramBotFlow.App.Features.MainMenu;
 
 /// <summary>
 /// Главный экран приложения с переходами в ключевые разделы.

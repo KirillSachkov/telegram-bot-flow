@@ -53,9 +53,9 @@ public sealed class ErrorHandlingMiddleware : IUpdateMiddleware
                 await _responder.ReplyAsync(context, _errorMessage);
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // Не позволяем ошибке уведомления сломать обработку
+            _logger.LogWarning(ex, "Failed to send error notification to user {UserId}", context.UserId);
         }
     }
 }
