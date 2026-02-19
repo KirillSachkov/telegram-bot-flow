@@ -1,4 +1,4 @@
-﻿using TelegramBotFlow.Core.Context;
+using TelegramBotFlow.Core.Context;
 using TelegramBotFlow.Core.Sessions;
 
 namespace TelegramBotFlow.Core.Pipeline.Middlewares;
@@ -6,10 +6,12 @@ namespace TelegramBotFlow.Core.Pipeline.Middlewares;
 public sealed class SessionMiddleware : IUpdateMiddleware
 {
     private readonly ISessionStore _sessionStore;
+    private readonly ISessionLockProvider _lockProvider;
 
-    public SessionMiddleware(ISessionStore sessionStore)
+    public SessionMiddleware(ISessionStore sessionStore, ISessionLockProvider lockProvider)
     {
         _sessionStore = sessionStore;
+        _lockProvider = lockProvider;
     }
 
     public async Task InvokeAsync(UpdateContext context, UpdateDelegate next)
@@ -20,6 +22,8 @@ public sealed class SessionMiddleware : IUpdateMiddleware
             return;
         }
 
+        using IDisposable sessionLock = await _lockProvider.AcquireLockAsync(context.UserId, context.CancellationToken);
+        
         UserSession session = await _sessionStore.GetOrCreateAsync(context.UserId, context.CancellationToken);
         context.Session = session;
 

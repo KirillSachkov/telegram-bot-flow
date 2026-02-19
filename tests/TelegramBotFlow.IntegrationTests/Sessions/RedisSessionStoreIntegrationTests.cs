@@ -1,5 +1,5 @@
-﻿using FluentAssertions;
-using StackExchange.Redis;
+using System.Text.Json;
+using FluentAssertions;
 using TelegramBotFlow.Core.Screens;
 using TelegramBotFlow.Core.Sessions;
 using TelegramBotFlow.Core.Sessions.Redis;
@@ -54,14 +54,15 @@ public sealed class RedisSessionStoreIntegrationTests : RedisSessionTestsBase
 
         await store.SaveAsync(session);
 
-        HashEntry[] entries = await Db.HashGetAllAsync("bot:session:300");
-        Dictionary<string, string> dict = entries.ToDictionary(e => e.Name.ToString(), e => e.Value.ToString());
+        string json = (await Db.StringGetAsync("bot:session:300"))!;
+        json.Should().NotBeNullOrEmpty();
 
-        dict.Should().ContainKey(RedisSessionStore.FieldCreatedAt);
-        dict.Should().ContainKey(RedisSessionStore.FieldLastActivity);
-        dict[RedisSessionStore.FieldScreen].Should().Be("settings:main");
-        dict[RedisSessionStore.FieldNavMessageId].Should().Be("42");
-        dict[RedisSessionStore.FieldNavigationStack].Should().Contain("main");
+        JsonElement element = JsonSerializer.Deserialize<JsonElement>(json);
+        element.TryGetProperty("createdAt", out _).Should().BeTrue();
+        element.TryGetProperty("lastActivity", out _).Should().BeTrue();
+        element.GetProperty("currentScreen").GetString().Should().Be("settings:main");
+        element.GetProperty("navMessageId").GetInt32().Should().Be(42);
+        element.GetProperty("navigationStack")[0].GetString().Should().Be("main");
     }
 
     [Fact]
@@ -74,9 +75,13 @@ public sealed class RedisSessionStoreIntegrationTests : RedisSessionTestsBase
 
         await store.SaveAsync(session);
 
-        RedisValue userDataRaw = await Db.HashGetAsync("bot:session:400", RedisSessionStore.FieldUserData);
-        userDataRaw.IsNullOrEmpty.Should().BeFalse();
-        userDataRaw.ToString().Should().Contain("Moscow").And.Contain("ru");
+        string json = (await Db.StringGetAsync("bot:session:400"))!;
+        json.Should().NotBeNullOrEmpty();
+
+        JsonElement element = JsonSerializer.Deserialize<JsonElement>(json);
+        element.TryGetProperty("userData", out JsonElement userData).Should().BeTrue();
+        userData.GetProperty("city").GetString().Should().Be("Moscow");
+        userData.GetProperty("lang").GetString().Should().Be("ru");
     }
 
     [Fact]
@@ -241,16 +246,16 @@ public sealed class RedisSessionStoreIntegrationTests : RedisSessionTestsBase
     }
 
     [Fact]
-    public async Task FixedFieldCount_InRedisHash()
+    public async Task Save_StoresValueAsString_NotHash()
     {
         RedisSessionStore store = CreateStore();
         UserSession session = await store.GetOrCreateAsync(1500);
         session.Set("key1", "val1");
-        session.Set("key2", "val2");
         await store.SaveAsync(session);
 
-        HashEntry[] entries = await Db.HashGetAllAsync("bot:session:1500");
+        StackExchange.Redis.RedisValue raw = await Db.StringGetAsync("bot:session:1500");
 
-        entries.Should().HaveCount(8);
+        raw.IsNullOrEmpty.Should().BeFalse();
+        raw.ToString().Should().StartWith("{");
     }
 }

@@ -36,4 +36,10 @@ public static class BotResults
 
     /// <summary>Перерисовывает текущий экран без изменения стека навигации.</summary>
     public static IEndpointResult Refresh(string? notification = null) => new RefreshResult(notification);
+
+    /// <summary>Ничего не делает — используется для side-effect-only хэндлеров.</summary>
+    public static IEndpointResult Empty() => EmptyResult.Instance;
+
+    /// <summary>Переходит к экрану по строковому идентификатору.</summary>
+    public static IEndpointResult NavigateTo(string screenId) => new NavigateToByIdResult(screenId);
 }

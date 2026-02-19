@@ -1,4 +1,6 @@
-﻿namespace TelegramBotFlow.Core.Hosting;
+using Telegram.Bot.Types.Enums;
+
+namespace TelegramBotFlow.Core.Hosting;
 
 public sealed class BotConfiguration
 {
@@ -10,6 +12,8 @@ public sealed class BotConfiguration
     public string WebhookPath { get; set; } = "/api/bot/webhook";
     public long[] AdminUserIds { get; set; } = [];
     public string ErrorMessage { get; set; } = "An error occurred. Please try again later.";
+    public long StorageChannelId { get; set; }
+    public UpdateType[] AllowedUpdates { get; set; } = [UpdateType.Message, UpdateType.CallbackQuery];
 }
 
 public enum BotMode

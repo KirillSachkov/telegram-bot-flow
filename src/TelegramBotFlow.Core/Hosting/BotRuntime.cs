@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -47,7 +47,7 @@ internal sealed class BotRuntime
         });
 
         ITelegramBotClient bot = _services.GetRequiredService<ITelegramBotClient>();
-        await bot.SetWebhook(config.WebhookUrl + config.WebhookPath, allowedUpdates: []);
+        await bot.SetWebhook(config.WebhookUrl + config.WebhookPath, allowedUpdates: config.AllowedUpdates);
     }
 
     private async Task ApplyMenuAsync(MenuBuilder menuBuilder)

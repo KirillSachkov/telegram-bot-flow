@@ -1,4 +1,4 @@
-﻿using Telegram.Bot.Types;
+using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
 using ReplyMarkup = Telegram.Bot.Types.ReplyMarkups.ReplyMarkup;
@@ -62,4 +62,24 @@ public interface IUpdateResponder
     /// <param name="text">Текст уведомления callback (опционально).</param>
     /// <param name="showAlert">Показывать модальное уведомление вместо toast.</param>
     Task AnswerCallbackAsync(UpdateContext context, string? text = null, bool showAlert = false);
+
+    /// <summary>
+    /// Копирует сообщение из другого чата в чат пользователя.
+    /// </summary>
+    /// <param name="context">Контекст update-а.</param>
+    /// <param name="fromChatId">Идентификатор чата-источника.</param>
+    /// <param name="messageId">Идентификатор копируемого сообщения.</param>
+    Task CopyMessageAsync(UpdateContext context, long fromChatId, int messageId);
+
+    /// <summary>
+    /// Удаляет текущий якорь сессии, копирует сообщение с заданной клавиатурой и сохраняет его
+    /// как новый якорь навигации. Использовать вместо <see cref="CopyMessageAsync"/> когда
+    /// скопированное сообщение должно стать основным экраном пользователя (roadmap, контент-посты).
+    /// </summary>
+    /// <param name="context">Контекст update-а.</param>
+    /// <param name="fromChatId">Идентификатор чата-источника.</param>
+    /// <param name="messageId">Идентификатор копируемого сообщения.</param>
+    /// <param name="replyMarkup">Inline-клавиатура, прикрепляемая к скопированному сообщению.</param>
+    Task ReplaceAnchorWithCopyAsync(UpdateContext context, long fromChatId, int messageId,
+        InlineKeyboardMarkup? replyMarkup = null);
 }

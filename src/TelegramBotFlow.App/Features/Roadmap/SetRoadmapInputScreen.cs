@@ -1,5 +1,4 @@
-﻿using TelegramBotFlow.Core.Context;
-using TelegramBotFlow.Core.Endpoints;
+using TelegramBotFlow.Core.Context;
 using TelegramBotFlow.Core.Screens;
 
 namespace TelegramBotFlow.App.Features.Roadmap;
@@ -19,9 +18,10 @@ public sealed class SetRoadmapInputScreen : IScreen
     {
         ScreenView view = new ScreenView(
                 "📥 <b>Задать Roadmap</b>\n\n" +
-                "Перешлите или отправьте любое сообщение, которое должно показываться " +
+                "Отправьте любое сообщение (текст, фото, видео), которое должно показываться " +
                 "пользователям по команде Roadmap.\n\n" +
-                "Это может быть текст, фото, видео или любой другой тип сообщения.")
+                "Бот автоматически перенесет его в безопасное хранилище, а из этого чата удалит, " +
+                "чтобы сохранить чистоту.")
             .BackButton()
             .AwaitInput<SetRoadmapInput>();
 

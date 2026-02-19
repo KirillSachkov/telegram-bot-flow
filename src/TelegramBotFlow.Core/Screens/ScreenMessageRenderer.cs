@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
@@ -111,6 +111,12 @@ public sealed class ScreenMessageRenderer : IScreenMessageRenderer
                 replyMarkup: view.Keyboard,
                 parseMode: ParseMode.Html,
                 cancellationToken: context.CancellationToken);
+        }
+        catch (Telegram.Bot.Exceptions.ApiRequestException ex) when (ex.ErrorCode == 400 && ex.Message.Contains("message is not modified"))
+        {
+            // Игнорируем ошибку "сообщение не изменено"
+            _logger.LogDebug("Message {MessageId} is not modified, ignoring", messageId);
+            return context.Update.CallbackQuery!.Message!;
         }
         catch (Exception ex)
         {

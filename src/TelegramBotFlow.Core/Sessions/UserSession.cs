@@ -23,32 +23,33 @@ public sealed class UserSession
     /// </summary>
     public DateTime LastActivity { get; internal set; }
 
-    // Navigation
+    // Navigation — setters internal: изменение состояния снаружи фреймворка ломает навигацию.
+    // Используй методы PushScreen/PopScreen/Clear/ResetNavigation для управления стеком.
     /// <summary>
     /// Текущий экран пользователя.
     /// </summary>
-    public string? CurrentScreen { get; set; }
+    public string? CurrentScreen { get; internal set; }
 
     /// <summary>
     /// Идентификатор навигационного сообщения в Telegram.
     /// </summary>
-    public int? NavMessageId { get; set; }
+    public int? NavMessageId { get; internal set; }
 
     /// <summary>
     /// Тип медиа, отображённого в текущем nav-сообщении.
     /// </summary>
-    public ScreenMediaType CurrentMediaType { get; set; } = ScreenMediaType.None;
+    public ScreenMediaType CurrentMediaType { get; internal set; } = ScreenMediaType.None;
 
     /// <summary>
-    /// Стек истории экранов.
+    /// Стек истории экранов. Изменяй через <see cref="PushScreen"/> и <see cref="PopScreen"/>.
     /// </summary>
-    public List<string> NavigationStack { get; set; } = [];
+    public List<string> NavigationStack { get; internal set; } = [];
 
     // Pending input
     /// <summary>
     /// Идентификатор ожидаемого действия ввода пользователя.
     /// </summary>
-    public string? PendingInputActionId { get; set; }
+    public string? PendingInputActionId { get; internal set; }
 
     private readonly Dictionary<string, string> _data = [];
 
@@ -117,6 +118,7 @@ public sealed class UserSession
 
     /// <summary>
     /// Полностью очищает сессионные данные и состояние навигации.
+    /// Используется при команде /start для полного сброса сессии.
     /// </summary>
     public void Clear()
     {
@@ -125,6 +127,19 @@ public sealed class UserSession
         NavMessageId = null;
         CurrentMediaType = ScreenMediaType.None;
         NavigationStack.Clear();
+        PendingInputActionId = null;
+    }
+
+    /// <summary>
+    /// Сбрасывает состояние навигационного стека, сохраняя якорное сообщение и пользовательские данные.
+    /// Используется при переходе в главное меню (nav:menu), чтобы рендер мог отредактировать
+    /// существующее якорное сообщение вместо создания нового.
+    /// </summary>
+    public void ResetNavigation()
+    {
+        CurrentScreen = null;
+        NavigationStack.Clear();
+        PendingInputActionId = null;
     }
 
     /// <summary>
@@ -216,4 +231,58 @@ public sealed class UserSession
     public void ClearCurrentScreen() => CurrentScreen = null;
 
     public void SetPending(string? actionId) => PendingInputActionId = actionId;
+
+    // -- Typed Payloads --
+
+    private List<string> GetPayloadKeys()
+    {
+        string? keysString = GetString("_payload_keys");
+        return keysString is null ? [] : [.. keysString.Split(',', StringSplitOptions.RemoveEmptyEntries)];
+    }
+
+    private void SetPayloadKeys(List<string> keys)
+    {
+        if (keys.Count == 0)
+            Remove("_payload_keys");
+        else
+            Set("_payload_keys", string.Join(',', keys));
+    }
+
+    /// <summary>
+    /// Сохраняет сериализованный JSON-пейлоад в сессию с поддержкой LRU-очистки (макс 500).
+    /// </summary>
+    public void StorePayloadJson(string shortId, string json)
+    {
+        string key = $"payload:{shortId}";
+        List<string> keys = GetPayloadKeys();
+
+        if (!keys.Contains(key))
+        {
+            keys.Add(key);
+            if (keys.Count > 500)
+            {
+                string oldest = keys[0];
+                keys.RemoveAt(0);
+                Remove(oldest);
+            }
+
+            SetPayloadKeys(keys);
+        }
+
+        Set(key, json);
+    }
+
+    /// <summary>
+    /// Извлекает десериализованный пейлоад из сессии.
+    /// </summary>
+    public T GetPayload<T>(string shortId)
+    {
+        string key = $"payload:{shortId}";
+        if (_data.TryGetValue(key, out string? json))
+        {
+            return JsonSerializer.Deserialize<T>(json)!;
+        }
+
+        throw new Exceptions.PayloadExpiredException();
+    }
 }

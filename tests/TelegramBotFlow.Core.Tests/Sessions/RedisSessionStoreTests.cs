@@ -1,6 +1,5 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using FluentAssertions;
-using StackExchange.Redis;
 using TelegramBotFlow.Core.Screens;
 using TelegramBotFlow.Core.Sessions;
 using TelegramBotFlow.Core.Sessions.Redis;
@@ -9,8 +8,10 @@ namespace TelegramBotFlow.Core.Tests.Sessions;
 
 public sealed class RedisSessionStoreTests
 {
+    // ── ToJson ──────────────────────────────────────────────────────────────
+
     [Fact]
-    public void Serialize_IncludesAllSystemFields()
+    public void ToJson_IncludesAllSystemFields()
     {
         var session = new UserSession(42)
         {
@@ -20,83 +21,101 @@ public sealed class RedisSessionStoreTests
         };
         session.NavigationStack.Add("main");
 
-        HashEntry[] entries = RedisSessionStore.Serialize(session);
-        Dictionary<string, string> dict = ToDictionary(entries);
+        JsonElement json = ParseJson(session);
 
-        dict.Should().ContainKey(RedisSessionStore.FieldCreatedAt);
-        dict.Should().ContainKey(RedisSessionStore.FieldLastActivity);
-        dict[RedisSessionStore.FieldScreen].Should().Be("settings:main");
-        dict[RedisSessionStore.FieldNavMessageId].Should().Be("100");
-        dict[RedisSessionStore.FieldMediaType].Should().Be("Photo");
-        dict[RedisSessionStore.FieldNavigationStack].Should().Contain("main");
+        json.GetProperty("createdAt").GetDateTime().Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(5));
+        json.GetProperty("lastActivity").GetDateTime().Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(5));
+        json.GetProperty("currentScreen").GetString().Should().Be("settings:main");
+        json.GetProperty("navMessageId").GetInt32().Should().Be(100);
+        json.GetProperty("navigationStack").GetArrayLength().Should().Be(1);
+        json.GetProperty("navigationStack")[0].GetString().Should().Be("main");
     }
 
     [Fact]
-    public void Serialize_UserData_StoredAsJson()
+    public void ToJson_UserData_StoredUnderUserDataKey()
     {
         var session = new UserSession(42);
         session.Set("city", "Moscow");
         session.Set("lang", "ru");
 
-        HashEntry[] entries = RedisSessionStore.Serialize(session);
-        Dictionary<string, string> dict = ToDictionary(entries);
+        JsonElement json = ParseJson(session);
 
-        dict.Should().ContainKey(RedisSessionStore.FieldUserData);
-        Dictionary<string, string>? data = JsonSerializer.Deserialize<Dictionary<string, string>>(dict[RedisSessionStore.FieldUserData]);
-        data.Should().ContainKey("city").WhoseValue.Should().Be("Moscow");
-        data.Should().ContainKey("lang").WhoseValue.Should().Be("ru");
+        json.TryGetProperty("userData", out JsonElement userData).Should().BeTrue();
+        userData.GetProperty("city").GetString().Should().Be("Moscow");
+        userData.GetProperty("lang").GetString().Should().Be("ru");
     }
 
     [Fact]
-    public void Serialize_EmptyUserData_StoredAsEmptyString()
+    public void ToJson_EmptyUserData_OmitsUserDataKey()
     {
         var session = new UserSession(42);
 
-        HashEntry[] entries = RedisSessionStore.Serialize(session);
-        Dictionary<string, string> dict = ToDictionary(entries);
+        JsonElement json = ParseJson(session);
 
-        dict[RedisSessionStore.FieldUserData].Should().BeEmpty();
+        json.TryGetProperty("userData", out _).Should().BeFalse();
     }
 
     [Fact]
-    public void Serialize_NullableFields_StoredAsEmpty()
+    public void ToJson_NullableFields_OmittedWhenNull()
     {
         var session = new UserSession(42);
 
-        HashEntry[] entries = RedisSessionStore.Serialize(session);
-        Dictionary<string, string> dict = ToDictionary(entries);
+        JsonElement json = ParseJson(session);
 
-        dict[RedisSessionStore.FieldScreen].Should().BeEmpty();
-        dict[RedisSessionStore.FieldNavMessageId].Should().BeEmpty();
+        json.TryGetProperty("currentScreen", out _).Should().BeFalse();
+        json.TryGetProperty("navMessageId", out _).Should().BeFalse();
+        json.TryGetProperty("navigationStack", out _).Should().BeFalse();
+        json.TryGetProperty("pendingInputActionId", out _).Should().BeFalse();
     }
 
     [Fact]
-    public void Serialize_LastActivity_UsesSessionValue_NotUtcNow()
+    public void ToJson_LastActivity_UsesSessionValue_NotUtcNow()
     {
         var session = new UserSession(42);
         var fixedTime = new DateTime(2025, 6, 15, 10, 30, 0, DateTimeKind.Utc);
         session.LastActivity = fixedTime;
 
-        HashEntry[] entries = RedisSessionStore.Serialize(session);
-        Dictionary<string, string> dict = ToDictionary(entries);
+        JsonElement json = ParseJson(session);
 
-        dict[RedisSessionStore.FieldLastActivity].Should().Be(fixedTime.ToString("O"));
+        json.GetProperty("lastActivity").GetDateTime().Should().Be(fixedTime);
     }
 
     [Fact]
-    public void Deserialize_RestoresSystemFields()
+    public void ToJson_PendingInput_StoredUnderPendingInputActionIdKey()
+    {
+        var session = new UserSession(42) { PendingInputActionId = "roadmap:set" };
+
+        JsonElement json = ParseJson(session);
+
+        json.TryGetProperty("pendingInputActionId", out JsonElement pending).Should().BeTrue();
+        pending.GetString().Should().Be("roadmap:set");
+    }
+
+    [Fact]
+    public void ToJson_NullPendingInput_OmittedFromJson()
+    {
+        var session = new UserSession(42) { PendingInputActionId = null };
+
+        JsonElement json = ParseJson(session);
+
+        json.TryGetProperty("pendingInputActionId", out _).Should().BeFalse();
+    }
+
+    // ── FromJson ─────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void FromJson_RestoresSystemFields()
     {
         var original = new UserSession(42)
         {
             CurrentScreen = "contact:share",
             NavMessageId = 55,
-            CurrentMediaType = ScreenMediaType.Video
+            CurrentMediaType = ScreenMediaType.Video,
         };
         original.NavigationStack.Add("main");
         original.NavigationStack.Add("settings");
 
-        HashEntry[] entries = RedisSessionStore.Serialize(original);
-        UserSession restored = RedisSessionStore.Deserialize(42, entries);
+        UserSession restored = Roundtrip(original, 42);
 
         restored.UserId.Should().Be(42);
         restored.CurrentScreen.Should().Be("contact:share");
@@ -106,55 +125,74 @@ public sealed class RedisSessionStoreTests
     }
 
     [Fact]
-    public void Deserialize_RestoresCreatedAt()
+    public void FromJson_RestoresCreatedAt()
     {
         var original = new UserSession(42);
         DateTime originalCreatedAt = original.CreatedAt;
 
-        HashEntry[] entries = RedisSessionStore.Serialize(original);
-        UserSession restored = RedisSessionStore.Deserialize(42, entries);
+        UserSession restored = Roundtrip(original, 42);
 
         restored.CreatedAt.Should().BeCloseTo(originalCreatedAt, TimeSpan.FromMilliseconds(1));
     }
 
     [Fact]
-    public void Deserialize_RestoresLastActivity()
+    public void FromJson_RestoresLastActivity()
     {
         var original = new UserSession(42);
         var fixedTime = new DateTime(2025, 3, 10, 8, 0, 0, DateTimeKind.Utc);
         original.LastActivity = fixedTime;
 
-        HashEntry[] entries = RedisSessionStore.Serialize(original);
-        UserSession restored = RedisSessionStore.Deserialize(42, entries);
+        UserSession restored = Roundtrip(original, 42);
 
         restored.LastActivity.Should().Be(fixedTime);
     }
 
     [Fact]
-    public void Deserialize_RestoresUserData()
+    public void FromJson_RestoresUserData()
     {
         var original = new UserSession(42);
         original.Set("name", "John");
         original.Set("email", "john@test.com");
 
-        HashEntry[] entries = RedisSessionStore.Serialize(original);
-        UserSession restored = RedisSessionStore.Deserialize(42, entries);
+        UserSession restored = Roundtrip(original, 42);
 
         restored.GetString("name").Should().Be("John");
         restored.GetString("email").Should().Be("john@test.com");
     }
 
     [Fact]
-    public void Deserialize_EmptyFields_BecomeNull()
+    public void FromJson_NullableFields_RemainNull()
     {
         var original = new UserSession(42);
 
-        HashEntry[] entries = RedisSessionStore.Serialize(original);
-        UserSession restored = RedisSessionStore.Deserialize(42, entries);
+        UserSession restored = Roundtrip(original, 42);
 
         restored.CurrentScreen.Should().BeNull();
         restored.NavMessageId.Should().BeNull();
+        restored.PendingInputActionId.Should().BeNull();
     }
+
+    [Fact]
+    public void FromJson_RestoresPendingInput()
+    {
+        var original = new UserSession(42) { PendingInputActionId = "profile:edit-name" };
+
+        UserSession restored = Roundtrip(original, 42);
+
+        restored.PendingInputActionId.Should().Be("profile:edit-name");
+    }
+
+    [Fact]
+    public void FromJson_NullPendingInput_RemainsNull()
+    {
+        var original = new UserSession(42) { PendingInputActionId = null };
+
+        UserSession restored = Roundtrip(original, 42);
+
+        restored.PendingInputActionId.Should().BeNull();
+    }
+
+    // ── Roundtrip ─────────────────────────────────────────────────────────────
 
     [Fact]
     public void Roundtrip_PreservesAllData()
@@ -164,18 +202,19 @@ public sealed class RedisSessionStoreTests
             CurrentScreen = "settings:lang",
             NavMessageId = 77,
             CurrentMediaType = ScreenMediaType.Photo,
+            PendingInputActionId = "settings:set-city",
         };
         original.NavigationStack.Add("main");
         original.Set("age", "25");
         original.Set("name", "Alice");
 
-        HashEntry[] entries = RedisSessionStore.Serialize(original);
-        UserSession restored = RedisSessionStore.Deserialize(99, entries);
+        UserSession restored = Roundtrip(original, 99);
 
         restored.UserId.Should().Be(99);
         restored.CurrentScreen.Should().Be("settings:lang");
         restored.NavMessageId.Should().Be(77);
         restored.CurrentMediaType.Should().Be(ScreenMediaType.Photo);
+        restored.PendingInputActionId.Should().Be("settings:set-city");
         restored.NavigationStack.Should().ContainSingle().Which.Should().Be("main");
         restored.GetString("age").Should().Be("25");
         restored.GetString("name").Should().Be("Alice");
@@ -189,16 +228,14 @@ public sealed class RedisSessionStoreTests
         session.Set("temp_code", "1234");
         session.Set("city", "Moscow");
 
-        HashEntry[] entries1 = RedisSessionStore.Serialize(session);
-        Dictionary<string, string> dict1 = ToDictionary(entries1);
-        Dictionary<string, string>? data1 = JsonSerializer.Deserialize<Dictionary<string, string>>(dict1[RedisSessionStore.FieldUserData]);
-        data1.Should().ContainKey("temp_code");
-        data1.Should().ContainKey("city");
+        string json1 = RedisSessionStore.ToJson(session);
+        UserSession afterFirst = RedisSessionStore.FromJson(42, json1);
+        afterFirst.GetAll().Should().ContainKey("temp_code");
+        afterFirst.GetAll().Should().ContainKey("city");
 
         session.Remove("temp_code");
 
-        HashEntry[] entries2 = RedisSessionStore.Serialize(session);
-        UserSession restored = RedisSessionStore.Deserialize(42, entries2);
+        UserSession restored = Roundtrip(session, 42);
 
         restored.GetString("temp_code").Should().BeNull();
         restored.Has("temp_code").Should().BeFalse();
@@ -206,16 +243,17 @@ public sealed class RedisSessionStoreTests
         restored.GetAll().Should().HaveCount(1);
     }
 
-    [Fact]
-    public void Serialize_FixedFieldCount()
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private static UserSession Roundtrip(UserSession session, long userId)
     {
-        var session = new UserSession(42);
-
-        HashEntry[] entries = RedisSessionStore.Serialize(session);
-
-        entries.Should().HaveCount(7);
+        string json = RedisSessionStore.ToJson(session);
+        return RedisSessionStore.FromJson(userId, json);
     }
 
-    private static Dictionary<string, string> ToDictionary(HashEntry[] entries) =>
-        entries.ToDictionary(e => e.Name.ToString(), e => e.Value.ToString());
+    private static JsonElement ParseJson(UserSession session)
+    {
+        string json = RedisSessionStore.ToJson(session);
+        return JsonSerializer.Deserialize<JsonElement>(json);
+    }
 }

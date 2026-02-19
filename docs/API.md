@@ -1,4 +1,4 @@
-﻿# Справочник API (API Reference)
+# Справочник API (API Reference)
 
 ## BotApplication
 
@@ -21,20 +21,23 @@ app.UseSession();
 app.UseAccessPolicy();
 app.UsePendingInput();
 
+app.SetMenu(menu => menu.Command("start", "Главное меню"));
+app.UseNavigation<MainMenuScreen>();
 app.MapBotEndpoints();
 await app.RunAsync();
 ```
 
 ### Middleware
 
-| Метод / Method       | Описание / Description                                                                                   |
-| -------------------- | -------------------------------------------------------------------------------------------------------- |
-| `UseErrorHandling()` | Ловит исключения, логирует и отправляет error message / Catches exceptions, logs and sends error message |
-| `UseLogging()`       | Логирует вход/выход и время обработки / Logs entry/exit and processing time                              |
-| `UseSession()`       | Загружает и сохраняет `UserSession` / Loads and saves `UserSession`                                      |
-| `UseAccessPolicy()`  | Заполняет `UpdateContext.IsAdmin` / Populates `UpdateContext.IsAdmin`                                    |
-| `UsePendingInput()`  | Маршрутизирует следующий текст в `MapInput`-обработчик / Routes next text to `MapInput` handler          |
-| `Use<TMiddleware>()` | Подключает кастомный `IUpdateMiddleware` / Plugs in custom `IUpdateMiddleware`                           |
+| Метод / Method       | Описание / Description                                                                                                                                                                    |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `UseErrorHandling()` | Ловит исключения, логирует и отправляет error message / Catches exceptions, logs and sends error message                                                                                  |
+| `UseLogging()`       | Логирует вход/выход и время обработки / Logs entry/exit and processing time                                                                                                               |
+| `UseSession()`       | Загружает и сохраняет `UserSession` / Loads and saves `UserSession`                                                                                                                       |
+| `UseAccessPolicy()`  | Заполняет `UpdateContext.IsAdmin` / Populates `UpdateContext.IsAdmin`                                                                                                                     |
+| `UsePendingInput()`  | Маршрутизирует следующий текст в `MapInput`-обработчик / Routes next text to `MapInput` handler                                                                                           |
+| `UseNavigation<T>()` | Регистрирует обработчик callback `nav:*` для навигации по экранам; `T` — экран главного меню / Registers handler for `nav:*` callbacks for screen navigation; `T` is the main menu screen |
+| `Use<TMiddleware>()` | Подключает кастомный `IUpdateMiddleware` / Plugs in custom `IUpdateMiddleware`                                                                                                            |
 
 ### Routing (Маршрутизация)
 
@@ -74,6 +77,21 @@ app.SetMenu(menu => menu
 
 Sets the bot command list displayed when pressing `/` in Telegram.
 
+### UseNavigation\<TMenuScreen\> (Навигация по экранам)
+
+Регистрирует встроенный обработчик callback-ов с префиксом `nav:*` (кнопки навигации из `ScreenView`: переход к экрану, «Назад», «Главное меню»). Параметр типа `TMenuScreen` — экран главного меню, на который ведёт кнопка «Главное меню» (`MenuButton`).
+
+Registers the built-in handler for callbacks with prefix `nav:*` (navigation buttons from `ScreenView`: navigate to screen, Back, Main menu). The type parameter `TMenuScreen` is the main menu screen shown when the user presses the «Main menu» button (`MenuButton`).
+
+```csharp
+app.UseNavigation<MainMenuScreen>();
+app.MapBotEndpoints();
+```
+
+Рекомендуется вызывать после `SetMenu` и перед `MapBotEndpoints`. Отдельный класс-обработчик для `nav:*` в приложении не нужен.
+
+Recommended order: after `SetMenu`, before `MapBotEndpoints`. No separate handler class for `nav:*` in the app is required.
+
 ### Внедрение зависимостей в обработчик (Handler Dependency Injection)
 
 Параметры обработчика резолвятся автоматически:
@@ -84,6 +102,10 @@ Handler parameters are resolved automatically:
 - `CancellationToken` берётся из контекста / taken from context
 - сервисы (например `IUpdateResponder`, `IScreenNavigator`, DbContext) берутся из DI scope update-а / services (e.g. `IUpdateResponder`, `IScreenNavigator`, DbContext) are resolved from the update DI scope
 - для `MapCallbackGroup` первый параметр `string` получает action-часть callback / for `MapCallbackGroup` the first `string` parameter receives the action part of the callback
+
+Для навигации по экранам (`nav:*`) рекомендуется использовать `UseNavigation<TMenuScreen>()` (см. выше). Ручная регистрация через `MapCallbackGroup("nav", ...)` возможна, если нужна кастомная логика:
+
+For screen navigation (`nav:*`), use `UseNavigation<TMenuScreen>()` (see above). Manual registration via `MapCallbackGroup("nav", ...)` is possible if custom logic is needed:
 
 ```csharp
 app.MapCallbackGroup("nav", async (

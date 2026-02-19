@@ -1,4 +1,4 @@
-﻿# Журнал изменений (Changelog)
+# Журнал изменений (Changelog)
 
 Все значимые изменения проекта документируются в этом файле.
 
@@ -9,6 +9,29 @@ All notable changes to this project are documented in this file.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
+
+### Исправлено (Fixed)
+
+- **`SessionMiddleware`** — утечка памяти: семафоры в `_userLocks` теперь удаляются из `ConcurrentDictionary` после освобождения (cleanup через `TryRemove` с проверкой конкретной пары ключ-значение).
+- **`UpdateResponder.ReplaceAnchorWithCopyAsync`** — пустой `catch {}` заменён на `catch (ApiRequestException ex) when (ex.ErrorCode is 400 or 403)`. Неожиданные ошибки (сеть, таймаут) больше не проглатываются молча.
+
+### Добавлено (Added)
+
+- **`NavCallbacks`** — новый статический класс с константами системных навигационных callback-ов: `BACK = "nav:back"`, `CLOSE = "nav:close"`, `MENU = "nav:menu"`. Используй вместо raw строк при ручном построении `InlineKeyboardMarkup`.
+
+### Изменено (Changed)
+
+- **`BotApplication.UseXxx()`** — `UseErrorHandling()`, `UseLogging()`, `UseSession()`, `UseAccessPolicy()`, `UsePendingInput()` упрощены: теперь делегируют в `Use<TMiddleware>()` вместо дублирования idентичного boilerplate-кода.
+- **`UserSession`** — навигационные поля (`CurrentScreen`, `NavMessageId`, `CurrentMediaType`, `NavigationStack`, `PendingInputActionId`) получили `internal set`. Изменение из внешнего кода (за пределами `TelegramBotFlow.Core`) больше невозможно — используй методы `PushScreen`, `PopScreen`, `Clear`, `ResetNavigation`, `SetPending`.
+- **`IScreenNavigator`** — улучшены docstrings `GoBackAsync` и `NavigateBackAsync`: явно описано поведение при пустом стеке навигации и разница в обработке callback-ответа.
+- **`ScreenView`** — внутренние строки навигационных кнопок (`BackButton`, `CloseButton`, `MenuButton`) заменены на константы `NavCallbacks`.
+- **`GetRoadmapAction`** — raw строка `"nav:menu"` заменена на `NavCallbacks.MENU`.
+- **`ARCHITECTURE.md`** — добавлена `PendingInputMiddleware` в схему pipeline; добавлены секции про `NavCallbacks`, разницу `GoBackAsync` vs `NavigateBackAsync`, обновлена секция Sessions.
+- **`CODE_STYLE.md`** — добавлен раздел про `NavCallbacks` и разрешение `db.SaveChangesAsync()` в App-слое.
+
+### Изменено (Changed) — предыдущие изменения
+
+- `RedisSessionStore` — переход с Redis Hash (`HSET`/`HGETALL`) на единый JSON-payload в Redis String (`GET`/`SET`). Устранены ручные маппинги полей (`HashEntry[]`, `TryParseDate`, `NullIfEmpty`). Внутренние методы переименованы: `Serialize` → `ToJson`, `Deserialize` → `FromJson`. Null-поля не сериализуются (camelCase + `WhenWritingNull`).
 
 ### Добавлено (Added)
 
@@ -26,6 +49,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `BotApplication.MapAction<TAction>(handler)` — типизированная регистрация action-обработчика (typed action handler registration)
 - `BotApplication.MapInput<TAction>(handler)` — типизированная регистрация input-обработчика (typed input handler registration)
 - Полное XML-документирование (complete XML documentation: `/// <summary>`, `param`, `returns`) для ключевых классов и методов в `TelegramBotFlow.App` и `TelegramBotFlow.Core`
+- `BotApplication.UseNavigation<TMenuScreen>()` — встроенная навигация по экранам (callback `nav:*`), отдельный обработчик в App не требуется (built-in screen navigation for `nav:*` callbacks; no separate handler in App required)
 
 ### Изменено (Changed)
 
@@ -36,12 +60,15 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `AdminRoadmapScreen` переведён на `Button<ClearRoadmapAction>` вместо строкового callback ID (migrated to `Button<ClearRoadmapAction>` from string callback ID)
 - `SetRoadmapInputScreen` переведён на `AwaitInput<SetRoadmapInput>()` вместо `ACTION_ID` константы (migrated to `AwaitInput<SetRoadmapInput>()` from `ACTION_ID` constant)
 - Актуализированы `README.md`, `docs/API.md`, `docs/ARCHITECTURE.md` (updated documentation)
+- Fallback перенесён в `Features/Fallback/FallbackEndpoints.cs` (fallback moved to `Features/Fallback/FallbackEndpoints.cs`)
+- Roadmap: обработка разнесена по отдельным endpoint-классам — `GetRoadmapEndpoint`, `ClearRoadmapEndpoint`, `SetRoadmapInputEndpoint` (Roadmap split into separate endpoint classes)
 
 ### Удалено (Removed)
 
 - `InputResult` — заменён на `IEndpointResult` + `BotResults` (replaced by `IEndpointResult` + `BotResults`)
 - `ResultStrategy` — логика диспатча перенесена в `IEndpointResult.ExecuteAsync` (dispatch logic moved to `IEndpointResult.ExecuteAsync`)
 - Легаси-команда `/clear_roadmap` из `AdminRoadmapHandler` (legacy `/clear_roadmap` command removed from `AdminRoadmapHandler`)
+- Отдельный класс `NavigationHandler` в App — навигация `nav:*` встроена во фреймворк через `UseNavigation<T>()` (standalone `NavigationHandler` in App removed; `nav:*` navigation built into framework via `UseNavigation<T>()`)
 
 ## [0.2.0] — 2026-02-18
 
@@ -125,3 +152,4 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
     - Polling / Webhook режимы (modes)
     - Serilog + Seq для логирования (for logging)
     - Docker Compose
+

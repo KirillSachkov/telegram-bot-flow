@@ -1,4 +1,4 @@
-﻿using TelegramBotFlow.App.Features.Help;
+using TelegramBotFlow.App.Features.Help;
 using TelegramBotFlow.App.Features.Profile;
 using TelegramBotFlow.App.Features.Roadmap;
 using TelegramBotFlow.App.Features.Settings;
@@ -24,12 +24,11 @@ public sealed class MainMenuScreen : IScreen
             .NavigateButton<SettingsScreen>("Настройки")
             .Row()
             .NavigateButton<HelpScreen>("Помощь")
-            .Row();
+            .Row()
+            .Button<GetRoadmapAction>("🗺 Получить Roadmap");
 
         if (ctx.IsAdmin)
-            view.NavigateButton<AdminRoadmapScreen>("⚙️ Настройки Roadmap");
-        else
-            view.Button("🗺 Получить Roadmap", "get_roadmap");
+            view.Row().NavigateButton<AdminRoadmapScreen>("⚙️ Настройки Roadmap");
 
         return Task.FromResult(view);
     }

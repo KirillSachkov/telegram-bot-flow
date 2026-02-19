@@ -25,6 +25,7 @@
     <PackageVersion Include="Serilog.Sinks.Console" Version="6.1.1" />
     <PackageVersion Include="Serilog.Sinks.Seq" Version="9.0.0" />
     <!-- EF Core + PostgreSQL -->
+    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.3" />
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.0" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.3" />
     <!-- Validation -->

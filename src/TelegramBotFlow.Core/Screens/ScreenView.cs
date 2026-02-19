@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
 using TelegramBotFlow.Core.Endpoints;
@@ -37,7 +38,21 @@ public sealed class ScreenView
     /// </summary>
     public string? PendingInputActionId { get; private set; }
 
+    /// <summary>
+    /// <see langword="true"/> если в представлении уже есть кнопка навигации
+    /// (<see cref="BackButton"/>, <see cref="CloseButton"/> или <see cref="MenuButton"/>).
+    /// Используется <c>ScreenManager</c> для автоматического добавления кнопки,
+    /// когда разработчик не добавил её явно.
+    /// </summary>
+    public bool HasNavigationButton { get; private set; }
+
     private readonly InlineKeyboard _keyboard = new();
+    private readonly Dictionary<string, string> _payloads = [];
+
+    /// <summary>
+    /// Сохранённые payload для кнопок текущего экрана (ShortId -> Json).
+    /// </summary>
+    public IReadOnlyDictionary<string, string> Payloads => _payloads;
 
     /// <summary>
     /// Создаёт представление экрана с текстом.
@@ -88,6 +103,32 @@ public sealed class ScreenView
     public ScreenView Button<TAction>(string text) where TAction : IBotAction
     {
         _keyboard.Button(text, typeof(TAction).Name);
+        return this;
+    }
+
+    /// <summary>
+    /// Добавляет типизированную кнопку действия с передачей объекта (Payload).
+    /// Генерирует ShortId, сохраняет payload (до 500 последних) и создаёт кнопку 
+    /// с callback_data вида <c>TAction:s:ShortId</c>. Если payload короткий,
+    /// он встраивается прямо в кнопку <c>TAction:j:{json}</c>.
+    /// </summary>
+    public ScreenView Button<TAction, TPayload>(string text, TPayload payload) where TAction : IBotAction
+    {
+        string json = JsonSerializer.Serialize(payload);
+        string prefix = typeof(TAction).Name;
+
+        int byteCount = System.Text.Encoding.UTF8.GetByteCount($"{prefix}:j:{json}");
+        if (byteCount <= 64)
+        {
+            _keyboard.Button(text, $"{prefix}:j:{json}");
+        }
+        else
+        {
+            string shortId = Guid.NewGuid().ToString("N")[..8];
+            _payloads[shortId] = json;
+            _keyboard.Button(text, $"{prefix}:s:{shortId}");
+        }
+
         return this;
     }
 
@@ -196,8 +237,9 @@ public sealed class ScreenView
     /// <returns>Текущее представление для fluent-конфигурации.</returns>
     public ScreenView BackButton(string text = "← Назад")
     {
+        HasNavigationButton = true;
         Row();
-        _keyboard.Button(text, "nav:back");
+        _keyboard.Button(text, NavCallbacks.BACK);
         return this;
     }
 
@@ -207,8 +249,9 @@ public sealed class ScreenView
     /// </summary>
     public ScreenView CloseButton(string text = "← Назад")
     {
+        HasNavigationButton = true;
         Row();
-        _keyboard.Button(text, "nav:close");
+        _keyboard.Button(text, NavCallbacks.CLOSE);
         return this;
     }
 
@@ -218,8 +261,25 @@ public sealed class ScreenView
     /// </summary>
     public ScreenView MenuButton(string text = "☰ Главное меню")
     {
+        HasNavigationButton = true;
         Row();
-        _keyboard.Button(text, "nav:menu");
+        _keyboard.Button(text, NavCallbacks.MENU);
         return this;
     }
+}
+
+/// <summary>
+/// Строковые идентификаторы системных навигационных callback-ов (<c>nav:*</c>).
+/// Используй вместо magic strings везде, где нужно сослаться на навигационный callback вручную.
+/// </summary>
+public static class NavCallbacks
+{
+    /// <summary>Возврат на предыдущий экран (pop стека навигации).</summary>
+    public const string BACK = "nav:back";
+
+    /// <summary>Закрытие action-view без изменения стека (refresh текущего экрана).</summary>
+    public const string CLOSE = "nav:close";
+
+    /// <summary>Переход в главное меню с очисткой всей истории навигации.</summary>
+    public const string MENU = "nav:menu";
 }

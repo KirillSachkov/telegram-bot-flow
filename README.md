@@ -1,4 +1,4 @@
-﻿# Telegram Bot Flow
+# Telegram Bot Flow
 
 Template-проект для создания Telegram-ботов на .NET 10 с middleware pipeline и Minimal API-стилем регистрации обработчиков.
 
@@ -34,7 +34,7 @@ cd my-bot
 ```json
 {
     "Bot": {
-        "Token": "123456789:ABCdefGHIjklMNOpqrsTUVwxyz",
+        "Token": "YOUR_BOT_TOKEN_HERE",
         "Mode": "Polling"
     },
     "Serilog": {
@@ -50,7 +50,7 @@ cd my-bot
 Альтернативный способ — через переменную окружения:
 
 ```bash
-export Bot__Token="123456789:ABCdefGHIjklMNOpqrsTUVwxyz"
+export Bot__Token="YOUR_BOT_TOKEN_HERE"
 ```
 
 ### Шаг 4. Запустить бота
@@ -115,8 +115,14 @@ src/
 
   TelegramBotFlow.App/           — ваш бот (точка кастомизации)
     Program.cs                   — конфигурация pipeline и middleware
-        Handlers/                    — обработчики команд, callback, fallback
-        Screens/                     — экраны и их рендеринг
+    Features/                    — фичи по папкам (IBotEndpoint + IScreen)
+        Start/                      — StartHandler (/start, /help)
+        MainMenu/                   — MainMenuScreen
+        Profile/                    — ProfileScreen
+        Settings/                   — SettingsScreen
+        Help/                       — HelpScreen
+        Roadmap/                    — GetRoadmapEndpoint, ClearRoadmapEndpoint, SetRoadmapInputEndpoint, экраны, маркеры действий
+        Fallback/                   — FallbackEndpoints
     appsettings.json             — конфигурация (токен, режим, логирование, БД)
 
 tests/
@@ -144,15 +150,20 @@ app.UsePendingInput();   // 6. Маршрутизирует ввод по Pendin
 app.SetMenu(menu => menu
     .Command("start", "Главное меню"));
 
+// Навигация по экранам (nav:* callback встроен во фреймворк)
+app.UseNavigation<MainMenuScreen>();
+
 // Auto-discovery всех IBotEndpoint из текущей сборки
 app.MapBotEndpoints();
 
 await app.RunAsync();
 ```
 
+Навигация по экранам (callback `nav:*`) встроена во фреймворк и подключается через `UseNavigation<T>()`, где `T` — экран главного меню (кнопка «Главное меню»).
+
 ## Как создать свой endpoint
 
-Создайте класс в `Handlers/`, реализующий `IBotEndpoint`:
+Создайте класс в `Features/` (в папке своей фичи), реализующий `IBotEndpoint`:
 
 ```csharp
 public sealed class MyCommandEndpoint : IBotEndpoint
@@ -413,8 +424,8 @@ dotnet run --project src/TelegramBotFlow.App
 
 ## Расширение
 
-- **Новый обработчик**: создать класс `IBotEndpoint` в `Handlers/` — найдётся автоматически
-- **Новый экран**: создать класс `IScreen` в `Screens/` — зарегистрировать через `AddScreens<TAssembly>()`
+- **Новый обработчик**: создать класс `IBotEndpoint` в `Features/` (в папке фичи) — найдётся автоматически
+- **Новый экран**: создать класс `IScreen` в `Features/` (в папке фичи) — зарегистрировать через `AddScreens<TAssembly>()`
 - **Новый middleware**: реализовать `IUpdateMiddleware`, зарегистрировать через `app.Use<T>()`
 - **Другое хранилище сессий**: реализовать `ISessionStore`
 - **Backend API**: добавить `HttpClient` через `builder.Services.AddHttpClient<T>()`

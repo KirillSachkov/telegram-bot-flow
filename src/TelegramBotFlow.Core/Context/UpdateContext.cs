@@ -1,4 +1,4 @@
-﻿using Telegram.Bot.Types;
+using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using TelegramBotFlow.Core.Sessions;
 
@@ -125,6 +125,7 @@ public sealed class UpdateContext
             UpdateType.Message => update.Message!.Id,
             UpdateType.CallbackQuery => update.CallbackQuery!.Message?.Id,
             UpdateType.EditedMessage => update.EditedMessage!.Id,
+            UpdateType.ChannelPost => update.ChannelPost!.Id,
             _ => null
         };
 

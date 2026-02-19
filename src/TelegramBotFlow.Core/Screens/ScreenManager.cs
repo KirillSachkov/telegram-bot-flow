@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging;
 using Telegram.Bot.Types;
 using TelegramBotFlow.Core.Context;
 using TelegramBotFlow.Core.Sessions;
@@ -42,11 +42,16 @@ public sealed class ScreenManager
 
     /// <summary>
     /// Показывает временное представление действия без изменения текущего экрана.
+    /// Автоматически добавляет кнопку «Главное меню», если в представлении нет ни одной
+    /// кнопки навигации (<see cref="ScreenView.HasNavigationButton"/> == <see langword="false"/>).
     /// </summary>
     /// <param name="ctx">Контекст update-а.</param>
     /// <param name="view">Представление для показа.</param>
     public async Task ShowViewAsync(UpdateContext ctx, ScreenView view)
     {
+        if (!view.HasNavigationButton)
+            view.MenuButton();
+
         UserSession? session = ctx.Session;
         int? existingMessageId = session?.NavMessageId;
         ScreenMediaType oldMediaType = session?.CurrentMediaType ?? ScreenMediaType.None;
@@ -65,11 +70,16 @@ public sealed class ScreenManager
 
             if (view.PendingInputActionId is not null)
                 session.PendingInputActionId = view.PendingInputActionId;
+
+            foreach (var kvp in view.Payloads)
+                session.StorePayloadJson(kvp.Key, kvp.Value);
         }
     }
 
     /// <summary>
     /// Рендерит экран по ID и синхронизирует навигационное состояние сессии.
+    /// Автоматически добавляет кнопку «← Назад», если стек навигации не пуст и в
+    /// представлении нет ни одной кнопки навигации (<see cref="ScreenView.HasNavigationButton"/>).
     /// </summary>
     /// <param name="ctx">Контекст update-а.</param>
     /// <param name="screenId">Идентификатор экрана.</param>
@@ -78,6 +88,9 @@ public sealed class ScreenManager
     {
         IScreen screen = _registry.Resolve(screenId, ctx.RequestServices);
         ScreenView view = await screen.RenderAsync(ctx);
+
+        if (!view.HasNavigationButton && ctx.Session?.NavigationStack.Count > 0)
+            view.BackButton();
 
         UserSession? session = ctx.Session;
         int? existingMessageId = session?.NavMessageId;
@@ -104,6 +117,9 @@ public sealed class ScreenManager
             // Apply pending input declared in the view (overrides PushScreen clear when intentional)
             if (view.PendingInputActionId is not null)
                 session.PendingInputActionId = view.PendingInputActionId;
+
+            foreach (var kvp in view.Payloads)
+                session.StorePayloadJson(kvp.Key, kvp.Value);
         }
     }
 }

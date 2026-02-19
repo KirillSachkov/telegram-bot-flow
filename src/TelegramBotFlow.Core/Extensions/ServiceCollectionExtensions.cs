@@ -1,9 +1,11 @@
 using System.Reflection;
+using System.Threading.Channels;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using StackExchange.Redis;
 using Telegram.Bot;
+using Telegram.Bot.Types;
 using TelegramBotFlow.Core.Context;
 using TelegramBotFlow.Core.Hosting;
 using TelegramBotFlow.Core.Pipeline.Middlewares;
@@ -39,21 +41,32 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ScreenManager>();
         services.AddScoped<IScreenNavigator, ScreenNavigator>();
 
-
         services.AddSingleton<ISessionStore, InMemorySessionStore>();
+        services.AddSingleton<ISessionLockProvider, InMemorySessionLockProvider>();
 
         services.AddSingleton<InputHandlerRegistry>();
         services.AddScoped<PendingInputMiddleware>();
 
         services.AddScoped<ErrorHandlingMiddleware>();
         services.AddScoped<LoggingMiddleware>();
+        services.AddScoped<PrivateChatOnlyMiddleware>();
         services.AddScoped<SessionMiddleware>();
         services.AddScoped<AccessPolicyMiddleware>();
+
+        // Register Channel for Update processing
+        Channel<Update> updateChannel = Channel.CreateBounded<Update>(new BoundedChannelOptions(1000)
+        {
+            FullMode = BoundedChannelFullMode.Wait, SingleWriter = true, SingleReader = false
+        });
+        services.AddSingleton(updateChannel.Writer);
+        services.AddSingleton(updateChannel.Reader);
 
         if (botConfig.Mode == BotMode.POLLING)
         {
             services.AddHostedService<PollingService>();
         }
+
+        services.AddHostedService<UpdateProcessingWorker>();
 
         return services;
     }
@@ -82,6 +95,7 @@ public static class ServiceCollectionExtensions
 
         services.RemoveAll<ISessionStore>();
         services.AddSingleton<ISessionStore, RedisSessionStore>();
+        services.AddSingleton<ISessionLockProvider, InMemorySessionLockProvider>(); // TODO: Implement Redis version
 
         return services;
     }

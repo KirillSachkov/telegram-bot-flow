@@ -1,4 +1,5 @@
 using Serilog;
+using TelegramBotFlow.App.Features.MainMenu;
 using TelegramBotFlow.Core.Data;
 using TelegramBotFlow.Core.Data.Middleware;
 using TelegramBotFlow.Core.Endpoints;
@@ -21,6 +22,7 @@ try
 
     app.UseErrorHandling();
     app.UseLogging();
+    app.UsePrivateChatOnly();
     app.UseSession();
     app.UseAccessPolicy();
     app.Use<UserTrackingMiddleware>();
@@ -29,6 +31,7 @@ try
     app.SetMenu(menu => menu
         .Command("start", "Главное меню"));
 
+    app.UseNavigation<MainMenuScreen>();
     app.MapBotEndpoints();
 
     await app.RunAsync();

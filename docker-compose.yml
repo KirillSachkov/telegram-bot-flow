@@ -1,23 +1,9 @@
 services:
-  bot:
-    build:
-      context: .
-      dockerfile: src/TelegramBotFlow.App/Dockerfile
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Production
-      - Bot__Token=${BOT_TOKEN}
-      - Bot__Mode=Polling
-      - ConnectionStrings__Database=Host=postgres;Database=telegram_bot_flow;Username=botflow;Password=${DB_PASSWORD}
-    depends_on:
-      - postgres
-      - seq
-    restart: unless-stopped
-
   postgres:
     image: postgres:16-alpine
     environment:
-      - POSTGRES_USER=botflow
-      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
       - POSTGRES_DB=telegram_bot_flow
     ports:
       - "5432:5432"
@@ -25,17 +11,5 @@ services:
       - postgres-data:/var/lib/postgresql/data
     restart: unless-stopped
 
-  seq:
-    image: datalust/seq:latest
-    environment:
-      - ACCEPT_EULA=Y
-    ports:
-      - "5341:5341"
-      - "8081:80"
-    volumes:
-      - seq-data:/data
-    restart: unless-stopped
-
 volumes:
   postgres-data:
-  seq-data:

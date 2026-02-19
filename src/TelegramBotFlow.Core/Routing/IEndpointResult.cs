@@ -34,6 +34,10 @@ public sealed record ShowViewResult(ScreenView View) : IEndpointResult
 /// </summary>
 public sealed record NavigateBackResult(string? Notification = null) : IEndpointResult
 {
+    /// <summary>
+    /// Кэшированный экземпляр без уведомления.
+    /// </summary>
+    internal static readonly NavigateBackResult Default = new();
     public bool KeepPending => false;
 
     public Task ExecuteAsync(UpdateContext ctx, IScreenNavigator nav) =>
@@ -86,4 +90,30 @@ public sealed record StayResult(string? Notification = null) : IEndpointResult
         if (Notification is not null && ctx.Update.CallbackQuery is not null)
             await responder.AnswerCallbackAsync(ctx, Notification);
     }
+}
+
+/// <summary>
+/// Ничего не делает — используется для side-effect-only хэндлеров.
+/// </summary>
+public sealed record EmptyResult : IEndpointResult
+{
+    /// <summary>
+    /// Кэшированный экземпляр для избежания аллокаций.
+    /// </summary>
+    public static readonly EmptyResult Instance = new();
+
+    public bool KeepPending => false;
+
+    public Task ExecuteAsync(UpdateContext ctx, IScreenNavigator nav) => Task.CompletedTask;
+}
+
+/// <summary>
+/// Переходит к экрану по строковому идентификатору.
+/// </summary>
+public sealed record NavigateToByIdResult(string ScreenId) : IEndpointResult
+{
+    public bool KeepPending => false;
+
+    public Task ExecuteAsync(UpdateContext ctx, IScreenNavigator nav) =>
+        nav.NavigateToAsync(ctx, ScreenId);
 }

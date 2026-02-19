@@ -1,7 +1,9 @@
-﻿using Telegram.Bot;
+using Telegram.Bot;
+using Telegram.Bot.Exceptions;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
+using TelegramBotFlow.Core.Screens;
 using ReplyMarkup = Telegram.Bot.Types.ReplyMarkups.ReplyMarkup;
 
 namespace TelegramBotFlow.Core.Context;
@@ -86,5 +88,41 @@ public sealed class UpdateResponder : IUpdateResponder
             text: text,
             showAlert: showAlert,
             cancellationToken: context.CancellationToken);
+    }
+
+    public async Task CopyMessageAsync(UpdateContext context, long fromChatId, int messageId)
+    {
+        await _bot.CopyMessage(
+            context.ChatId,
+            fromChatId,
+            messageId,
+            cancellationToken: context.CancellationToken);
+    }
+
+    public async Task ReplaceAnchorWithCopyAsync(
+        UpdateContext context,
+        long fromChatId,
+        int messageId,
+        InlineKeyboardMarkup? replyMarkup = null)
+    {
+        if (context.Session?.NavMessageId is { } oldNavId)
+            try { await _bot.DeleteMessage(context.ChatId, oldNavId, context.CancellationToken); }
+            catch (ApiRequestException ex) when (ex.ErrorCode is 400 or 403)
+            {
+                // Сообщение уже удалено (400) или бот не имеет прав на удаление (403) — игнорируем
+            }
+
+        MessageId copied = await _bot.CopyMessage(
+            context.ChatId,
+            fromChatId,
+            messageId,
+            replyMarkup: replyMarkup,
+            cancellationToken: context.CancellationToken);
+
+        if (context.Session is not null)
+        {
+            context.Session.NavMessageId = copied.Id;
+            context.Session.CurrentMediaType = ScreenMediaType.None;
+        }
     }
 }

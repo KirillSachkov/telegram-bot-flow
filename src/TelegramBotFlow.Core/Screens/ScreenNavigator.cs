@@ -1,4 +1,4 @@
-﻿using TelegramBotFlow.Core.Context;
+using TelegramBotFlow.Core.Context;
 
 namespace TelegramBotFlow.Core.Screens;
 
@@ -46,16 +46,15 @@ public sealed class ScreenNavigator : IScreenNavigator
     {
         string? previousScreen = context.Session?.PopScreen();
         if (previousScreen is not null)
-        {
             await _screenManager.RenderScreenAsync(context, previousScreen, pushToStack: false);
-        }
+        // Если стек пуст — молчаливый no-op: пользователь остаётся на текущем экране
     }
 
     /// <inheritdoc />
     public async Task NavigateBackAsync(UpdateContext context, string? notification = null)
     {
-        await _responder.DeleteMessageAsync(context);
-
+        // Используем peek (не pop) для определения экрана, затем pop —
+        // чтобы при пустом стеке перерисовать CurrentScreen без его обнуления
         string? previousScreen = context.Session?.NavigationStack is { Count: > 0 }
             ? context.Session.NavigationStack[^1]
             : context.Session?.CurrentScreen;

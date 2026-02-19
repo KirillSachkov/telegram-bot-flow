@@ -93,77 +93,38 @@ public sealed class BotApplication
     /// Добавляет middleware глобальной обработки исключений.
     /// </summary>
     /// <returns>Текущий экземпляр приложения для fluent-конфигурации.</returns>
-    public BotApplication UseErrorHandling()
-    {
-        _middlewares.Add(next => async context =>
-        {
-            ErrorHandlingMiddleware middleware = context.RequestServices.GetRequiredService<ErrorHandlingMiddleware>();
-            await middleware.InvokeAsync(context, next);
-        });
-
-        return this;
-    }
+    public BotApplication UseErrorHandling() => Use<ErrorHandlingMiddleware>();
 
     /// <summary>
     /// Добавляет middleware логирования обработки update-ов.
     /// </summary>
     /// <returns>Текущий экземпляр приложения для fluent-конфигурации.</returns>
-    public BotApplication UseLogging()
-    {
-        _middlewares.Add(next => async context =>
-        {
-            LoggingMiddleware middleware = context.RequestServices.GetRequiredService<LoggingMiddleware>();
-            await middleware.InvokeAsync(context, next);
-        });
+    public BotApplication UseLogging() => Use<LoggingMiddleware>();
 
-        return this;
-    }
+    /// <summary>
+    /// Добавляет middleware, блокирующий запросы не из личных чатов (группы, другие каналы).
+    /// </summary>
+    /// <returns>Текущий экземпляр приложения для fluent-конфигурации.</returns>
+    public BotApplication UsePrivateChatOnly() => Use<PrivateChatOnlyMiddleware>();
 
     /// <summary>
     /// Добавляет middleware загрузки и сохранения пользовательской сессии.
     /// </summary>
     /// <returns>Текущий экземпляр приложения для fluent-конфигурации.</returns>
-    public BotApplication UseSession()
-    {
-        _middlewares.Add(next => async context =>
-        {
-            SessionMiddleware middleware = context.RequestServices.GetRequiredService<SessionMiddleware>();
-            await middleware.InvokeAsync(context, next);
-        });
-
-        return this;
-    }
+    public BotApplication UseSession() => Use<SessionMiddleware>();
 
     /// <summary>
     /// Добавляет middleware вычисления административного доступа пользователя.
     /// </summary>
     /// <returns>Текущий экземпляр приложения для fluent-конфигурации.</returns>
-    public BotApplication UseAccessPolicy()
-    {
-        _middlewares.Add(next => async context =>
-        {
-            AccessPolicyMiddleware middleware = context.RequestServices.GetRequiredService<AccessPolicyMiddleware>();
-            await middleware.InvokeAsync(context, next);
-        });
-
-        return this;
-    }
+    public BotApplication UseAccessPolicy() => Use<AccessPolicyMiddleware>();
 
     /// <summary>
     /// Adds a middleware that intercepts incoming text messages and routes them to the
     /// registered input handler when <c>session.PendingInputActionId</c> is set.
     /// Must be added after <c>UseSession()</c>.
     /// </summary>
-    public BotApplication UsePendingInput()
-    {
-        _middlewares.Add(next => async context =>
-        {
-            PendingInputMiddleware middleware = context.RequestServices.GetRequiredService<PendingInputMiddleware>();
-            await middleware.InvokeAsync(context, next);
-        });
-
-        return this;
-    }
+    public BotApplication UsePendingInput() => Use<PendingInputMiddleware>();
 
     // -- Route registration (Minimal API style with DI) --
 
@@ -199,10 +160,29 @@ public sealed class BotApplication
         => MapAction(typeof(TAction).Name, handler);
 
     /// <summary>
+    /// Регистрирует типизированный action-обработчик, ожидающий payload.
+    /// Отрабатывает маршрут <c>TActionName:*</c> (где * — это shortId payload).
+    /// </summary>
+    public BotApplication MapAction<TAction, TPayload>(Delegate handler) where TAction : IBotAction
+    {
+        string callbackId = typeof(TAction).Name;
+        UpdateDelegate inner = HandlerDelegateFactory.CreateForActionWithPayload<TPayload>(handler, callbackId);
+
+        _router.AddRoute(RouteEntry.Callback($"{callbackId}:*", async ctx =>
+        {
+            IUpdateResponder responder = ctx.RequestServices.GetRequiredService<IUpdateResponder>();
+            await responder.AnswerCallbackAsync(ctx);
+            await inner(ctx);
+        }));
+
+        return this;
+    }
+
+    /// <summary>
     /// Регистрирует обработчик action-кнопки.
     /// Автоматически отвечает на callback (убирает часики с кнопки),
-    /// затем вызывает обработчик. Поддерживаемые типы возврата:
-    /// <c>Task</c> (void) и <c>Task&lt;IEndpointResult&gt;</c>.
+    /// затем вызывает обработчик. Обработчик должен возвращать
+    /// <c>Task&lt;IEndpointResult&gt;</c>.
     /// </summary>
     public BotApplication MapAction(string callbackId, Delegate handler)
     {
@@ -232,6 +212,38 @@ public sealed class BotApplication
     }
 
     /// <summary>
+    /// Встраивает обработку навигационных callback-ов <c>nav:*</c> во фреймворк.
+    /// Поддерживает back, close, menu и динамический переход по screenId.
+    /// Вызывать до <c>MapBotEndpoints()</c>.
+    /// </summary>
+    /// <typeparam name="TMenuScreen">Тип экрана главного меню для команды <c>nav:menu</c>.</typeparam>
+    public BotApplication UseNavigation<TMenuScreen>() where TMenuScreen : IScreen
+    {
+        Type menuScreenType = typeof(TMenuScreen);
+        return MapCallbackGroup("nav", async (
+            UpdateContext ctx,
+            string screenId,
+            IUpdateResponder responder) =>
+        {
+            await responder.AnswerCallbackAsync(ctx);
+
+            if (screenId == "back")
+                return BotResults.Back();
+
+            if (screenId == "close")
+                return BotResults.Refresh();
+
+            if (screenId == "menu")
+            {
+                ctx.Session?.ResetNavigation();
+                return new NavigateToResult(menuScreenType);
+            }
+
+            return BotResults.NavigateTo(screenId);
+        });
+    }
+
+    /// <summary>
     /// Регистрирует типизированный input-обработчик.
     /// Action ID генерируется из имени типа <typeparamref name="TAction"/>.
     /// </summary>
@@ -241,8 +253,8 @@ public sealed class BotApplication
     /// <summary>
     /// Registers an input handler for the given <paramref name="actionId"/>.
     /// The handler is invoked when <c>session.PendingInputActionId == actionId</c> and the
-    /// user sends a text message. Supported return types:
-    /// <c>Task</c> (void = auto-back) and <c>Task&lt;IEndpointResult&gt;</c>.
+    /// user sends a text message. The handler must return
+    /// <c>Task&lt;IEndpointResult&gt;</c>.
     /// </summary>
     public BotApplication MapInput(string actionId, Delegate handler)
     {

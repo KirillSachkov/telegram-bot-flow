@@ -1,69 +1,76 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+using System.Threading.Channels;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Telegram.Bot;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
-using TelegramBotFlow.Core.Context;
-using TelegramBotFlow.Core.Pipeline;
 
 namespace TelegramBotFlow.Core.Hosting;
 
 /// <summary>
 /// Фоновый сервис получения Telegram update-ов в режиме polling.
+/// Только читает обновления и складывает их в Channel для обработки воркерами.
 /// </summary>
 public sealed class PollingService : BackgroundService
 {
     private readonly ITelegramBotClient _bot;
-    private readonly UpdatePipeline _pipeline;
-    private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<PollingService> _logger;
+    private readonly BotConfiguration _config;
+    private readonly ChannelWriter<Update> _updateWriter;
 
     /// <summary>
     /// Создаёт polling-сервис с зависимостями обработки update-ов.
     /// </summary>
-    /// <param name="bot">Клиент Telegram Bot API.</param>
-    /// <param name="pipeline">Pipeline обработки update-ов.</param>
-    /// <param name="scopeFactory">Фабрика DI scope на каждый update.</param>
-    /// <param name="logger">Логгер сервиса.</param>
     public PollingService(
         ITelegramBotClient bot,
-        UpdatePipeline pipeline,
-        IServiceScopeFactory scopeFactory,
-        ILogger<PollingService> logger)
+        ILogger<PollingService> logger,
+        IOptions<BotConfiguration> configOptions,
+        ChannelWriter<Update> updateWriter)
     {
         _bot = bot;
-        _pipeline = pipeline;
-        _scopeFactory = scopeFactory;
         _logger = logger;
+        _config = configOptions.Value;
+        _updateWriter = updateWriter;
     }
 
     /// <summary>
     /// Запускает цикл получения обновлений от Telegram.
     /// </summary>
-    /// <param name="stoppingToken">Токен остановки hosted-сервиса.</param>
-    /// <returns>Задача жизненного цикла сервиса.</returns>
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         var receiverOptions = new ReceiverOptions
         {
-            AllowedUpdates = [],
+            AllowedUpdates = _config.AllowedUpdates,
             DropPendingUpdates = true
         };
 
-        await _bot.ReceiveAsync(
-            updateHandler: (_, update, ct) => HandleUpdateAsync(update, ct),
-            errorHandler: (_, exception, ct) => HandleErrorAsync(exception, ct),
-            receiverOptions: receiverOptions,
-            cancellationToken: stoppingToken);
+        try
+        {
+            await _bot.ReceiveAsync(
+                updateHandler: (_, update, ct) => HandleUpdateAsync(update, ct),
+                errorHandler: (_, exception, ct) => HandleErrorAsync(exception, ct),
+                receiverOptions: receiverOptions,
+                cancellationToken: stoppingToken);
+        }
+        catch (OperationCanceledException)
+        {
+            // Игнорируем штатную отмену
+        }
+        catch (Exception ex)
+        {
+            _logger.LogCritical(ex, "Fatal error in polling loop");
+        }
+        finally
+        {
+            _updateWriter.Complete();
+        }
     }
 
     private async Task HandleUpdateAsync(Update update, CancellationToken cancellationToken)
     {
-        await using AsyncServiceScope scope = _scopeFactory.CreateAsyncScope();
-
-        var context = new UpdateContext(update, scope.ServiceProvider, cancellationToken);
-        await _pipeline.ProcessAsync(context);
+        // Пишем update в канал (с ожиданием, если канал переполнен)
+        await _updateWriter.WriteAsync(update, cancellationToken);
     }
 
     private Task HandleErrorAsync(Exception exception, CancellationToken cancellationToken)
