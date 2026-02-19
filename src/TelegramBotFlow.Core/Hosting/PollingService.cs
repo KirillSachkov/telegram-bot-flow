@@ -9,6 +9,9 @@ using TelegramBotFlow.Core.Pipeline;
 
 namespace TelegramBotFlow.Core.Hosting;
 
+/// <summary>
+/// Фоновый сервис получения Telegram update-ов в режиме polling.
+/// </summary>
 public sealed class PollingService : BackgroundService
 {
     private readonly ITelegramBotClient _bot;
@@ -16,6 +19,13 @@ public sealed class PollingService : BackgroundService
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<PollingService> _logger;
 
+    /// <summary>
+    /// Создаёт polling-сервис с зависимостями обработки update-ов.
+    /// </summary>
+    /// <param name="bot">Клиент Telegram Bot API.</param>
+    /// <param name="pipeline">Pipeline обработки update-ов.</param>
+    /// <param name="scopeFactory">Фабрика DI scope на каждый update.</param>
+    /// <param name="logger">Логгер сервиса.</param>
     public PollingService(
         ITelegramBotClient bot,
         UpdatePipeline pipeline,
@@ -28,6 +38,11 @@ public sealed class PollingService : BackgroundService
         _logger = logger;
     }
 
+    /// <summary>
+    /// Запускает цикл получения обновлений от Telegram.
+    /// </summary>
+    /// <param name="stoppingToken">Токен остановки hosted-сервиса.</param>
+    /// <returns>Задача жизненного цикла сервиса.</returns>
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         var receiverOptions = new ReceiverOptions

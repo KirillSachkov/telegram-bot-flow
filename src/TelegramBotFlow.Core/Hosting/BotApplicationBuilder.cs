@@ -7,10 +7,24 @@ using TelegramBotFlow.Core.Extensions;
 
 namespace TelegramBotFlow.Core.Hosting;
 
+/// <summary>
+/// Конфигуратор и фабрика экземпляра <see cref="BotApplication"/>.
+/// </summary>
 public sealed class BotApplicationBuilder
 {
+    /// <summary>
+    /// Базовый web-builder приложения.
+    /// </summary>
     public WebApplicationBuilder WebAppBuilder { get; }
+
+    /// <summary>
+    /// Коллекция сервисов DI-контейнера.
+    /// </summary>
     public IServiceCollection Services => WebAppBuilder.Services;
+
+    /// <summary>
+    /// Конфигурация приложения.
+    /// </summary>
     public ConfigurationManager Configuration => WebAppBuilder.Configuration;
 
     internal BotApplicationBuilder(string[] args)

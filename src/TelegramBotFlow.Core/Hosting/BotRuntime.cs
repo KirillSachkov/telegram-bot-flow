@@ -53,7 +53,8 @@ internal sealed class BotRuntime
     private async Task ApplyMenuAsync(MenuBuilder menuBuilder)
     {
         ITelegramBotClient bot = _services.GetRequiredService<ITelegramBotClient>();
-        await menuBuilder.ApplyAsync(bot);
+        BotConfiguration config = _services.GetRequiredService<IOptions<BotConfiguration>>().Value;
+        await menuBuilder.ApplyAsync(bot, config.AdminUserIds);
     }
 
     private static void ReplaceUpdatePipeline(IServiceProvider services, UpdatePipeline pipeline)

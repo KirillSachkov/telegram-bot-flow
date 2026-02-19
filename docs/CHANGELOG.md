@@ -6,6 +6,39 @@
 
 ## [Unreleased]
 
+### Added
+
+- `IEndpointResult` — единый интерфейс результата обработчика (аналог `IActionResult` в ASP.NET Core):
+    - `ShowViewResult(ScreenView)` — показывает произвольное представление
+    - `NavigateBackResult(notification?)` — якорный возврат на предыдущий экран
+    - `NavigateToResult(Type)` — переход к экрану по типу
+    - `StayResult(notification?)` — остаётся в режиме ожидания ввода (`KeepPending = true`)
+    - `RefreshResult(notification?)` — перерисовывает текущий экран без изменения стека
+- `BotResults` — статическая фабрика результатов (аналог `Results` в ASP.NET Core Minimal APIs):
+    - `BotResults.ShowView(view)`, `Back(notification?)`, `Stay(notification?)`, `NavigateTo<T>()`, `Refresh(notification?)`
+- `IBotAction` — маркерный интерфейс для типизированных точек взаимодействия (кнопки и ввод)
+- `ScreenView.Button<TAction>(text)` — типизированная кнопка действия; callback ID из `typeof(TAction).Name`
+- `ScreenView.AwaitInput<TAction>()` — типизированная версия `AwaitInput`; action ID из `typeof(TAction).Name`
+- `BotApplication.MapAction<TAction>(handler)` — типизированная регистрация action-обработчика
+- `BotApplication.MapInput<TAction>(handler)` — типизированная регистрация input-обработчика
+- Полное XML-документирование (`/// <summary>`, `param`, `returns`) для ключевых классов и методов в `TelegramBotFlow.App` и `TelegramBotFlow.Core`
+
+### Changed
+
+- `HandlerDelegateFactory` упрощён: удалён `CreateForAction`, единый `DispatchAsync` для всех путей
+- `MapAction` теперь принимает `Task` (void) и `Task<IEndpointResult>` вместо `Task<ScreenView>`
+- `MapInput` теперь принимает `Task` (void = авто-назад) и `Task<IEndpointResult>` вместо только `Task<InputResult>`
+- `AdminRoadmapHandler` переведён на `MapAction<ClearRoadmapAction>` и `MapInput<SetRoadmapInput>`
+- `AdminRoadmapScreen` переведён на `Button<ClearRoadmapAction>` вместо строкового callback ID
+- `SetRoadmapInputScreen` переведён на `AwaitInput<SetRoadmapInput>()` вместо `ACTION_ID` константы
+- Актуализированы `README.md`, `docs/API.md`, `docs/ARCHITECTURE.md`
+
+### Removed
+
+- `InputResult` — заменён на `IEndpointResult` + `BotResults`
+- `ResultStrategy` — логика диспатча перенесена в `IEndpointResult.ExecuteAsync`
+- Легаси-команда `/clear_roadmap` из `AdminRoadmapHandler`
+
 ## [0.2.0] — 2026-02-18
 
 ### Added

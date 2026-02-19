@@ -49,17 +49,15 @@ public sealed class SequenceProcessorJob(
                     .Select(u => u.TelegramId)
                     .ToListAsync(ct);
 
-                foreach (var userId in eligibleUserIds)
+                foreach (long userId in eligibleUserIds)
                 {
-                    var sent = await sender.TryCopyMessageAsync(userId, step.FromChatId, step.MessageId, ct);
+                    bool sent = await sender.TryCopyMessageAsync(userId, step.FromChatId, step.MessageId, ct);
 
                     if (sent)
                     {
                         db.UserSequenceProgress.Add(new Domain.UserSequenceProgress
                         {
-                            UserId = userId,
-                            SequenceId = sequence.Id,
-                            StepId = step.Id
+                            UserId = userId, SequenceId = sequence.Id, StepId = step.Id
                         });
 
                         logger.LogInformation(

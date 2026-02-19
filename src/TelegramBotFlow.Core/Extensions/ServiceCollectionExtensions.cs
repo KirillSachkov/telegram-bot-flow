@@ -1,4 +1,4 @@
-﻿using System.Reflection;
+using System.Reflection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -6,7 +6,6 @@ using StackExchange.Redis;
 using Telegram.Bot;
 using TelegramBotFlow.Core.Context;
 using TelegramBotFlow.Core.Hosting;
-using TelegramBotFlow.Core.Pipeline;
 using TelegramBotFlow.Core.Pipeline.Middlewares;
 using TelegramBotFlow.Core.Routing;
 using TelegramBotFlow.Core.Screens;
@@ -40,7 +39,11 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ScreenManager>();
         services.AddScoped<IScreenNavigator, ScreenNavigator>();
 
+
         services.AddSingleton<ISessionStore, InMemorySessionStore>();
+
+        services.AddSingleton<InputHandlerRegistry>();
+        services.AddScoped<PendingInputMiddleware>();
 
         services.AddScoped<ErrorHandlingMiddleware>();
         services.AddScoped<LoggingMiddleware>();
@@ -58,10 +61,7 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddSessionStore<TStore>(this IServiceCollection services)
         where TStore : class, ISessionStore
     {
-        ServiceDescriptor? descriptor = services.FirstOrDefault(d => d.ServiceType == typeof(ISessionStore));
-        if (descriptor is not null)
-            services.Remove(descriptor);
-
+        services.RemoveAll<ISessionStore>();
         services.AddSingleton<ISessionStore, TStore>();
 
         return services;
@@ -80,10 +80,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IConnectionMultiplexer>(_ =>
             ConnectionMultiplexer.Connect(options.ConnectionString));
 
-        ServiceDescriptor? descriptor = services.FirstOrDefault(d => d.ServiceType == typeof(ISessionStore));
-        if (descriptor is not null)
-            services.Remove(descriptor);
-
+        services.RemoveAll<ISessionStore>();
         services.AddSingleton<ISessionStore, RedisSessionStore>();
 
         return services;
@@ -91,7 +88,7 @@ public static class ServiceCollectionExtensions
 
     public static IServiceCollection AddScreens(this IServiceCollection services, Assembly assembly)
     {
-        List<Type> screenTypes = ScreenRegistry.GetScreenTypes(assembly).ToList();
+        List<Type> screenTypes = [.. ScreenRegistry.GetScreenTypes(assembly)];
 
         foreach (Type screenType in screenTypes)
             services.TryAddScoped(screenType);
@@ -100,10 +97,7 @@ public static class ServiceCollectionExtensions
         // that populates the registry from the discovered types.
         // This avoids BuildServiceProvider() and works regardless of call order
         // relative to AddTelegramBotFlow.
-        ServiceDescriptor? existing = services.FirstOrDefault(d => d.ServiceType == typeof(ScreenRegistry));
-        if (existing is not null)
-            services.Remove(existing);
-
+        services.RemoveAll<ScreenRegistry>();
         services.AddSingleton(_ =>
         {
             var registry = new ScreenRegistry();

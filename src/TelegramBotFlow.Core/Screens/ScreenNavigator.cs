@@ -1,27 +1,47 @@
-using TelegramBotFlow.Core.Context;
+﻿using TelegramBotFlow.Core.Context;
 
 namespace TelegramBotFlow.Core.Screens;
 
+/// <summary>
+/// Реализация навигации по экранам поверх <see cref="ScreenManager"/>.
+/// </summary>
 public sealed class ScreenNavigator : IScreenNavigator
 {
     private readonly ScreenManager _screenManager;
+    private readonly IUpdateResponder _responder;
 
-    public ScreenNavigator(ScreenManager screenManager)
+    /// <summary>
+    /// Создаёт навигатор экранов.
+    /// </summary>
+    /// <param name="screenManager">Менеджер экранов.</param>
+    /// <param name="responder">Сервис ответов пользователю.</param>
+    public ScreenNavigator(ScreenManager screenManager, IUpdateResponder responder)
     {
         _screenManager = screenManager;
+        _responder = responder;
     }
 
+    /// <inheritdoc />
     public async Task NavigateToAsync(UpdateContext context, string screenId)
     {
         await _screenManager.NavigateToAsync(context, screenId);
     }
 
+    /// <inheritdoc />
     public async Task NavigateToAsync<TScreen>(UpdateContext context) where TScreen : IScreen
     {
         string screenId = ScreenRegistry.GetIdFromType(typeof(TScreen));
         await _screenManager.NavigateToAsync(context, screenId);
     }
 
+    /// <inheritdoc />
+    public async Task NavigateToAsync(UpdateContext context, Type screenType)
+    {
+        string screenId = ScreenRegistry.GetIdFromType(screenType);
+        await _screenManager.NavigateToAsync(context, screenId);
+    }
+
+    /// <inheritdoc />
     public async Task GoBackAsync(UpdateContext context)
     {
         string? previousScreen = context.Session?.PopScreen();
@@ -31,6 +51,26 @@ public sealed class ScreenNavigator : IScreenNavigator
         }
     }
 
+    /// <inheritdoc />
+    public async Task NavigateBackAsync(UpdateContext context, string? notification = null)
+    {
+        await _responder.DeleteMessageAsync(context);
+
+        string? previousScreen = context.Session?.NavigationStack is { Count: > 0 }
+            ? context.Session.NavigationStack[^1]
+            : context.Session?.CurrentScreen;
+
+        if (previousScreen is not null)
+        {
+            context.Session!.PopScreen();
+            await _screenManager.RenderScreenAsync(context, previousScreen, pushToStack: false);
+        }
+
+        if (notification is not null)
+            await _responder.AnswerCallbackAsync(context, notification);
+    }
+
+    /// <inheritdoc />
     public async Task RefreshScreenAsync(UpdateContext context)
     {
         if (context.Session?.CurrentScreen is { } screen)
@@ -39,6 +79,7 @@ public sealed class ScreenNavigator : IScreenNavigator
         }
     }
 
+    /// <inheritdoc />
     public async Task ShowViewAsync(UpdateContext context, ScreenView view)
     {
         await _screenManager.ShowViewAsync(context, view);

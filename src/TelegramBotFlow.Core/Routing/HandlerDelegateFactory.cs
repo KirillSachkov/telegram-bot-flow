@@ -8,70 +8,128 @@ namespace TelegramBotFlow.Core.Routing;
 
 public static class HandlerDelegateFactory
 {
+    private static readonly Type _taskEndpointResultType = typeof(Task<IEndpointResult>);
+
+    /// <summary>
+    /// Creates a delegate for general-purpose handlers.
+    /// Supported return types: <c>Task</c> (void) and <c>Task&lt;IEndpointResult&gt;</c>.
+    /// </summary>
     public static UpdateDelegate Create(Delegate handler)
     {
-        MethodInfo method = handler.Method;
-        ParameterInfo[] parameters = method.GetParameters();
+        MethodInfo m = handler.Method;
+        ValidateReturnType(m.ReturnType);
+        Func<UpdateContext, string?, object?>[] resolvers = BuildResolvers(m.GetParameters());
         object? target = handler.Target;
 
         return async context =>
         {
-            object?[] args = ResolveArguments(parameters, context, callbackAction: null);
-            object? result = method.Invoke(target, args);
-
-            if (result is Task task)
-                await task;
+            object?[] args = ApplyResolvers(resolvers, context, callbackAction: null);
+            object? result = m.Invoke(target, args);
+            await DispatchAsync(result, context);
         };
     }
 
-    public static UpdateDelegate CreateForAction(Delegate handler, string callbackId)
+    /// <summary>
+    /// Creates a delegate for input handlers.
+    /// Supported return types: <c>Task</c> (void = auto-back) and <c>Task&lt;IEndpointResult&gt;</c>.
+    /// Clears <c>PendingInputActionId</c> before invocation; restores it when result has <c>KeepPending = true</c>.
+    /// </summary>
+    public static UpdateDelegate CreateForInput(Delegate handler, string actionId)
     {
-        MethodInfo method = handler.Method;
-        ParameterInfo[] parameters = method.GetParameters();
+        MethodInfo m = handler.Method;
+        ValidateInputReturnType(m.ReturnType);
+        var resolvers = BuildResolvers(m.GetParameters());
         object? target = handler.Target;
+        bool returnsEndpointResult = m.ReturnType == _taskEndpointResultType;
 
         return async context =>
         {
-            object?[] args = ResolveArguments(parameters, context, callbackAction: null);
-            object? result = method.Invoke(target, args);
+            context.Session?.SetPending(null);
 
-            if (result is Task<ScreenView> screenViewTask)
-            {
-                ScreenView view = await screenViewTask;
-                IScreenNavigator navigator = context.RequestServices.GetRequiredService<IScreenNavigator>();
-                await navigator.ShowViewAsync(context, view);
-            }
-            else if (result is Task task)
-            {
-                await task;
-            }
+            object?[] args = ApplyResolvers(resolvers, context, callbackAction: null);
+            object? result = m.Invoke(target, args);
+
+            IEndpointResult er = returnsEndpointResult && result is Task<IEndpointResult> t
+                ? await t
+                : await WrapVoidAsync(result);
+
+            if (er.KeepPending)
+                context.Session?.SetPending(actionId);
+
+            IScreenNavigator navigator = context.RequestServices.GetRequiredService<IScreenNavigator>();
+            await er.ExecuteAsync(context, navigator);
         };
     }
 
+    /// <summary>
+    /// Creates a delegate for callback-group handlers.
+    /// The first <c>string</c> parameter receives the action part after <c>{prefix}:</c>.
+    /// </summary>
     public static UpdateDelegate CreateForCallbackGroup(Delegate handler, string prefix)
     {
-        MethodInfo method = handler.Method;
-        ParameterInfo[] parameters = method.GetParameters();
+        MethodInfo m = handler.Method;
+        var resolvers = BuildResolvers(m.GetParameters(), hasCallbackAction: true);
         object? target = handler.Target;
 
         return async context =>
         {
             string action = context.CallbackData![(prefix.Length + 1)..];
-            object?[] args = ResolveArguments(parameters, context, callbackAction: action);
-            object? result = method.Invoke(target, args);
-
-            if (result is Task task)
-                await task;
+            object?[] args = ApplyResolvers(resolvers, context, callbackAction: action);
+            object? result = m.Invoke(target, args);
+            await DispatchAsync(result, context);
         };
     }
 
-    private static object?[] ResolveArguments(
-        ParameterInfo[] parameters,
-        UpdateContext context,
-        string? callbackAction)
+    private static async Task DispatchAsync(object? result, UpdateContext context)
     {
-        object?[] args = new object?[parameters.Length];
-        bool actionConsumed = false;
+        if (result is Task<IEndpointResult> t)
+        {
+            IEndpointResult er = await t;
+            IScreenNavigator navigator = context.RequestServices.GetRequiredService<IScreenNavigator>();
+            await er.ExecuteAsync(context, navigator);
+        }
+        else if (result is Task task)
+        {
+            await task;
+        }
+    }
+
+    private static async Task<IEndpointResult> WrapVoidAsync(object? result)
+    {
+        if (result is Task task)
+            await task;
+        return new NavigateBackResult();
+    }
+
+    private static void ValidateReturnType(Type returnType)
+    {
+        if (returnType == typeof(void) || returnType == typeof(Task) || returnType == _taskEndpointResultType)
+            return;
+
+        throw new InvalidOperationException(
+            $"Handler return type '{returnType.Name}' is not supported. " +
+            $"Supported types: Task (void), Task<IEndpointResult>.");
+    }
+
+    private static void ValidateInputReturnType(Type returnType)
+    {
+        if (returnType == typeof(void) || returnType == typeof(Task) || returnType == _taskEndpointResultType)
+            return;
+
+        throw new InvalidOperationException(
+            $"MapInput handler must return Task or Task<IEndpointResult>, got '{returnType.Name}'.");
+    }
+
+    /// <summary>
+    /// Pre-builds one resolver function per parameter at registration time.
+    /// On each request only a simple array pass is needed — no type-checking per call.
+    /// </summary>
+    private static Func<UpdateContext, string?, object?>[] BuildResolvers(
+        ParameterInfo[] parameters,
+        bool hasCallbackAction = false)
+    {
+        bool callbackConsumed = false;
+        var resolvers = new Func<UpdateContext, string?, object?>[parameters.Length];
 
         for (int i = 0; i < parameters.Length; i++)
         {
@@ -79,23 +137,36 @@ public static class HandlerDelegateFactory
 
             if (paramType == typeof(UpdateContext))
             {
-                args[i] = context;
+                resolvers[i] = static (ctx, _) => ctx;
             }
             else if (paramType == typeof(CancellationToken))
             {
-                args[i] = context.CancellationToken;
+                resolvers[i] = static (ctx, _) => ctx.CancellationToken;
             }
-            else if (paramType == typeof(string) && callbackAction is not null && !actionConsumed)
+            else if (hasCallbackAction && paramType == typeof(string) && !callbackConsumed)
             {
-                args[i] = callbackAction;
-                actionConsumed = true;
+                callbackConsumed = true;
+                resolvers[i] = static (_, action) => action;
             }
             else
             {
-                args[i] = context.RequestServices.GetRequiredService(paramType);
+                // Capture the exact service type to avoid closure over loop variable
+                Type serviceType = paramType;
+                resolvers[i] = (ctx, _) => ctx.RequestServices.GetRequiredService(serviceType);
             }
         }
 
+        return resolvers;
+    }
+
+    private static object?[] ApplyResolvers(
+        Func<UpdateContext, string?, object?>[] resolvers,
+        UpdateContext context,
+        string? callbackAction)
+    {
+        object?[] args = new object?[resolvers.Length];
+        for (int i = 0; i < resolvers.Length; i++)
+            args[i] = resolvers[i](context, callbackAction);
         return args;
     }
 }

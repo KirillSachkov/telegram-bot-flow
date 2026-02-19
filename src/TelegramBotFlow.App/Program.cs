@@ -1,4 +1,4 @@
-﻿using Serilog;
+using Serilog;
 using TelegramBotFlow.Core.Data;
 using TelegramBotFlow.Core.Data.Middleware;
 using TelegramBotFlow.Core.Endpoints;
@@ -24,10 +24,10 @@ try
     app.UseSession();
     app.UseAccessPolicy();
     app.Use<UserTrackingMiddleware>();
+    app.UsePendingInput();
 
     app.SetMenu(menu => menu
-        .Command("start", "Главное меню")
-        .Command("help", "Справка"));
+        .Command("start", "Главное меню"));
 
     app.MapBotEndpoints();
 

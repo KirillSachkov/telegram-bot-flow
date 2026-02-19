@@ -1,12 +1,18 @@
+﻿using Microsoft.EntityFrameworkCore;
+using Telegram.Bot;
+using TelegramBotFlow.Core.Context;
+using TelegramBotFlow.Core.Data;
 using TelegramBotFlow.Core.Endpoints;
 using TelegramBotFlow.Core.Hosting;
-using TelegramBotFlow.Core.Screens;
 
 namespace TelegramBotFlow.App.Handlers;
 
+/// <summary>
+/// Обрабатывает кнопку получения roadmap и отправляет связанное сообщение.
+/// </summary>
 public sealed class RoadmapHandler : IBotEndpoint
 {
-    private const string ROADMAP_TEXT =
+    private const string ROADMAP_FALLBACK_TEXT =
         "<b>🗺 Roadmap</b>\n\n" +
         "<b>Q1 2025</b>\n" +
         "• Базовый pipeline и middleware\n" +
@@ -21,9 +27,32 @@ public sealed class RoadmapHandler : IBotEndpoint
         "• Webhook + Polling dual-mode\n" +
         "• Документация и примеры";
 
+    /// <summary>
+    /// Регистрирует callback-маршрут <c>get_roadmap</c>.
+    /// </summary>
+    /// <param name="app">Экземпляр приложения бота для регистрации маршрутов.</param>
     public void MapEndpoint(BotApplication app)
     {
-        app.MapAction("get_roadmap", () =>
-            Task.FromResult(new ScreenView(ROADMAP_TEXT).MenuButton()));
+        app.MapCallback("get_roadmap",
+            async (UpdateContext ctx, BotDbContext db, ITelegramBotClient bot, IUpdateResponder responder) =>
+            {
+                await responder.AnswerCallbackAsync(ctx);
+
+                BotSettings? settings = await db.Settings
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(s => s.Id == BotSettings.SINGLETON_ID, ctx.CancellationToken);
+
+                if (settings?.Roadmap is { } roadmap)
+                {
+                    await bot.CopyMessage(
+                        ctx.ChatId,
+                        roadmap.SourceChatId,
+                        roadmap.SourceMessageId,
+                        cancellationToken: ctx.CancellationToken);
+                    return;
+                }
+
+                await responder.ReplyAsync(ctx, ROADMAP_FALLBACK_TEXT);
+            });
     }
 }

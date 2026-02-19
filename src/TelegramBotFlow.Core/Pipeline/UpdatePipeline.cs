@@ -1,7 +1,10 @@
-using TelegramBotFlow.Core.Context;
+﻿using TelegramBotFlow.Core.Context;
 
 namespace TelegramBotFlow.Core.Pipeline;
 
+/// <summary>
+/// Выполняет цепочку middleware и терминальный обработчик для одного update-а.
+/// </summary>
 public sealed class UpdatePipeline
 {
     private readonly UpdateDelegate _pipeline;
@@ -11,8 +14,19 @@ public sealed class UpdatePipeline
         _pipeline = pipeline;
     }
 
+    /// <summary>
+    /// Запускает обработку update-а через собранный pipeline.
+    /// </summary>
+    /// <param name="context">Контекст update-а.</param>
+    /// <returns>Задача обработки update-а.</returns>
     public Task ProcessAsync(UpdateContext context) => _pipeline(context);
 
+    /// <summary>
+    /// Собирает pipeline из списка middleware и терминального обработчика.
+    /// </summary>
+    /// <param name="middlewares">Middleware-фабрики, оборачивающие следующий делегат.</param>
+    /// <param name="terminal">Финальный обработчик после middleware.</param>
+    /// <returns>Готовый к выполнению экземпляр pipeline.</returns>
     public static UpdatePipeline Build(
         IReadOnlyList<Func<UpdateDelegate, UpdateDelegate>> middlewares,
         UpdateDelegate terminal)

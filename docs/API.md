@@ -1,4 +1,4 @@
-# API Reference
+﻿# API Reference
 
 ## BotApplication
 
@@ -11,12 +11,13 @@ var builder = BotApplication.CreateBuilder(args);
 
 builder.Services.AddBotEndpoints(Assembly.GetExecutingAssembly());
 
-var app = BotApplication.Build(builder);
+var app = builder.Build();
 
 app.UseErrorHandling();
 app.UseLogging();
 app.UseSession();
 app.UseAccessPolicy();
+app.UsePendingInput();
 
 app.MapBotEndpoints();
 await app.RunAsync();
@@ -24,29 +25,32 @@ await app.RunAsync();
 
 ### Middleware
 
-| Метод                | Описание                                              |
-| -------------------- | ----------------------------------------------------- |
-| `UseErrorHandling()` | Ловит исключения, логирует и отправляет error message |
-| `UseLogging()`       | Логирует вход/выход и время обработки                 |
-| `UseSession()`       | Загружает и сохраняет `UserSession`                   |
-| `UseAccessPolicy()`  | Заполняет `UpdateContext.IsAdmin`                     |
-| `Use<TMiddleware>()` | Подключает кастомный `IUpdateMiddleware`              |
+| Метод                | Описание                                               |
+| -------------------- | ------------------------------------------------------ |
+| `UseErrorHandling()` | Ловит исключения, логирует и отправляет error message  |
+| `UseLogging()`       | Логирует вход/выход и время обработки                  |
+| `UseSession()`       | Загружает и сохраняет `UserSession`                    |
+| `UseAccessPolicy()`  | Заполняет `UpdateContext.IsAdmin`                      |
+| `UsePendingInput()`  | Маршрутизирует следующий текст в `MapInput`-обработчик |
+| `Use<TMiddleware>()` | Подключает кастомный `IUpdateMiddleware`               |
 
 ### Routing
 
-| Метод                               | Что обрабатывает                         | Пример                                                             |
-| ----------------------------------- | ---------------------------------------- | ------------------------------------------------------------------ |
-| `MapCommand(command, handler)`      | Команды                                  | `app.MapCommand("/start", handler)`                                |
-| `MapCallback(pattern, handler)`     | Callback-кнопки                          | `app.MapCallback("profile", handler)`                              |
-| `MapAction(callbackId, handler)`    | Action-кнопки (авто-ответ + ScreenView)  | `app.MapAction("get_roadmap", handler)`                            |
-| `MapCallbackGroup(prefix, handler)` | Callback с префиксом                     | `app.MapCallbackGroup("broadcast", handler)`                       |
-| `MapMessage(predicate, handler)`    | Сообщения по предикату                   | `app.MapMessage(ctx => ctx.MessageText == "Да", handler)`          |
-| `MapUpdate(predicate, handler)`     | Любой update по предикату                | `app.MapUpdate(ctx => ctx.Update.Message?.Photo != null, handler)` |
-| `MapFallback(handler)`              | Fallback, если route не найден           | `app.MapFallback(handler)`                                         |
+| Метод                               | Что обрабатывает                        | Пример                                                             |
+| ----------------------------------- | --------------------------------------- | ------------------------------------------------------------------ |
+| `MapCommand(command, handler)`      | Команды                                 | `app.MapCommand("/start", handler)`                                |
+| `MapCallback(pattern, handler)`     | Callback-кнопки                         | `app.MapCallback("profile", handler)`                              |
+| `MapAction(callbackId, handler)`    | Action-кнопки (авто-ответ + ScreenView) | `app.MapAction("get_roadmap", handler)`                            |
+| `MapCallbackGroup(prefix, handler)` | Callback с префиксом                    | `app.MapCallbackGroup("broadcast", handler)`                       |
+| `MapInput(actionId, handler)`       | Ожидаемый пользовательский ввод         | `app.MapInput("roadmap_set_message", handler)`                     |
+| `MapMessage(predicate, handler)`    | Сообщения по предикату                  | `app.MapMessage(ctx => ctx.MessageText == "Да", handler)`          |
+| `MapUpdate(predicate, handler)`     | Любой update по предикату               | `app.MapUpdate(ctx => ctx.Update.Message?.Photo != null, handler)` |
+| `MapFallback(handler)`              | Fallback, если route не найден          | `app.MapFallback(handler)`                                         |
 
 #### MapAction
 
 `MapAction` — специализированный `MapCallback` для кнопок-действий:
+
 - автоматически отвечает на callback (убирает часики с кнопки)
 - если обработчик возвращает `ScreenView`, показывает его в nav-сообщении с кнопкой "← Назад"
 
@@ -59,8 +63,7 @@ app.MapAction("get_roadmap", () =>
 
 ```csharp
 app.SetMenu(menu => menu
-    .Command("start", "Главное меню")
-    .Command("help", "Справка"));
+    .Command("start", "Главное меню"));
 ```
 
 Устанавливает список команд бота, отображаемый при нажатии `/` в Telegram.
@@ -208,24 +211,24 @@ new ScreenView("Текст экрана")
 
 #### Кнопки навигации
 
-| Метод | Описание |
-| ----- | -------- |
-| `NavigateButton<TScreen>(text)` | Кнопка перехода к экрану (`nav:{screenId}`) |
-| `Button(text, callbackData)` | Произвольная callback-кнопка |
-| `UrlButton(text, url)` | Кнопка-ссылка |
-| `Row()` | Начать новую строку кнопок |
-| `BackButton(text?)` | Кнопка "← Назад" (pop стека навигации) |
-| `CloseButton(text?)` | Кнопка "← Назад" без изменения стека (для action-результатов) |
-| `MenuButton(text?)` | Кнопка "☰ Главное меню" (полный сброс истории навигации) |
+| Метод                           | Описание                                                      |
+| ------------------------------- | ------------------------------------------------------------- |
+| `NavigateButton<TScreen>(text)` | Кнопка перехода к экрану (`nav:{screenId}`)                   |
+| `Button(text, callbackData)`    | Произвольная callback-кнопка                                  |
+| `UrlButton(text, url)`          | Кнопка-ссылка                                                 |
+| `Row()`                         | Начать новую строку кнопок                                    |
+| `BackButton(text?)`             | Кнопка "← Назад" (pop стека навигации)                        |
+| `CloseButton(text?)`            | Кнопка "← Назад" без изменения стека (для action-результатов) |
+| `MenuButton(text?)`             | Кнопка "☰ Главное меню" (полный сброс истории навигации)     |
 
 #### Медиа
 
-| Метод | Описание |
-| ----- | -------- |
-| `WithPhoto(url)` / `WithPhoto(InputFile)` | Фото |
-| `WithVideo(InputFile)` | Видео |
-| `WithAnimation(InputFile)` | GIF / анимация |
-| `WithDocument(InputFile)` | Документ |
+| Метод                                     | Описание       |
+| ----------------------------------------- | -------------- |
+| `WithPhoto(url)` / `WithPhoto(InputFile)` | Фото           |
+| `WithVideo(InputFile)`                    | Видео          |
+| `WithAnimation(InputFile)`                | GIF / анимация |
+| `WithDocument(InputFile)`                 | Документ       |
 
 ```csharp
 new ScreenView("Описание")

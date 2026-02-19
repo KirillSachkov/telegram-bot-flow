@@ -15,8 +15,8 @@ public static class DependencyInjectionExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        var connectionString = configuration.GetConnectionString("Database")
-                               ?? throw new InvalidOperationException("Connection string 'Database' not found.");
+        string connectionString = configuration.GetConnectionString("Database")
+                                  ?? throw new InvalidOperationException("Connection string 'Database' not found.");
 
         services.AddDbContext<BotDbContext>(options =>
             options.UseNpgsql(connectionString));
@@ -42,8 +42,8 @@ public static class DependencyInjectionExtensions
         where TUser : BotUser, new()
         where TContext : BotDbContext<TUser>
     {
-        var connectionString = configuration.GetConnectionString("Database")
-                               ?? throw new InvalidOperationException("Connection string 'Database' not found.");
+        string connectionString = configuration.GetConnectionString("Database")
+                                  ?? throw new InvalidOperationException("Connection string 'Database' not found.");
 
         services.AddDbContext<TContext>(options =>
             options.UseNpgsql(connectionString));

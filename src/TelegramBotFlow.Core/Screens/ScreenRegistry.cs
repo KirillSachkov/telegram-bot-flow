@@ -1,16 +1,27 @@
-using System.Reflection;
+﻿using System.Reflection;
 using System.Text;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace TelegramBotFlow.Core.Screens;
 
+/// <summary>
+/// Реестр экранов с конвенционным вычислением идентификаторов.
+/// </summary>
 public sealed class ScreenRegistry
 {
     private readonly Dictionary<string, Type> _screens = [];
 
+    /// <summary>
+    /// Регистрирует экран по типу generic-параметра.
+    /// </summary>
+    /// <typeparam name="TScreen">Тип экрана.</typeparam>
     public void Register<TScreen>() where TScreen : class, IScreen =>
         Register(typeof(TScreen));
 
+    /// <summary>
+    /// Регистрирует экран по типу с конвенционным ID.
+    /// </summary>
+    /// <param name="screenType">Тип экрана.</param>
     public void Register(Type screenType)
     {
         if (!typeof(IScreen).IsAssignableFrom(screenType))
@@ -19,6 +30,11 @@ public sealed class ScreenRegistry
         _screens[GetIdFromType(screenType)] = screenType;
     }
 
+    /// <summary>
+    /// Регистрирует экран с явно заданным идентификатором.
+    /// </summary>
+    /// <param name="screenId">Явный идентификатор экрана.</param>
+    /// <param name="screenType">Тип экрана.</param>
     public void RegisterWithId(string screenId, Type screenType)
     {
         if (!typeof(IScreen).IsAssignableFrom(screenType))
@@ -27,6 +43,12 @@ public sealed class ScreenRegistry
         _screens[screenId] = screenType;
     }
 
+    /// <summary>
+    /// Разрешает экземпляр экрана по ID из DI-контейнера.
+    /// </summary>
+    /// <param name="screenId">Идентификатор экрана.</param>
+    /// <param name="services">Провайдер сервисов.</param>
+    /// <returns>Экземпляр экрана.</returns>
     public IScreen Resolve(string screenId, IServiceProvider services)
     {
         if (!_screens.TryGetValue(screenId, out Type? screenType))
@@ -35,8 +57,17 @@ public sealed class ScreenRegistry
         return (IScreen)services.GetRequiredService(screenType);
     }
 
+    /// <summary>
+    /// Проверяет наличие экрана в реестре.
+    /// </summary>
+    /// <param name="screenId">Идентификатор экрана.</param>
+    /// <returns><see langword="true"/>, если экран зарегистрирован.</returns>
     public bool HasScreen(string screenId) => _screens.ContainsKey(screenId);
 
+    /// <summary>
+    /// Возвращает набор зарегистрированных идентификаторов экранов.
+    /// </summary>
+    /// <returns>Коллекция ID экранов.</returns>
     public IReadOnlyCollection<string> GetRegisteredIds() => _screens.Keys;
 
     /// <summary>

@@ -4,24 +4,82 @@ using TelegramBotFlow.Core.Sessions;
 
 namespace TelegramBotFlow.Core.Context;
 
+/// <summary>
+/// Контекст обработки одного Telegram update с вычисленными полями и runtime-состоянием.
+/// </summary>
 public sealed class UpdateContext
 {
+    /// <summary>
+    /// Исходный Telegram update.
+    /// </summary>
     public Update Update { get; }
+
+    /// <summary>
+    /// Scope-провайдер сервисов для текущей обработки update-а.
+    /// </summary>
     internal IServiceProvider RequestServices { get; }
+
+    /// <summary>
+    /// Токен отмены обработки.
+    /// </summary>
     public CancellationToken CancellationToken { get; }
 
+    /// <summary>
+    /// Сессия пользователя, если подключено session middleware.
+    /// </summary>
     public UserSession? Session { get; set; }
+
+    /// <summary>
+    /// Флаг административного доступа, вычисляемый политикой доступа.
+    /// </summary>
     public bool IsAdmin { get; set; }
 
+    /// <summary>
+    /// Идентификатор чата из update-а.
+    /// </summary>
     public long ChatId { get; }
+
+    /// <summary>
+    /// Идентификатор пользователя из update-а.
+    /// </summary>
     public long UserId { get; }
+
+    /// <summary>
+    /// Идентификатор сообщения, если доступен.
+    /// </summary>
     public int? MessageId { get; }
+
+    /// <summary>
+    /// Данные callback-кнопки, если update является callback.
+    /// </summary>
     public string? CallbackData { get; }
+
+    /// <summary>
+    /// Текст входящего сообщения, если присутствует.
+    /// </summary>
     public string? MessageText { get; }
+
+    /// <summary>
+    /// Аргумент команды после пробела, например в <c>/start value</c>.
+    /// </summary>
     public string? CommandArgument { get; }
+
+    /// <summary>
+    /// Тип входящего update.
+    /// </summary>
     public UpdateType UpdateType { get; }
+
+    /// <summary>
+    /// Текущий экран из пользовательской сессии.
+    /// </summary>
     public string? Screen => Session?.CurrentScreen;
 
+    /// <summary>
+    /// Инициализирует контекст обработки update-а.
+    /// </summary>
+    /// <param name="update">Исходный Telegram update.</param>
+    /// <param name="requestServices">Scope-провайдер сервисов текущего запроса.</param>
+    /// <param name="cancellationToken">Токен отмены обработки.</param>
     public UpdateContext(
         Update update,
         IServiceProvider requestServices,

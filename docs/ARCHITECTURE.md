@@ -156,7 +156,10 @@ Minimal API-стиль регистрации:
 
 - `MapCommand("/start", handler)` — команды (case-insensitive, поддержка @botname)
 - `MapCallback("action:*", handler)` — callback-кнопки с wildcard
-- `MapAction("callbackId", handler)` — action-кнопки: авто-ответ на callback + рендер `ScreenView` если возвращён
+- `MapAction("callbackId", handler)` — action-кнопка по строковому ID
+- `MapAction<TAction>(handler)` — action-кнопка по типу (`typeof(TAction).Name`)
+- `MapInput("actionId", handler)` — обработчик свободного текста при активном `PendingInputActionId`
+- `MapInput<TAction>(handler)` — обработчик текста по типу (`typeof(TAction).Name`)
 - `MapCallbackGroup("prefix", handler)` — callback по префиксу, action приходит в `string` параметр
 - `MapMessage(predicate, handler)` — текст по предикату
 - `MapUpdate(predicate, handler)` — любой тип Update
@@ -168,6 +171,51 @@ Minimal API-стиль регистрации:
 - остальные параметры — из request scope DI
 
 Первый подходящий маршрут выигрывает.
+
+### IEndpointResult и BotResults
+
+Обработчики (action, input, command) возвращают `Task<IEndpointResult>` или `Task` (void):
+
+```csharp
+app.MapAction<ClearAction>(async (UpdateContext ctx, AppDb db) =>
+{
+    await ClearAsync(db, ctx.CancellationToken);
+    return BotResults.Refresh("✅ Удалено");
+});
+
+app.MapInput<MessageInput>(async (UpdateContext ctx, AppDb db) =>
+{
+    await SaveAsync(db, ctx.MessageText, ctx.CancellationToken);
+    return BotResults.Back("✅ Сохранено");
+});
+```
+
+Доступные результаты через `BotResults`:
+
+| Метод | Поведение |
+|---|---|
+| `BotResults.ShowView(view)` | Показывает произвольный `ScreenView` |
+| `BotResults.Back(msg?)` | Возврат на предыдущий экран; уведомление опционально |
+| `BotResults.NavigateTo<TScreen>()` | Переход к указанному экрану |
+| `BotResults.Refresh(msg?)` | Перерисовка текущего экрана |
+| `BotResults.Stay(msg?)` | Остаётся в режиме ожидания ввода (`KeepPending = true`) |
+
+### Typed Actions (IBotAction)
+
+Для типобезопасной связи кнопок с обработчиками используется маркерный интерфейс `IBotAction`:
+
+```csharp
+public struct ClearRoadmapAction : IBotAction;
+
+// View — кнопка ссылается на тип
+new ScreenView("...")
+    .Button<ClearRoadmapAction>("🗑 Удалить")
+
+// Handler — обработчик ссылается на тот же тип
+app.MapAction<ClearRoadmapAction>(...);
+```
+
+Аналогично для ввода: `AwaitInput<TAction>()` в `ScreenView` + `MapInput<TAction>(handler)` в обработчике. Строковый `ACTION_ID` не нужен.
 
 ### IBotEndpoint (Auto-Discovery)
 
@@ -194,7 +242,7 @@ BotApplication app = builder.Build();
 app.MapBotEndpoints();
 ```
 
-`builder.Build()` автоматически вызывает `AddBotEndpoints` для entry assembly.
+`builder.Build()` автоматически вызывает `AddBotEndpoints` и `AddScreens` для entry assembly.
 `MapBotEndpoints` резолвит их и вызывает `MapEndpoint` для каждого.
 
 ### Screens и навигация
@@ -237,6 +285,10 @@ app.UseLogging();
 app.UseSession();
 app.UseAccessPolicy();
 app.Use<UserTrackingMiddleware>();
+app.UsePendingInput();
+
+app.SetMenu(menu => menu
+  .Command("start", "Главное меню"));
 
 app.MapBotEndpoints();
 await app.RunAsync();

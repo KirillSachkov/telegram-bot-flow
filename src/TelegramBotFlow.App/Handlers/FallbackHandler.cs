@@ -4,8 +4,15 @@ using TelegramBotFlow.Core.Hosting;
 
 namespace TelegramBotFlow.App.Handlers;
 
+/// <summary>
+/// Регистрирует fallback-обработчик для обновлений без совпавшего маршрута.
+/// </summary>
 public sealed class FallbackHandler : IBotEndpoint
 {
+    /// <summary>
+    /// Добавляет fallback-маршрут с подсказкой пользователю.
+    /// </summary>
+    /// <param name="app">Экземпляр приложения бота для регистрации маршрутов.</param>
     public void MapEndpoint(BotApplication app)
     {
         app.MapFallback(async (UpdateContext ctx, IUpdateResponder responder) =>

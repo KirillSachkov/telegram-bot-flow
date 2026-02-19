@@ -1,4 +1,4 @@
-using TelegramBotFlow.App.Screens;
+﻿using TelegramBotFlow.App.Screens;
 using TelegramBotFlow.Core.Context;
 using TelegramBotFlow.Core.Endpoints;
 using TelegramBotFlow.Core.Hosting;
@@ -6,8 +6,15 @@ using TelegramBotFlow.Core.Screens;
 
 namespace TelegramBotFlow.App.Handlers;
 
+/// <summary>
+/// Обрабатывает callback-навигацию <c>nav:*</c> между экранами.
+/// </summary>
 public sealed class NavigationHandler : IBotEndpoint
 {
+    /// <summary>
+    /// Регистрирует групповой callback-маршрут для навигационных действий.
+    /// </summary>
+    /// <param name="app">Экземпляр приложения бота для регистрации маршрутов.</param>
     public void MapEndpoint(BotApplication app)
     {
         app.MapCallbackGroup("nav", async (

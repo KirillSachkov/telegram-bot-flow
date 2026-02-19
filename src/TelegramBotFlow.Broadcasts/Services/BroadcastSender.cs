@@ -27,11 +27,11 @@ public sealed class BroadcastSender(
         int success = 0;
         int failure = 0;
 
-        foreach (var batch in users.Chunk(BATCH_SIZE))
+        foreach (long[] batch in users.Chunk(BATCH_SIZE))
         {
-            foreach (var userId in batch)
+            foreach (long userId in batch)
             {
-                var sent = await TryCopyMessageAsync(userId, fromChatId, messageId, ct);
+                bool sent = await TryCopyMessageAsync(userId, fromChatId, messageId, ct);
                 if (sent)
                     success++;
                 else

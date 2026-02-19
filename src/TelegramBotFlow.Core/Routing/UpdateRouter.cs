@@ -1,8 +1,11 @@
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using TelegramBotFlow.Core.Pipeline;
 
 namespace TelegramBotFlow.Core.Routing;
 
+/// <summary>
+/// Сопоставляет входящий update с первым подходящим маршрутом и вызывает его обработчик.
+/// </summary>
 public sealed class UpdateRouter
 {
     private readonly List<RouteEntry> _routes = [];
@@ -14,10 +17,22 @@ public sealed class UpdateRouter
         _logger = logger;
     }
 
+    /// <summary>
+    /// Добавляет маршрут в таблицу маршрутизации.
+    /// </summary>
+    /// <param name="route">Маршрут для регистрации.</param>
     public void AddRoute(RouteEntry route) => _routes.Add(route);
 
+    /// <summary>
+    /// Устанавливает fallback-обработчик при отсутствии совпавшего маршрута.
+    /// </summary>
+    /// <param name="handler">Fallback-делегат.</param>
     public void SetFallback(UpdateDelegate handler) => _fallbackHandler = handler;
 
+    /// <summary>
+    /// Строит терминальный делегат маршрутизации с сортировкой по приоритетам.
+    /// </summary>
+    /// <returns>Делегат, обрабатывающий update по зарегистрированным маршрутам.</returns>
     public UpdateDelegate BuildTerminal()
     {
         List<RouteEntry> sorted = _routes
