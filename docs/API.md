@@ -66,6 +66,16 @@ app.MapAction("get_roadmap", () =>
     Task.FromResult(new ScreenView("Текст ответа").MenuButton()));
 ```
 
+Также поддерживает типизированные параметры (Payloads), сериализуемые в сессию для обхода ограничения Telegram в 64 байта:
+
+```csharp
+// Регистрирует маршрут, который автоматически десериализует TPayload
+app.MapAction<DeleteUserAction, DeletePayload>(async (DeletePayload payload) =>
+{
+    // payload типизирован
+});
+```
+
 ### SetMenu (Меню бота)
 
 ```csharp
@@ -259,15 +269,17 @@ new ScreenView("Текст экрана")
 
 #### Кнопки навигации (Navigation Buttons)
 
-| Метод / Method                  | Описание / Description                                                                    |
-| ------------------------------- | ----------------------------------------------------------------------------------------- |
-| `NavigateButton<TScreen>(text)` | Кнопка перехода к экрану / Navigate to screen button (`nav:{screenId}`)                   |
-| `Button(text, callbackData)`    | Произвольная callback-кнопка / Arbitrary callback button                                  |
-| `UrlButton(text, url)`          | Кнопка-ссылка / URL link button                                                           |
-| `Row()`                         | Начать новую строку кнопок / Start a new button row                                       |
-| `BackButton(text?)`             | Кнопка "← Назад" / "← Back" button (pop навигационного стека / pops nav stack)            |
-| `CloseButton(text?)`            | Кнопка "← Назад" без изменения стека / "← Back" without stack change (for action results) |
-| `MenuButton(text?)`             | Кнопка "☰ Главное меню" / "☰ Main Menu" (полный сброс истории / full history reset)     |
+| Метод / Method                             | Описание / Description                                                                    |
+| ------------------------------------------ | ----------------------------------------------------------------------------------------- |
+| `NavigateButton<TScreen>(text)`            | Кнопка перехода к экрану / Navigate to screen button (`nav:{screenId}`)                   |
+| `Button(text, callbackData)`               | Произвольная callback-кнопка / Arbitrary callback button                                  |
+| `Button<TAction>(text)`                    | Типизированная кнопка действия / Typed action button                                      |
+| `Button<TAction, TPayload>(text, payload)` | Типизированная кнопка с объектом payload / Typed action button with payload object        |
+| `UrlButton(text, url)`                     | Кнопка-ссылка / URL link button                                                           |
+| `Row()`                                    | Начать новую строку кнопок / Start a new button row                                       |
+| `BackButton(text?)`                        | Кнопка "← Назад" / "← Back" button (pop навигационного стека / pops nav stack)            |
+| `CloseButton(text?)`                       | Кнопка "← Назад" без изменения стека / "← Back" without stack change (for action results) |
+| `MenuButton(text?)`                        | Кнопка "☰ Главное меню" / "☰ Main Menu" (полный сброс истории / full history reset)     |
 
 #### Медиа (Media)
 
@@ -303,3 +315,4 @@ new ScreenView("Описание")
 | `PushScreen/PopScreen`    | Навигационный стек экранов / Navigation screen stack           |
 | `ClearCurrentScreen`      | Очистка только текущего экрана / Clear only the current screen |
 | `Clear`                   | Полный сброс сессии / Full session reset                       |
+

@@ -8,26 +8,26 @@ public sealed class UserSequenceProgressConfiguration : IEntityTypeConfiguration
 {
     public void Configure(EntityTypeBuilder<UserSequenceProgress> builder)
     {
-        builder.ToTable("user_sequence_progress");
+        _ = builder.ToTable("user_sequence_progress");
 
-        builder.HasKey(x => new { x.UserId, x.SequenceId, x.StepId });
+        _ = builder.HasKey(x => new { x.UserId, x.SequenceId, x.StepId });
 
-        builder.Property(x => x.UserId)
+        _ = builder.Property(x => x.UserId)
             .HasColumnName("user_id")
             .IsRequired();
 
-        builder.Property(x => x.SequenceId)
+        _ = builder.Property(x => x.SequenceId)
             .HasColumnName("sequence_id")
             .IsRequired();
 
-        builder.Property(x => x.StepId)
+        _ = builder.Property(x => x.StepId)
             .HasColumnName("step_id")
             .IsRequired();
 
-        builder.Property(x => x.SentAt)
+        _ = builder.Property(x => x.SentAt)
             .HasColumnName("sent_at")
             .IsRequired();
 
-        builder.HasIndex(x => new { x.UserId, x.SequenceId });
+        _ = builder.HasIndex(x => new { x.UserId, x.SequenceId });
     }
 }

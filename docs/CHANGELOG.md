@@ -10,6 +10,32 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Добавлено (Added)
+
+- **`WizardRegistry`** — новый Singleton-реестр визардов, аналог `ScreenRegistry`. Хранит соответствие `string → Type`. Экземпляр визарда создаётся из DI on-demand только при обработке апдейта активного визарда. Устранён паттерн `IEnumerable<IBotWizard>` и связанный с ним баг молчаливого игнорирования всех визардов кроме первого (`TryAddScoped(typeof(IBotWizard), ...)` заменён на `services.AddScoped(concreteType)`).
+- **`BotResults.StartWizard<T>()`** — новый `IEndpointResult` для запуска визарда из обработчика. Позволяет писать `app.MapCommand("/reg", () => BotResults.StartWizard<RegistrationWizard>())` вместо ручного вызова `ctx.StartWizardAsync<T>()` + возврата `BotResults.Empty()`.
+
+### Изменено (Changed)
+
+- **`WizardMiddleware`** — заменён `IEnumerable<IBotWizard>` на `WizardRegistry`. Middleware больше не создаёт все зарегистрированные визарды при каждом апдейте.
+- **`WizardContextExtensions.StartWizardAsync`** — использует `WizardRegistry` вместо `IEnumerable<IBotWizard>`.
+
+### Удалено (Removed)
+
+- **`WizardState<TState>`** — удалён неиспользуемый дженерик-класс. Для хранения используется `WizardStorageState` (JSON-сериализация payload).
+
+### Добавлено (Added)
+
+- **NavigateToRoot** — результаты `BotResults.NavigateToRoot<TScreen>()` и `BotResults.NavigateToRoot(screenId)`: переход на экран с полной очисткой истории навигации (стек сбрасывается). Удобно после завершения визарда или критичного действия.
+- **Аргументы перехода (Navigation args)** — в `UserSession`: `SetNavigationArg(key, value)` / `SetNavigationArg<T>(key, value)` перед переходом; в целевом экране в `RenderAsync` — `GetNavigationArg(key)` / `GetNavigationArg<T>(key)`. Аргументы автоматически очищаются после отрисовки экрана. Позволяет передавать параметры на экран без костылей с общим state.
+- **StayResult с опцией удаления сообщения** — `BotResults.Stay(notification, deleteMessage: true)` (по умолчанию удаляет сообщение пользователя); `deleteMessage: false` — только ответить на callback, не удаляя ввод.
+- **Документация** — в `docs/USAGE.md`: конвенция имён экранов (суффикс `Screen`), раздел 3.4 «Параметры перехода», таблица BotResults с NavigateToRoot и Stay(deleteMessage), пояснения Back vs GoBackAsync, Refresh (no-op при отсутствии CurrentScreen), обновлён чеклист фич.
+
+### Добавлено (Added) — ранее
+
+- **Типизированные параметры для кнопок (Typed Payloads)** — поддержка передачи типизированных объектов через `ScreenView.Button<TAction, TPayload>(...)`. Ограничение Telegram в 64 байта для `callback_data` обходится гибридным подходом: если JSON помещается (длина <= 64 байт), он встраивается прямо в кнопку (`TAction:j:{json}`). Если нет, JSON кэшируется в `UserSession` (LRU-буфер на 500 записей), а в кнопку кладётся Short ID (`TAction:s:{ShortId}`). В обработчиках достаточно добавить параметр `TPayload`, парсинг и десериализация из сессии выполняются автоматически в `HandlerDelegateFactory`.
+- `PayloadExpiredException` — если пейлоад из сессии был удален (или устарел), кнопка не вызывает падение приложения. Вместо этого пользователь видит нативный Telegram Alert ("Данные кнопки устарели. Пожалуйста, обновите меню.").
+
 ### Исправлено (Fixed)
 
 - **`SessionMiddleware`** — утечка памяти: семафоры в `_userLocks` теперь удаляются из `ConcurrentDictionary` после освобождения (cleanup через `TryRemove` с проверкой конкретной пары ключ-значение).
@@ -152,4 +178,3 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
     - Polling / Webhook режимы (modes)
     - Serilog + Seq для логирования (for logging)
     - Docker Compose
-

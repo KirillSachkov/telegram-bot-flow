@@ -18,13 +18,13 @@ public static class DependencyInjectionExtensions
         string connectionString = configuration.GetConnectionString("Database")
                                   ?? throw new InvalidOperationException("Connection string 'Database' not found.");
 
-        services.AddDbContext<BotDbContext>(options =>
+        _ = services.AddDbContext<BotDbContext>(options =>
             options.UseNpgsql(connectionString));
 
         // Register base type so UserTrackingMiddleware<BotUser> can resolve BotDbContext<BotUser>
-        services.AddScoped<BotDbContext<BotUser>>(sp => sp.GetRequiredService<BotDbContext>());
+        _ = services.AddScoped<BotDbContext<BotUser>>(sp => sp.GetRequiredService<BotDbContext>());
 
-        services.AddTransient<UserTrackingMiddleware>();
+        _ = services.AddTransient<UserTrackingMiddleware>();
 
         return services;
     }
@@ -45,14 +45,14 @@ public static class DependencyInjectionExtensions
         string connectionString = configuration.GetConnectionString("Database")
                                   ?? throw new InvalidOperationException("Connection string 'Database' not found.");
 
-        services.AddDbContext<TContext>(options =>
+        _ = services.AddDbContext<TContext>(options =>
             options.UseNpgsql(connectionString));
 
         // Register base type so modules can resolve BotDbContext<TUser>
-        services.AddScoped<BotDbContext<TUser>>(sp => sp.GetRequiredService<TContext>());
+        _ = services.AddScoped<BotDbContext<TUser>>(sp => sp.GetRequiredService<TContext>());
 
-        services.AddTransient<UserTrackingMiddleware<TUser>>();
-        services.AddTransient<UserTrackingMiddleware>();
+        _ = services.AddTransient<UserTrackingMiddleware<TUser>>();
+        _ = services.AddTransient<UserTrackingMiddleware>();
 
         return services;
     }

@@ -11,6 +11,7 @@ namespace TelegramBotFlow.Core.Routing;
 public static class HandlerDelegateFactory
 {
     private static readonly Type _taskEndpointResultType = typeof(Task<IEndpointResult>);
+    private static readonly Type _endpointResultType = typeof(IEndpointResult);
 
     /// <summary>
     /// Creates a delegate for general-purpose handlers.
@@ -45,7 +46,7 @@ public static class HandlerDelegateFactory
             context.Session?.SetPending(null);
 
             object?[] args = ApplyResolvers(resolvers, context, callbackAction: null);
-            IEndpointResult er = await (Task<IEndpointResult>)invoker(target, args)!;
+            IEndpointResult er = await UnwrapResult(invoker(target, args));
 
             if (er.KeepPending)
                 context.Session?.SetPending(actionId);
@@ -157,7 +158,7 @@ public static class HandlerDelegateFactory
             return;
         }
 
-        IEndpointResult er = await (Task<IEndpointResult>)invoker(target, args)!;
+        IEndpointResult er = await UnwrapResult(invoker(target, args));
         IScreenNavigator navigator = context.RequestServices.GetRequiredService<IScreenNavigator>();
         await er.ExecuteAsync(context, navigator);
     }
@@ -170,20 +171,25 @@ public static class HandlerDelegateFactory
         string? callbackAction)
     {
         object?[] args = ApplyResolvers(resolvers, context, callbackAction);
-        IEndpointResult er = await (Task<IEndpointResult>)invoker(target, args)!;
+        IEndpointResult er = await UnwrapResult(invoker(target, args));
         IScreenNavigator navigator = context.RequestServices.GetRequiredService<IScreenNavigator>();
         await er.ExecuteAsync(context, navigator);
     }
 
     private static void ValidateReturnType(Type returnType)
     {
-        if (returnType == _taskEndpointResultType)
+        if (returnType == _taskEndpointResultType || returnType == _endpointResultType)
             return;
 
         throw new InvalidOperationException(
             $"Handler return type '{returnType.Name}' is not supported. " +
-            $"Required: Task<IEndpointResult>.");
+            $"Required: Task<IEndpointResult> or IEndpointResult.");
     }
+
+    private static ValueTask<IEndpointResult> UnwrapResult(object? result) =>
+        result is Task<IEndpointResult> task
+            ? new ValueTask<IEndpointResult>(task)
+            : ValueTask.FromResult((IEndpointResult)result!);
 
     /// <summary>
     /// Pre-builds one resolver function per parameter at registration time.

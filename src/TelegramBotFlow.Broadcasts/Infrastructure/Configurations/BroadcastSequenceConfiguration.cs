@@ -8,27 +8,27 @@ public sealed class BroadcastSequenceConfiguration : IEntityTypeConfiguration<Br
 {
     public void Configure(EntityTypeBuilder<BroadcastSequence> builder)
     {
-        builder.ToTable("broadcast_sequences");
+        _ = builder.ToTable("broadcast_sequences");
 
-        builder.HasKey(x => x.Id);
+        _ = builder.HasKey(x => x.Id);
 
-        builder.Property(x => x.Id)
+        _ = builder.Property(x => x.Id)
             .HasColumnName("id");
 
-        builder.Property(x => x.Name)
+        _ = builder.Property(x => x.Name)
             .HasColumnName("name")
             .HasMaxLength(256)
             .IsRequired();
 
-        builder.Property(x => x.IsActive)
+        _ = builder.Property(x => x.IsActive)
             .HasColumnName("is_active")
             .HasDefaultValue(true);
 
-        builder.Property(x => x.CreatedAt)
+        _ = builder.Property(x => x.CreatedAt)
             .HasColumnName("created_at")
             .IsRequired();
 
-        builder.HasMany(x => x.Steps)
+        _ = builder.HasMany(x => x.Steps)
             .WithOne(x => x.Sequence)
             .HasForeignKey(x => x.SequenceId)
             .OnDelete(DeleteBehavior.Cascade);

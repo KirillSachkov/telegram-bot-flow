@@ -10,7 +10,7 @@ namespace TelegramBotFlow.Core.Data.Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.CreateTable(
+            _ = migrationBuilder.CreateTable(
                 name: "bot_settings",
                 columns: table => new
                 {
@@ -19,10 +19,10 @@ namespace TelegramBotFlow.Core.Data.Infrastructure.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_bot_settings", x => x.id);
+                    _ = table.PrimaryKey("PK_bot_settings", x => x.id);
                 });
 
-            migrationBuilder.CreateTable(
+            _ = migrationBuilder.CreateTable(
                 name: "users",
                 columns: table => new
                 {
@@ -32,17 +32,17 @@ namespace TelegramBotFlow.Core.Data.Infrastructure.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_users", x => x.telegram_id);
+                    _ = table.PrimaryKey("PK_users", x => x.telegram_id);
                 });
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropTable(
+            _ = migrationBuilder.DropTable(
                 name: "bot_settings");
 
-            migrationBuilder.DropTable(
+            _ = migrationBuilder.DropTable(
                 name: "users");
         }
     }

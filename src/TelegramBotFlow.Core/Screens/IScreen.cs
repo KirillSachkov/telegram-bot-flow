@@ -1,4 +1,4 @@
-﻿using TelegramBotFlow.Core.Context;
+using TelegramBotFlow.Core.Context;
 
 namespace TelegramBotFlow.Core.Screens;
 
@@ -12,5 +12,5 @@ public interface IScreen
     /// </summary>
     /// <param name="ctx">Контекст update-а.</param>
     /// <returns>Готовое представление экрана.</returns>
-    Task<ScreenView> RenderAsync(UpdateContext ctx);
+    ValueTask<ScreenView> RenderAsync(UpdateContext ctx);
 }

@@ -37,7 +37,7 @@ public sealed class RoutePriorityTests
 
         await terminal(ctx);
 
-        calls.Should().Equal("high");
+        _ = calls.Should().Equal("high");
     }
 
     [Fact]
@@ -61,7 +61,7 @@ public sealed class RoutePriorityTests
 
         await terminal(ctx);
 
-        calls.Should().Equal("fallback");
+        _ = calls.Should().Equal("fallback");
     }
 
     [Fact]
@@ -85,6 +85,6 @@ public sealed class RoutePriorityTests
 
         await terminal(ctx);
 
-        calls.Should().Equal("start");
+        _ = calls.Should().Equal("start");
     }
 }

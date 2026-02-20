@@ -13,8 +13,8 @@ public sealed class InlineKeyboardTests
             .Button("No", "no")
             .Build();
 
-        markup.InlineKeyboard.Should().HaveCount(1);
-        markup.InlineKeyboard.First().Should().HaveCount(2);
+        _ = markup.InlineKeyboard.Should().HaveCount(1);
+        _ = markup.InlineKeyboard.First().Should().HaveCount(2);
     }
 
     [Fact]
@@ -26,9 +26,9 @@ public sealed class InlineKeyboardTests
             .Button("B", "b")
             .Build();
 
-        markup.InlineKeyboard.Should().HaveCount(2);
-        markup.InlineKeyboard.First().Should().HaveCount(1);
-        markup.InlineKeyboard.Last().Should().HaveCount(1);
+        _ = markup.InlineKeyboard.Should().HaveCount(2);
+        _ = markup.InlineKeyboard.First().Should().HaveCount(1);
+        _ = markup.InlineKeyboard.Last().Should().HaveCount(1);
     }
 
     [Fact]
@@ -39,8 +39,8 @@ public sealed class InlineKeyboardTests
             .Build();
 
         Telegram.Bot.Types.ReplyMarkups.InlineKeyboardButton button = markup.InlineKeyboard.First().First();
-        button.Text.Should().Be("Click");
-        button.CallbackData.Should().Be("data123");
+        _ = button.Text.Should().Be("Click");
+        _ = button.CallbackData.Should().Be("data123");
     }
 
     [Fact]
@@ -51,8 +51,8 @@ public sealed class InlineKeyboardTests
             .Build();
 
         Telegram.Bot.Types.ReplyMarkups.InlineKeyboardButton button = markup.InlineKeyboard.First().First();
-        button.Text.Should().Be("Visit");
-        button.Url.Should().Be("https://example.com");
+        _ = button.Text.Should().Be("Visit");
+        _ = button.Url.Should().Be("https://example.com");
     }
 
     [Fact]
@@ -60,7 +60,7 @@ public sealed class InlineKeyboardTests
     {
         Telegram.Bot.Types.ReplyMarkups.InlineKeyboardMarkup markup = InlineKeyboard.SingleButton("OK", "ok");
 
-        markup.InlineKeyboard.Should().HaveCount(1);
-        markup.InlineKeyboard.First().Should().HaveCount(1);
+        _ = markup.InlineKeyboard.Should().HaveCount(1);
+        _ = markup.InlineKeyboard.First().Should().HaveCount(1);
     }
 }

@@ -1,5 +1,6 @@
 using TelegramBotFlow.App.Features.Help;
 using TelegramBotFlow.App.Features.MainMenu;
+using TelegramBotFlow.Core.Constants;
 using TelegramBotFlow.Core.Context;
 using TelegramBotFlow.Core.Endpoints;
 using TelegramBotFlow.Core.Hosting;
@@ -18,13 +19,12 @@ public sealed class StartHandler : IBotEndpoint
     /// <param name="app">Экземпляр приложения бота для регистрации маршрутов.</param>
     public void MapEndpoint(BotApplication app)
     {
-        app.MapCommand("/start", async (UpdateContext ctx) =>
+        app.MapCommand(BotCommands.START, (UpdateContext ctx) =>
         {
             ctx.Session?.Clear();
             return BotResults.NavigateTo<MainMenuScreen>();
         });
 
-        app.MapCommand("/help", () =>
-            Task.FromResult(BotResults.NavigateTo<HelpScreen>()));
+        app.MapCommand(BotCommands.HELP, BotResults.NavigateTo<HelpScreen>);
     }
 }

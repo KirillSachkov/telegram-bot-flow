@@ -15,7 +15,7 @@ public sealed class HandlerDelegateFactoryTests
     {
         var services = Substitute.For<IServiceProvider>();
         var nav = navigator ?? Substitute.For<IScreenNavigator>();
-        services.GetService(typeof(IScreenNavigator)).Returns(nav);
+        _ = services.GetService(typeof(IScreenNavigator)).Returns(nav);
         return services;
     }
 
@@ -34,7 +34,7 @@ public sealed class HandlerDelegateFactoryTests
 
         Action act = () => HandlerDelegateFactory.Create(handler);
 
-        act.Should().Throw<InvalidOperationException>()
+        _ = act.Should().Throw<InvalidOperationException>()
             .WithMessage("*Task<IEndpointResult>*");
     }
 
@@ -45,7 +45,7 @@ public sealed class HandlerDelegateFactoryTests
 
         Action act = () => HandlerDelegateFactory.Create(handler);
 
-        act.Should().Throw<InvalidOperationException>()
+        _ = act.Should().Throw<InvalidOperationException>()
             .WithMessage("*Task<IEndpointResult>*");
     }
 
@@ -56,7 +56,7 @@ public sealed class HandlerDelegateFactoryTests
 
         Action act = () => HandlerDelegateFactory.Create(handler);
 
-        act.Should().NotThrow();
+        _ = act.Should().NotThrow();
     }
 
     // -- Create: execution --
@@ -69,7 +69,7 @@ public sealed class HandlerDelegateFactoryTests
         UpdateContext ctx = CreateContext(services);
 
         var result = Substitute.For<IEndpointResult>();
-        result.KeepPending.Returns(false);
+        _ = result.KeepPending.Returns(false);
 
         Delegate handler = (UpdateContext _) => Task.FromResult(result);
 
@@ -92,12 +92,12 @@ public sealed class HandlerDelegateFactoryTests
         };
 
         // IServiceProvider is itself registered as a service
-        services.GetService(typeof(IServiceProvider)).Returns(services);
+        _ = services.GetService(typeof(IServiceProvider)).Returns(services);
 
         var del = HandlerDelegateFactory.Create(handler);
         await del(CreateContext(services));
 
-        serviceCalled.Should().BeTrue();
+        _ = serviceCalled.Should().BeTrue();
     }
 
     // -- CreateForInput: validation --
@@ -109,7 +109,7 @@ public sealed class HandlerDelegateFactoryTests
 
         Action act = () => HandlerDelegateFactory.CreateForInput(handler, "action_id");
 
-        act.Should().Throw<InvalidOperationException>()
+        _ = act.Should().Throw<InvalidOperationException>()
             .WithMessage("*Task<IEndpointResult>*");
     }
 
@@ -120,7 +120,7 @@ public sealed class HandlerDelegateFactoryTests
 
         Action act = () => HandlerDelegateFactory.CreateForInput(handler, "action_id");
 
-        act.Should().NotThrow();
+        _ = act.Should().NotThrow();
     }
 
     // -- CreateForInput: execution --
@@ -137,7 +137,7 @@ public sealed class HandlerDelegateFactoryTests
         var del = HandlerDelegateFactory.CreateForInput(handler, "action_id");
         await del(ctx);
 
-        ctx.Session.PendingInputActionId.Should().BeNull();
+        _ = ctx.Session.PendingInputActionId.Should().BeNull();
     }
 
     [Fact]
@@ -148,14 +148,14 @@ public sealed class HandlerDelegateFactoryTests
         ctx.Session = new UserSession(123);
 
         var result = Substitute.For<IEndpointResult>();
-        result.KeepPending.Returns(true);
+        _ = result.KeepPending.Returns(true);
 
         Delegate handler = () => Task.FromResult(result);
 
         var del = HandlerDelegateFactory.CreateForInput(handler, "my_input");
         await del(ctx);
 
-        ctx.Session.PendingInputActionId.Should().Be("my_input");
+        _ = ctx.Session.PendingInputActionId.Should().Be("my_input");
     }
 
     [Fact]
@@ -166,14 +166,14 @@ public sealed class HandlerDelegateFactoryTests
         ctx.Session = new UserSession(123) { PendingInputActionId = "original" };
 
         var result = Substitute.For<IEndpointResult>();
-        result.KeepPending.Returns(false);
+        _ = result.KeepPending.Returns(false);
 
         Delegate handler = () => Task.FromResult(result);
 
         var del = HandlerDelegateFactory.CreateForInput(handler, "my_input");
         await del(ctx);
 
-        ctx.Session.PendingInputActionId.Should().BeNull();
+        _ = ctx.Session.PendingInputActionId.Should().BeNull();
     }
 
     [Fact]
@@ -184,7 +184,7 @@ public sealed class HandlerDelegateFactoryTests
         UpdateContext ctx = CreateContext(services);
 
         var result = Substitute.For<IEndpointResult>();
-        result.KeepPending.Returns(false);
+        _ = result.KeepPending.Returns(false);
 
         Delegate handler = () => Task.FromResult(result);
 
@@ -203,7 +203,7 @@ public sealed class HandlerDelegateFactoryTests
 
         Action act = () => HandlerDelegateFactory.CreateForCallbackGroup(handler, "prefix");
 
-        act.Should().Throw<InvalidOperationException>()
+        _ = act.Should().Throw<InvalidOperationException>()
             .WithMessage("*Task<IEndpointResult>*");
     }
 
@@ -214,7 +214,7 @@ public sealed class HandlerDelegateFactoryTests
 
         Action act = () => HandlerDelegateFactory.CreateForCallbackGroup(handler, "prefix");
 
-        act.Should().NotThrow();
+        _ = act.Should().NotThrow();
     }
 
     // -- CreateForCallbackGroup: execution --
@@ -235,7 +235,7 @@ public sealed class HandlerDelegateFactoryTests
 
         await del(ctx);
 
-        receivedAction.Should().Be("back");
+        _ = receivedAction.Should().Be("back");
     }
 
     [Fact]
@@ -246,7 +246,7 @@ public sealed class HandlerDelegateFactoryTests
         UpdateContext ctx = CreateCallbackContext("pfx:action", services);
 
         var result = Substitute.For<IEndpointResult>();
-        result.KeepPending.Returns(false);
+        _ = result.KeepPending.Returns(false);
 
         Delegate handler = (string _) => Task.FromResult(result);
 

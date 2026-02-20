@@ -12,8 +12,8 @@ public sealed class NavigationStackTests
 
         session.PushScreen("main");
 
-        session.CurrentScreen.Should().Be("main");
-        session.NavigationStack.Should().BeEmpty();
+        _ = session.CurrentScreen.Should().Be("main");
+        _ = session.NavigationStack.Should().BeEmpty();
     }
 
     [Fact]
@@ -24,8 +24,8 @@ public sealed class NavigationStackTests
 
         session.PushScreen("settings");
 
-        session.CurrentScreen.Should().Be("settings");
-        session.NavigationStack.Should().ContainSingle().Which.Should().Be("main");
+        _ = session.CurrentScreen.Should().Be("settings");
+        _ = session.NavigationStack.Should().ContainSingle().Which.Should().Be("main");
     }
 
     [Fact]
@@ -38,9 +38,9 @@ public sealed class NavigationStackTests
 
         string? popped = session.PopScreen();
 
-        popped.Should().Be("settings");
-        session.CurrentScreen.Should().Be("settings");
-        session.NavigationStack.Should().ContainSingle().Which.Should().Be("main");
+        _ = popped.Should().Be("settings");
+        _ = session.CurrentScreen.Should().Be("settings");
+        _ = session.NavigationStack.Should().ContainSingle().Which.Should().Be("main");
     }
 
     [Fact]
@@ -51,8 +51,8 @@ public sealed class NavigationStackTests
 
         string? popped = session.PopScreen();
 
-        popped.Should().BeNull();
-        session.CurrentScreen.Should().Be("main");
+        _ = popped.Should().BeNull();
+        _ = session.CurrentScreen.Should().Be("main");
     }
 
     [Fact]
@@ -62,7 +62,7 @@ public sealed class NavigationStackTests
 
         string? popped = session.PopScreen();
 
-        popped.Should().BeNull();
+        _ = popped.Should().BeNull();
     }
 
     [Fact]
@@ -75,9 +75,9 @@ public sealed class NavigationStackTests
 
         session.Clear();
 
-        session.CurrentScreen.Should().BeNull();
-        session.NavigationStack.Should().BeEmpty();
-        session.NavMessageId.Should().BeNull();
+        _ = session.CurrentScreen.Should().BeNull();
+        _ = session.NavigationStack.Should().BeEmpty();
+        _ = session.NavMessageId.Should().BeNull();
     }
 
     [Fact]
@@ -89,11 +89,11 @@ public sealed class NavigationStackTests
         session.PushScreen("lang");
         session.PushScreen("lang_confirm");
 
-        session.PopScreen().Should().Be("lang");
-        session.PopScreen().Should().Be("settings");
-        session.PopScreen().Should().Be("main");
-        session.PopScreen().Should().BeNull();
-        session.CurrentScreen.Should().Be("main");
+        _ = session.PopScreen().Should().Be("lang");
+        _ = session.PopScreen().Should().Be("settings");
+        _ = session.PopScreen().Should().Be("main");
+        _ = session.PopScreen().Should().BeNull();
+        _ = session.CurrentScreen.Should().Be("main");
     }
 
     [Fact]
@@ -106,8 +106,8 @@ public sealed class NavigationStackTests
 
         session.PushScreen("profile");
 
-        session.CurrentScreen.Should().Be("profile");
-        session.NavigationStack.Should().Equal("main");
+        _ = session.CurrentScreen.Should().Be("profile");
+        _ = session.NavigationStack.Should().Equal("main");
     }
 
     [Fact]
@@ -119,8 +119,8 @@ public sealed class NavigationStackTests
 
         session.PushScreen("settings");
 
-        session.CurrentScreen.Should().Be("settings");
-        session.NavigationStack.Should().ContainSingle().Which.Should().Be("main");
+        _ = session.CurrentScreen.Should().Be("settings");
+        _ = session.NavigationStack.Should().ContainSingle().Which.Should().Be("main");
     }
 
     [Fact]
@@ -131,8 +131,8 @@ public sealed class NavigationStackTests
         for (int i = 0; i <= UserSession.MAX_NAVIGATION_DEPTH + 5; i++)
             session.PushScreen($"screen_{i}");
 
-        session.NavigationStack.Should().HaveCount(UserSession.MAX_NAVIGATION_DEPTH);
-        session.NavigationStack[0].Should().NotBe("screen_0");
+        _ = session.NavigationStack.Should().HaveCount(UserSession.MAX_NAVIGATION_DEPTH);
+        _ = session.NavigationStack[0].Should().NotBe("screen_0");
     }
 
     [Fact]
@@ -146,7 +146,7 @@ public sealed class NavigationStackTests
 
         session.PushScreen("main");
 
-        session.CurrentScreen.Should().Be("main");
-        session.NavigationStack.Should().BeEmpty();
+        _ = session.CurrentScreen.Should().Be("main");
+        _ = session.NavigationStack.Should().BeEmpty();
     }
 }

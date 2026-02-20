@@ -52,6 +52,7 @@ public sealed class UserSession
     public string? PendingInputActionId { get; internal set; }
 
     private readonly Dictionary<string, string> _data = [];
+    private readonly Dictionary<string, string> _navArgs = [];
 
     /// <summary>
     /// Создаёт новую сессию пользователя.
@@ -123,11 +124,13 @@ public sealed class UserSession
     public void Clear()
     {
         _data.Clear();
+        _navArgs.Clear();
         CurrentScreen = null;
         NavMessageId = null;
         CurrentMediaType = ScreenMediaType.None;
         NavigationStack.Clear();
         PendingInputActionId = null;
+        ActiveWizardId = null;
     }
 
     /// <summary>
@@ -137,10 +140,58 @@ public sealed class UserSession
     /// </summary>
     public void ResetNavigation()
     {
+        _navArgs.Clear();
         CurrentScreen = null;
         NavigationStack.Clear();
         PendingInputActionId = null;
     }
+
+    /// <summary>
+    /// Задаёт аргумент для следующего перехода на экран. Значение доступно в целевом экране
+    /// в методе RenderAsync через <see cref="GetNavigationArg{T}"/> и автоматически
+    /// очищается после отрисовки этого экрана. Используйте для передачи параметров перехода
+    /// (например ID сущности для экрана просмотра).
+    /// </summary>
+    /// <param name="key">Ключ аргумента.</param>
+    /// <param name="value">Строкое значение.</param>
+    public void SetNavigationArg(string key, string value) => _navArgs[key] = value;
+
+    /// <summary>
+    /// Задаёт типизированный аргумент для следующего перехода (сериализация в JSON).
+    /// </summary>
+    public void SetNavigationArg<T>(string key, T value) =>
+        _navArgs[key] = JsonSerializer.Serialize(value);
+
+    /// <summary>
+    /// Возвращает аргумент перехода, переданный через <see cref="SetNavigationArg"/> перед
+    /// переходом на текущий экран. Аргументы очищаются после отрисовки экрана.
+    /// </summary>
+    /// <param name="key">Ключ аргумента.</param>
+    /// <returns>Значение или <see langword="null"/> при отсутствии ключа.</returns>
+    public string? GetNavigationArg(string key) => _navArgs.GetValueOrDefault(key);
+
+    /// <summary>
+    /// Возвращает типизированный аргумент перехода (десериализация из JSON).
+    /// </summary>
+    public T? GetNavigationArg<T>(string key)
+    {
+        if (!_navArgs.TryGetValue(key, out string? json))
+            return default;
+        try
+        {
+            return JsonSerializer.Deserialize<T>(json);
+        }
+        catch
+        {
+            return default;
+        }
+    }
+
+    /// <summary>
+    /// Очищает аргументы перехода. Вызывается фреймворком после отрисовки экрана;
+    /// в коде вызывайте только при необходимости сбросить аргументы вручную.
+    /// </summary>
+    public void ClearNavigationArgs() => _navArgs.Clear();
 
     /// <summary>
     /// Получает typed-state из сессии по имени типа.
@@ -167,6 +218,11 @@ public sealed class UserSession
     /// <typeparam name="T">Тип состояния.</typeparam>
     public void RemoveState<T>() where T : class =>
         Remove($"state:{typeof(T).Name}");
+
+    /// <summary>
+    /// Идентификатор активного визарда. Если задан, все запросы перехватываются WizardMiddleware.
+    /// </summary>
+    public string? ActiveWizardId { get; internal set; }
 
     /// <summary>
     /// Максимальная глубина стека навигации.

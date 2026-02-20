@@ -21,7 +21,7 @@ public sealed class GetAllBroadcastsEndpoint : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapGet("/api/broadcasts", Handler)
+        _ = app.MapGet("/api/broadcasts", Handler)
             .WithTags("Broadcasts")
             .WithSummary("Получить все рассылки");
     }

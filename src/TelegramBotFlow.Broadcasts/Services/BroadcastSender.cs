@@ -52,7 +52,7 @@ public sealed class BroadcastSender(
     {
         try
         {
-            await bot.CopyMessage(userId, fromChatId, messageId, cancellationToken: ct);
+            _ = await bot.CopyMessage(userId, fromChatId, messageId, cancellationToken: ct);
             return true;
         }
         catch (ApiRequestException ex) when (ex.ErrorCode == 403)
@@ -81,7 +81,7 @@ public sealed class BroadcastSender(
         if (user is not null)
         {
             user.IsBlocked = true;
-            await coreDb.SaveChangesAsync(ct);
+            _ = await coreDb.SaveChangesAsync(ct);
         }
     }
 }

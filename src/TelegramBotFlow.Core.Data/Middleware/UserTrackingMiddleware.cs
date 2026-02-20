@@ -31,11 +31,11 @@ public sealed class UserTrackingMiddleware<TUser> : IUpdateMiddleware
                 bool exists = await _db.Users.AnyAsync(u => u.TelegramId == userId);
                 if (!exists)
                 {
-                    _db.Users.Add(new TUser { TelegramId = userId });
-                    await _db.SaveChangesAsync();
+                    _ = _db.Users.Add(new TUser { TelegramId = userId });
+                    _ = await _db.SaveChangesAsync();
                 }
 
-                _knownUsers.TryAdd(userId, 0);
+                _ = _knownUsers.TryAdd(userId, 0);
             }
         }
 

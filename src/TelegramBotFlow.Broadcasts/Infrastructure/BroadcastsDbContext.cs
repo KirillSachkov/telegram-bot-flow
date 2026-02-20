@@ -16,6 +16,6 @@ public sealed class BroadcastsDbContext(DbContextOptions<BroadcastsDbContext> op
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.ApplyConfigurationsFromAssembly(typeof(BroadcastsDbContext).Assembly);
+        _ = modelBuilder.ApplyConfigurationsFromAssembly(typeof(BroadcastsDbContext).Assembly);
     }
 }

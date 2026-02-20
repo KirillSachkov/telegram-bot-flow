@@ -90,7 +90,7 @@ public sealed class ScreenView
     public ScreenView NavigateButton<TScreen>(string text) where TScreen : IScreen
     {
         string screenId = ScreenRegistry.GetIdFromType(typeof(TScreen));
-        _keyboard.Button(text, $"nav:{screenId}");
+        _ = _keyboard.Button(text, $"nav:{screenId}");
         return this;
     }
 
@@ -102,7 +102,7 @@ public sealed class ScreenView
     /// </summary>
     public ScreenView Button<TAction>(string text) where TAction : IBotAction
     {
-        _keyboard.Button(text, typeof(TAction).Name);
+        _ = _keyboard.Button(text, typeof(TAction).Name);
         return this;
     }
 
@@ -120,13 +120,13 @@ public sealed class ScreenView
         int byteCount = System.Text.Encoding.UTF8.GetByteCount($"{prefix}:j:{json}");
         if (byteCount <= 64)
         {
-            _keyboard.Button(text, $"{prefix}:j:{json}");
+            _ = _keyboard.Button(text, $"{prefix}:j:{json}");
         }
         else
         {
             string shortId = Guid.NewGuid().ToString("N")[..8];
             _payloads[shortId] = json;
-            _keyboard.Button(text, $"{prefix}:s:{shortId}");
+            _ = _keyboard.Button(text, $"{prefix}:s:{shortId}");
         }
 
         return this;
@@ -204,7 +204,7 @@ public sealed class ScreenView
     /// <returns>Текущее представление для fluent-конфигурации.</returns>
     public ScreenView Button(string text, string callbackData)
     {
-        _keyboard.Button(text, callbackData);
+        _ = _keyboard.Button(text, callbackData);
         return this;
     }
 
@@ -216,7 +216,7 @@ public sealed class ScreenView
     /// <returns>Текущее представление для fluent-конфигурации.</returns>
     public ScreenView UrlButton(string text, string url)
     {
-        _keyboard.Url(text, url);
+        _ = _keyboard.Url(text, url);
         return this;
     }
 
@@ -226,7 +226,7 @@ public sealed class ScreenView
     /// <returns>Текущее представление для fluent-конфигурации.</returns>
     public ScreenView Row()
     {
-        _keyboard.Row();
+        _ = _keyboard.Row();
         return this;
     }
 
@@ -238,8 +238,8 @@ public sealed class ScreenView
     public ScreenView BackButton(string text = "← Назад")
     {
         HasNavigationButton = true;
-        Row();
-        _keyboard.Button(text, NavCallbacks.BACK);
+        _ = Row();
+        _ = _keyboard.Button(text, NavCallbacks.BACK);
         return this;
     }
 
@@ -250,8 +250,8 @@ public sealed class ScreenView
     public ScreenView CloseButton(string text = "← Назад")
     {
         HasNavigationButton = true;
-        Row();
-        _keyboard.Button(text, NavCallbacks.CLOSE);
+        _ = Row();
+        _ = _keyboard.Button(text, NavCallbacks.CLOSE);
         return this;
     }
 
@@ -262,8 +262,8 @@ public sealed class ScreenView
     public ScreenView MenuButton(string text = "☰ Главное меню")
     {
         HasNavigationButton = true;
-        Row();
-        _keyboard.Button(text, NavCallbacks.MENU);
+        _ = Row();
+        _ = _keyboard.Button(text, NavCallbacks.MENU);
         return this;
     }
 }

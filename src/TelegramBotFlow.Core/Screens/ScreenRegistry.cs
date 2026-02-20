@@ -1,4 +1,4 @@
-﻿using System.Reflection;
+using System.Reflection;
 using System.Text;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -72,8 +72,10 @@ public sealed class ScreenRegistry
 
     /// <summary>
     /// Returns the screen ID that would be assigned to the given screen type by convention.
-    /// Convention: strip "Screen" suffix, convert PascalCase to snake_case.
-    /// Examples: MainMenuScreen → main_menu, ProfileScreen → profile.
+    /// Convention: if the type name ends with "Screen", that suffix is stripped; then the name
+    /// is converted to snake_case. Examples: MainMenuScreen → main_menu, ProfileScreen → profile.
+    /// If the name does not end with "Screen", the full name is converted to snake_case
+    /// (e.g. ProfilePage → profile_page). For predictable short IDs, name screen classes with the "Screen" suffix.
     /// </summary>
     public static string GetIdFor<TScreen>() where TScreen : class, IScreen =>
         GetIdFromType(typeof(TScreen));
@@ -109,9 +111,10 @@ public sealed class ScreenRegistry
         for (int i = 0; i < input.Length; i++)
         {
             if (i > 0 && char.IsUpper(input[i]))
-                sb.Append('_');
-            sb.Append(char.ToLower(input[i]));
+                _ = sb.Append('_');
+            _ = sb.Append(char.ToLower(input[i]));
         }
+
         return sb.ToString();
     }
 }

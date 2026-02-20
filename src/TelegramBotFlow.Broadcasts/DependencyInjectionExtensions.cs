@@ -19,16 +19,16 @@ public static class DependencyInjectionExtensions
         string connectionString = configuration.GetConnectionString("Database")
                                   ?? throw new InvalidOperationException("Connection string 'Database' not found.");
 
-        services.AddDbContext<BroadcastsDbContext>(options =>
+        _ = services.AddDbContext<BroadcastsDbContext>(options =>
             options.UseNpgsql(connectionString));
 
-        services.AddScoped<BroadcastSender>();
+        _ = services.AddScoped<BroadcastSender>();
 
-        services.AddEndpoints(Assembly.GetExecutingAssembly());
+        _ = services.AddEndpoints(Assembly.GetExecutingAssembly());
 
-        services.AddBotEndpoints(Assembly.GetExecutingAssembly());
+        _ = services.AddBotEndpoints(Assembly.GetExecutingAssembly());
 
-        services.AddQuartz(q =>
+        _ = services.AddQuartz(q =>
         {
             q.UsePersistentStore(store =>
             {
@@ -51,7 +51,7 @@ public static class DependencyInjectionExtensions
             //         .RepeatForever()));
         });
 
-        services.AddQuartzHostedService(options =>
+        _ = services.AddQuartzHostedService(options =>
         {
             options.WaitForJobsToComplete = true;
         });

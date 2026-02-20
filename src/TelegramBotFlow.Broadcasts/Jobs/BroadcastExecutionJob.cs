@@ -43,7 +43,7 @@ public sealed class BroadcastExecutionJob(
         }
 
         broadcast.Status = BroadcastStatus.Sending;
-        await db.SaveChangesAsync(ct);
+        _ = await db.SaveChangesAsync(ct);
 
         logger.LogInformation("Starting broadcast {Id}", broadcastId);
 
@@ -53,7 +53,7 @@ public sealed class BroadcastExecutionJob(
         broadcast.SentAt = DateTime.UtcNow;
         broadcast.SuccessCount = success;
         broadcast.FailureCount = failure;
-        await db.SaveChangesAsync(ct);
+        _ = await db.SaveChangesAsync(ct);
 
         logger.LogInformation(
             "Broadcast {Id} completed: {Success} sent, {Failure} failed",

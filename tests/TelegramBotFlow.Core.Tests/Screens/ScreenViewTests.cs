@@ -11,7 +11,7 @@ public sealed class ScreenViewTests
     {
         var view = new ScreenView("Hello");
 
-        view.Text.Should().Be("Hello");
+        _ = view.Text.Should().Be("Hello");
     }
 
     [Fact]
@@ -19,7 +19,7 @@ public sealed class ScreenViewTests
     {
         var view = new ScreenView("text");
 
-        view.Keyboard.Should().BeNull();
+        _ = view.Keyboard.Should().BeNull();
     }
 
     [Fact]
@@ -28,9 +28,9 @@ public sealed class ScreenViewTests
         ScreenView view = new ScreenView("text")
             .Button("Click", "callback:1");
 
-        view.Keyboard.Should().NotBeNull();
-        view.Keyboard!.InlineKeyboard.Should().HaveCount(1);
-        view.Keyboard.InlineKeyboard.First().Should().HaveCount(1);
+        _ = view.Keyboard.Should().NotBeNull();
+        _ = view.Keyboard!.InlineKeyboard.Should().HaveCount(1);
+        _ = view.Keyboard.InlineKeyboard.First().Should().HaveCount(1);
     }
 
     [Fact]
@@ -40,9 +40,9 @@ public sealed class ScreenViewTests
             .Button("A", "a")
             .Button("B", "b");
 
-        view.Keyboard.Should().NotBeNull();
-        view.Keyboard!.InlineKeyboard.Should().HaveCount(1);
-        view.Keyboard.InlineKeyboard.First().Should().HaveCount(2);
+        _ = view.Keyboard.Should().NotBeNull();
+        _ = view.Keyboard!.InlineKeyboard.Should().HaveCount(1);
+        _ = view.Keyboard.InlineKeyboard.First().Should().HaveCount(2);
     }
 
     [Fact]
@@ -53,8 +53,8 @@ public sealed class ScreenViewTests
             .Row()
             .Button("B", "b");
 
-        view.Keyboard.Should().NotBeNull();
-        view.Keyboard!.InlineKeyboard.Should().HaveCount(2);
+        _ = view.Keyboard.Should().NotBeNull();
+        _ = view.Keyboard!.InlineKeyboard.Should().HaveCount(2);
     }
 
     [Fact]
@@ -64,12 +64,12 @@ public sealed class ScreenViewTests
             .Button("Action", "do:something")
             .BackButton();
 
-        view.Keyboard.Should().NotBeNull();
+        _ = view.Keyboard.Should().NotBeNull();
         IEnumerable<Telegram.Bot.Types.ReplyMarkups.InlineKeyboardButton> lastRow =
             view.Keyboard!.InlineKeyboard.Last();
-        lastRow.Should().ContainSingle();
-        lastRow.First().CallbackData.Should().Be("nav:back");
-        lastRow.First().Text.Should().Be("← Назад");
+        _ = lastRow.Should().ContainSingle();
+        _ = lastRow.First().CallbackData.Should().Be("nav:back");
+        _ = lastRow.First().Text.Should().Be("← Назад");
     }
 
     [Fact]
@@ -78,7 +78,7 @@ public sealed class ScreenViewTests
         ScreenView view = new ScreenView("text")
             .BackButton("Go Back");
 
-        view.Keyboard!.InlineKeyboard.Last().First().Text.Should().Be("Go Back");
+        _ = view.Keyboard!.InlineKeyboard.Last().First().Text.Should().Be("Go Back");
     }
 
     [Fact]
@@ -87,8 +87,8 @@ public sealed class ScreenViewTests
         ScreenView view = new ScreenView("caption")
             .WithPhoto("https://example.com/photo.jpg");
 
-        view.MediaType.Should().Be(ScreenMediaType.Photo);
-        view.Media.Should().NotBeNull();
+        _ = view.MediaType.Should().Be(ScreenMediaType.Photo);
+        _ = view.Media.Should().NotBeNull();
     }
 
     [Fact]
@@ -98,8 +98,8 @@ public sealed class ScreenViewTests
         ScreenView view = new ScreenView("caption")
             .WithVideo(file);
 
-        view.MediaType.Should().Be(ScreenMediaType.Video);
-        view.Media.Should().NotBeNull();
+        _ = view.MediaType.Should().Be(ScreenMediaType.Video);
+        _ = view.Media.Should().NotBeNull();
     }
 
     [Fact]
@@ -107,8 +107,8 @@ public sealed class ScreenViewTests
     {
         var view = new ScreenView("text");
 
-        view.MediaType.Should().Be(ScreenMediaType.None);
-        view.Media.Should().BeNull();
+        _ = view.MediaType.Should().Be(ScreenMediaType.None);
+        _ = view.Media.Should().BeNull();
     }
 
     [Fact]
@@ -117,7 +117,7 @@ public sealed class ScreenViewTests
         ScreenView view = new ScreenView("text")
             .UrlButton("Open", "https://example.com");
 
-        view.Keyboard.Should().NotBeNull();
-        view.Keyboard!.InlineKeyboard.First().First().Url.Should().Be("https://example.com");
+        _ = view.Keyboard.Should().NotBeNull();
+        _ = view.Keyboard!.InlineKeyboard.First().First().Url.Should().Be("https://example.com");
     }
 }

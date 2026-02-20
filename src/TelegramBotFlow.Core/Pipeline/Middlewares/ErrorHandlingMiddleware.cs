@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using TelegramBotFlow.Core.Context;
 using TelegramBotFlow.Core.Hosting;
@@ -41,6 +41,7 @@ public sealed class ErrorHandlingMiddleware : IUpdateMiddleware
                 context.ChatId);
 
             await TryNotifyUser(context);
+            throw;
         }
     }
 
@@ -50,7 +51,7 @@ public sealed class ErrorHandlingMiddleware : IUpdateMiddleware
         {
             if (context.ChatId != 0)
             {
-                await _responder.ReplyAsync(context, _errorMessage);
+                _ = await _responder.ReplyAsync(context, _errorMessage);
             }
         }
         catch (Exception ex)

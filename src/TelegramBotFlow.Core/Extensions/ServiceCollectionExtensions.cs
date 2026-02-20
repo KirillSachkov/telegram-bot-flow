@@ -13,6 +13,7 @@ using TelegramBotFlow.Core.Routing;
 using TelegramBotFlow.Core.Screens;
 using TelegramBotFlow.Core.Sessions;
 using TelegramBotFlow.Core.Sessions.Redis;
+using TelegramBotFlow.Core.Wizards;
 
 namespace TelegramBotFlow.Core.Extensions;
 
@@ -22,51 +23,51 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        services.Configure<BotConfiguration>(configuration.GetSection(BotConfiguration.SECTION_NAME));
+        _ = services.Configure<BotConfiguration>(configuration.GetSection(BotConfiguration.SECTION_NAME));
 
         BotConfiguration botConfig = configuration.GetSection(BotConfiguration.SECTION_NAME).Get<BotConfiguration>()
                                      ?? throw new InvalidOperationException(
                                          $"Bot configuration section '{BotConfiguration.SECTION_NAME}' is missing or invalid.");
 
-        services.AddSingleton<ITelegramBotClient>(_ => new TelegramBotClient(botConfig.Token));
+        _ = services.AddSingleton<ITelegramBotClient>(_ => new TelegramBotClient(botConfig.Token));
 
-        services.AddSingleton<PipelineHolder>();
-        services.AddSingleton(sp => sp.GetRequiredService<PipelineHolder>().Pipeline);
+        _ = services.AddSingleton<PipelineHolder>();
+        _ = services.AddSingleton(sp => sp.GetRequiredService<PipelineHolder>().Pipeline);
 
-        services.AddSingleton<UpdateRouter>();
+        _ = services.AddSingleton<UpdateRouter>();
         services.TryAddSingleton<ScreenRegistry>();
-        services.AddScoped<IUpdateResponder, UpdateResponder>();
-        services.AddScoped<IUserAccessPolicy, BotConfigurationUserAccessPolicy>();
-        services.AddScoped<IScreenMessageRenderer, ScreenMessageRenderer>();
-        services.AddScoped<ScreenManager>();
-        services.AddScoped<IScreenNavigator, ScreenNavigator>();
+        _ = services.AddScoped<IUpdateResponder, UpdateResponder>();
+        _ = services.AddScoped<IUserAccessPolicy, BotConfigurationUserAccessPolicy>();
+        _ = services.AddScoped<IScreenMessageRenderer, ScreenMessageRenderer>();
+        _ = services.AddScoped<ScreenManager>();
+        _ = services.AddScoped<IScreenNavigator, ScreenNavigator>();
 
-        services.AddSingleton<ISessionStore, InMemorySessionStore>();
-        services.AddSingleton<ISessionLockProvider, InMemorySessionLockProvider>();
+        _ = services.AddSingleton<ISessionStore, InMemorySessionStore>();
+        _ = services.AddSingleton<ISessionLockProvider, InMemorySessionLockProvider>();
 
-        services.AddSingleton<InputHandlerRegistry>();
-        services.AddScoped<PendingInputMiddleware>();
+        _ = services.AddSingleton<InputHandlerRegistry>();
+        _ = services.AddScoped<PendingInputMiddleware>();
 
-        services.AddScoped<ErrorHandlingMiddleware>();
-        services.AddScoped<LoggingMiddleware>();
-        services.AddScoped<PrivateChatOnlyMiddleware>();
-        services.AddScoped<SessionMiddleware>();
-        services.AddScoped<AccessPolicyMiddleware>();
+        _ = services.AddScoped<ErrorHandlingMiddleware>();
+        _ = services.AddScoped<LoggingMiddleware>();
+        _ = services.AddScoped<PrivateChatOnlyMiddleware>();
+        _ = services.AddScoped<SessionMiddleware>();
+        _ = services.AddScoped<AccessPolicyMiddleware>();
 
         // Register Channel for Update processing
         Channel<Update> updateChannel = Channel.CreateBounded<Update>(new BoundedChannelOptions(1000)
         {
             FullMode = BoundedChannelFullMode.Wait, SingleWriter = true, SingleReader = false
         });
-        services.AddSingleton(updateChannel.Writer);
-        services.AddSingleton(updateChannel.Reader);
+        _ = services.AddSingleton(updateChannel.Writer);
+        _ = services.AddSingleton(updateChannel.Reader);
 
         if (botConfig.Mode == BotMode.POLLING)
         {
-            services.AddHostedService<PollingService>();
+            _ = services.AddHostedService<PollingService>();
         }
 
-        services.AddHostedService<UpdateProcessingWorker>();
+        _ = services.AddHostedService<UpdateProcessingWorker>();
 
         return services;
     }
@@ -74,8 +75,8 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddSessionStore<TStore>(this IServiceCollection services)
         where TStore : class, ISessionStore
     {
-        services.RemoveAll<ISessionStore>();
-        services.AddSingleton<ISessionStore, TStore>();
+        _ = services.RemoveAll<ISessionStore>();
+        _ = services.AddSingleton<ISessionStore, TStore>();
 
         return services;
     }
@@ -84,18 +85,39 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        services.Configure<RedisSessionOptions>(configuration.GetSection(RedisSessionOptions.SECTION_NAME));
+        _ = services.Configure<RedisSessionOptions>(configuration.GetSection(RedisSessionOptions.SECTION_NAME));
 
         RedisSessionOptions options =
             configuration.GetSection(RedisSessionOptions.SECTION_NAME).Get<RedisSessionOptions>()
             ?? new RedisSessionOptions();
 
-        services.AddSingleton<IConnectionMultiplexer>(_ =>
+        _ = services.AddSingleton<IConnectionMultiplexer>(_ =>
             ConnectionMultiplexer.Connect(options.ConnectionString));
 
-        services.RemoveAll<ISessionStore>();
-        services.AddSingleton<ISessionStore, RedisSessionStore>();
-        services.AddSingleton<ISessionLockProvider, InMemorySessionLockProvider>(); // TODO: Implement Redis version
+        _ = services.RemoveAll<ISessionStore>();
+        _ = services.AddSingleton<ISessionStore, RedisSessionStore>();
+        _ = services.AddSingleton<ISessionLockProvider, InMemorySessionLockProvider>(); // TODO: Implement Redis version
+
+        return services;
+    }
+
+    public static IServiceCollection AddWizards(this IServiceCollection services, params Assembly[] assemblies)
+    {
+        _ = services.AddSingleton<IWizardStore, InMemoryWizardStore>();
+        _ = services.AddScoped<WizardMiddleware>();
+
+        var registry = new WizardRegistry();
+
+        foreach (Assembly assembly in assemblies)
+        {
+            foreach (Type wizardType in WizardRegistry.GetWizardTypes(assembly))
+            {
+                registry.Register(wizardType);
+                services.TryAddScoped(wizardType);
+            }
+        }
+
+        _ = services.AddSingleton(registry);
 
         return services;
     }
@@ -111,8 +133,8 @@ public static class ServiceCollectionExtensions
         // that populates the registry from the discovered types.
         // This avoids BuildServiceProvider() and works regardless of call order
         // relative to AddTelegramBotFlow.
-        services.RemoveAll<ScreenRegistry>();
-        services.AddSingleton(_ =>
+        _ = services.RemoveAll<ScreenRegistry>();
+        _ = services.AddSingleton(_ =>
         {
             var registry = new ScreenRegistry();
             registry.RegisterFromAssembly(assembly);

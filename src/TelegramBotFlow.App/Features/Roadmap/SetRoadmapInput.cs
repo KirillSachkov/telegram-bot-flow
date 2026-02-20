@@ -48,7 +48,7 @@ public sealed class SetRoadmapInputEndpoint : IBotEndpoint
                 SourceMessageId = copied.Id
             };
 
-            await db.SaveChangesAsync(ctx.CancellationToken);
+            _ = await db.SaveChangesAsync(ctx.CancellationToken);
 
             await bot.DeleteMessage(ctx.ChatId, ctx.MessageId!.Value, ctx.CancellationToken);
         }
@@ -60,7 +60,7 @@ public sealed class SetRoadmapInputEndpoint : IBotEndpoint
                 SourceMessageId = ctx.MessageId!.Value
             };
 
-            await db.SaveChangesAsync(ctx.CancellationToken);
+            _ = await db.SaveChangesAsync(ctx.CancellationToken);
         }
 
         return BotResults.Back("✅ Roadmap успешно сохранён");

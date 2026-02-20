@@ -15,9 +15,9 @@ public sealed class ReplyKeyboardTests
             .Button("Settings")
             .Build();
 
-        markup.Keyboard.Should().HaveCount(2);
-        markup.Keyboard.First().Should().HaveCount(2);
-        markup.Keyboard.Last().Should().HaveCount(1);
+        _ = markup.Keyboard.Should().HaveCount(2);
+        _ = markup.Keyboard.First().Should().HaveCount(2);
+        _ = markup.Keyboard.Last().Should().HaveCount(1);
     }
 
     [Fact]
@@ -27,7 +27,7 @@ public sealed class ReplyKeyboardTests
             .Button("Test")
             .Build();
 
-        markup.ResizeKeyboard.Should().BeTrue();
+        _ = markup.ResizeKeyboard.Should().BeTrue();
     }
 
     [Fact]
@@ -38,6 +38,6 @@ public sealed class ReplyKeyboardTests
             .OneTime()
             .Build();
 
-        markup.OneTimeKeyboard.Should().BeTrue();
+        _ = markup.OneTimeKeyboard.Should().BeTrue();
     }
 }

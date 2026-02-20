@@ -13,7 +13,7 @@ public sealed class DeleteBroadcastEndpoint : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapDelete("/api/broadcasts/{id:guid}", Handler)
+        _ = app.MapDelete("/api/broadcasts/{id:guid}", Handler)
             .WithTags("Broadcasts")
             .WithSummary("Удалить рассылку");
     }
@@ -31,8 +31,8 @@ public sealed class DeleteBroadcastEndpoint : IEndpoint
             return UnitResult.Failure(
                 GeneralErrors.InvalidOperation("Нельзя удалить рассылку в процессе отправки"));
 
-        db.Broadcasts.Remove(broadcast);
-        await db.SaveChangesAsync(ct);
+        _ = db.Broadcasts.Remove(broadcast);
+        _ = await db.SaveChangesAsync(ct);
 
         return UnitResult.Success<Error>();
     }

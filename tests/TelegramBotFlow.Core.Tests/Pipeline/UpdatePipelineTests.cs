@@ -21,7 +21,7 @@ public sealed class UpdatePipelineTests
 
         await pipeline.ProcessAsync(ctx);
 
-        terminalCalled.Should().BeTrue();
+        _ = terminalCalled.Should().BeTrue();
     }
 
     [Fact]
@@ -51,7 +51,7 @@ public sealed class UpdatePipelineTests
 
         await pipeline.ProcessAsync(ctx);
 
-        order.Should().Equal(1, 2, 3);
+        _ = order.Should().Equal(1, 2, 3);
     }
 
     [Fact]
@@ -71,6 +71,6 @@ public sealed class UpdatePipelineTests
 
         await pipeline.ProcessAsync(ctx);
 
-        terminalCalled.Should().BeFalse();
+        _ = terminalCalled.Should().BeFalse();
     }
 }

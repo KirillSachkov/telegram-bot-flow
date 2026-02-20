@@ -12,7 +12,7 @@ public sealed class ToggleSequenceActiveEndpoint : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapPatch("/api/sequences/{id:guid}/toggle", Handler)
+        _ = app.MapPatch("/api/sequences/{id:guid}/toggle", Handler)
             .WithTags("Sequences")
             .WithSummary("Включить/выключить последовательность");
     }
@@ -27,7 +27,7 @@ public sealed class ToggleSequenceActiveEndpoint : IEndpoint
             return UnitResult.Failure(GeneralErrors.NotFound(id, "Последовательность"));
 
         sequence.IsActive = !sequence.IsActive;
-        await db.SaveChangesAsync(ct);
+        _ = await db.SaveChangesAsync(ct);
 
         return UnitResult.Success<Error>();
     }

@@ -1,4 +1,6 @@
+using TelegramBotFlow.App.Features.Feedback;
 using TelegramBotFlow.App.Features.Help;
+using TelegramBotFlow.App.Features.Onboarding;
 using TelegramBotFlow.App.Features.Profile;
 using TelegramBotFlow.App.Features.Roadmap;
 using TelegramBotFlow.App.Features.Settings;
@@ -17,7 +19,7 @@ public sealed class MainMenuScreen : IScreen
     /// </summary>
     /// <param name="ctx">Контекст текущего update-а.</param>
     /// <returns>Экран с кнопками разделов и действия roadmap.</returns>
-    public Task<ScreenView> RenderAsync(UpdateContext ctx)
+    public ValueTask<ScreenView> RenderAsync(UpdateContext ctx)
     {
         ScreenView view = new ScreenView("Добро пожаловать! Выберите раздел:")
             .NavigateButton<ProfileScreen>("Профиль")
@@ -25,11 +27,14 @@ public sealed class MainMenuScreen : IScreen
             .Row()
             .NavigateButton<HelpScreen>("Помощь")
             .Row()
-            .Button<GetRoadmapAction>("🗺 Получить Roadmap");
+            .Button<GetRoadmapAction>("🗺 Получить Roadmap")
+            .Row()
+            .Button<StartProfileSetupAction>("✏️ Настроить профиль")
+            .Button<StartFeedbackAction>("💬 Оставить отзыв");
 
         if (ctx.IsAdmin)
-            view.Row().NavigateButton<AdminRoadmapScreen>("⚙️ Настройки Roadmap");
+            _ = view.Row().NavigateButton<AdminRoadmapScreen>("⚙️ Настройки Roadmap");
 
-        return Task.FromResult(view);
+        return ValueTask.FromResult(view);
     }
 }

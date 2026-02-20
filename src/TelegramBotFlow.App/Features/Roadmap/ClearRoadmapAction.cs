@@ -27,7 +27,7 @@ public sealed class ClearRoadmapEndpoint : IBotEndpoint
         if (settings is { Roadmap: not null })
         {
             settings.Roadmap = null;
-            await db.SaveChangesAsync(ctx.CancellationToken);
+            _ = await db.SaveChangesAsync(ctx.CancellationToken);
         }
 
         return BotResults.Refresh("✅ Привязка удалена");

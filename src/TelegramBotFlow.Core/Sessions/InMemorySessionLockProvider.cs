@@ -46,7 +46,7 @@ public sealed class InMemorySessionLockProvider : ISessionLockProvider
 
         public void Dispose()
         {
-            _semaphore.Release();
+            _ = _semaphore.Release();
         }
     }
 }

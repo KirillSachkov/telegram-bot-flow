@@ -17,7 +17,7 @@ public class BotDbContext<TUser>(DbContextOptions options)
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.ApplyConfigurationsFromAssembly(typeof(BotDbContext<>).Assembly);
+        _ = modelBuilder.ApplyConfigurationsFromAssembly(typeof(BotDbContext<>).Assembly);
     }
 }
 

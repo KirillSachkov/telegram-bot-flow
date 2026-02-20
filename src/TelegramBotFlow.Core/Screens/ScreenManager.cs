@@ -71,7 +71,7 @@ public sealed class ScreenManager
             if (view.PendingInputActionId is not null)
                 session.PendingInputActionId = view.PendingInputActionId;
 
-            foreach (var kvp in view.Payloads)
+            foreach (KeyValuePair<string, string> kvp in view.Payloads)
                 session.StorePayloadJson(kvp.Key, kvp.Value);
         }
     }
@@ -112,14 +112,17 @@ public sealed class ScreenManager
                 session.CurrentScreen = screenId;
 
             session.NavMessageId = sentMessage.Id;
+
             session.CurrentMediaType = newMediaType;
 
             // Apply pending input declared in the view (overrides PushScreen clear when intentional)
             if (view.PendingInputActionId is not null)
                 session.PendingInputActionId = view.PendingInputActionId;
 
-            foreach (var kvp in view.Payloads)
+            foreach (KeyValuePair<string, string> kvp in view.Payloads)
                 session.StorePayloadJson(kvp.Key, kvp.Value);
+
+            session.ClearNavigationArgs();
         }
     }
 }

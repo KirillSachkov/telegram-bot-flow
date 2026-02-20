@@ -63,11 +63,12 @@ The framework layer. When copying to a new project, this part should not be modi
 | ----------------------- | --------------------------------------------------------------------------------------------------- |
 | `Hosting/`              | `BotApplication`, `BotApplicationBuilder`, `PollingService`, `WebhookEndpoints`, `BotConfiguration` |
 | `Pipeline/`             | `UpdateDelegate`, `IUpdateMiddleware`, `UpdatePipeline`                                             |
-| `Pipeline/Middlewares/` | `ErrorHandling`, `Logging`, `Session`, `AccessPolicy` middleware                                    |
+| `Pipeline/Middlewares/` | `ErrorHandling`, `Logging`, `Session`, `AccessPolicy`, `WizardMiddleware` middleware                |
 | `Routing/`              | `UpdateRouter`, `RouteEntry` — маршрутизация по типу обновления / routing by update type            |
 | `Context/`              | `UpdateContext`, `IUpdateResponder`, `IUserAccessPolicy`                                            |
 | `Sessions/`             | `ISessionStore`, `InMemorySessionStore`, `UserSession`                                              |
 | `Screens/`              | `IScreen`, `ScreenManager`, `ScreenNavigator`, `ScreenRegistry`, `ScreenView`                       |
+| `Wizards/`              | `BotWizard<T>`, `WizardRegistry`, `WizardMiddleware`, `IWizardStore`, `WizardBuilder`, `StepResult` |
 | `UI/`                   | `InlineKeyboard`, `ReplyKeyboard`, `MenuBuilder`                                                    |
 | `Endpoints/`            | `IBotEndpoint`, `BotEndpointExtensions` — auto-discovery обработчиков / handler auto-discovery      |
 | `Extensions/`           | `ServiceCollectionExtensions` — DI-регистрация / DI registration                                    |
@@ -163,7 +164,7 @@ Messaging and access policy are extracted into separate services:
 ASP.NET Core middleware analog, but for Telegram Updates:
 
 ```
-ErrorHandling → Logging → Session → AccessPolicy → PendingInput → Router → Handler
+ErrorHandling → Logging → Session → AccessPolicy → Wizards → PendingInput → Router → Handler
 ```
 
 `PendingInputMiddleware` перехватывает текстовые сообщения (не callback, не команды) и роутит их прямо в зарегистрированный input-обработчик, если у сессии установлен `PendingInputActionId`. Это позволяет экранам объявлять «ожидание ввода» через `ScreenView.AwaitInput<TAction>()`.
@@ -247,8 +248,9 @@ Available results via `BotResults`:
 | `BotResults.NavigateTo<TScreen>()` | Переход к указанному экрану / Navigates to the specified screen                                               |
 | `BotResults.Refresh(msg?)`         | Перерисовка текущего экрана / Redraws the current screen                                                      |
 | `BotResults.Stay(msg?)`            | Остаётся в режиме ожидания ввода (`KeepPending = true`) / Stays in input-awaiting mode (`KeepPending = true`) |
+| `BotResults.StartWizard<T>()`      | Запускает визард типа `T`, инициализирует первый шаг / Starts wizard of type `T`, initializes first step      |
 
-### Typed Actions (IBotAction)
+### Typed Actions (IBotAction) и Payloads
 
 Для типобезопасной связи кнопок с обработчиками используется маркерный интерфейс `IBotAction`:
 
@@ -264,6 +266,24 @@ new ScreenView("...")
 // Handler — обработчик ссылается на тот же тип / handler references the same type
 app.MapAction<ClearRoadmapAction>(...);
 ```
+
+#### Типизированные параметры (Typed Payloads)
+
+Также поддерживается передача сложных объектов (payloads). Чтобы обойти лимит Telegram в 64 байта для `callback_data`, используется гибридный подход:
+
+- короткие JSON (≤ 64 байт с учетом префиксов) помещаются напрямую в кнопку.
+- длинные JSON кэшируются в сессии (`UserSession.StorePayloadJson` с LRU-очисткой), а в кнопку уходит только 8-символьный Short ID.
+- обработчик автоматически десериализует TPayload.
+
+```csharp
+// View
+new ScreenView("...").Button<DeleteAction, DeletePayload>("🗑", new DeletePayload(Id, true));
+
+// Handler
+app.MapAction<DeleteAction, DeletePayload>(async (DeletePayload payload) => ...);
+```
+
+Если сессия устарела или очищена, пользователь получит сообщение об ошибке (через перехват `PayloadExpiredException`), а не падение сервиса.
 
 Аналогично для ввода: `AwaitInput<TAction>()` в `ScreenView` + `MapInput<TAction>(handler)` в обработчике. Строковый `ACTION_ID` не нужен.
 
@@ -304,6 +324,83 @@ app.MapBotEndpoints();
 `builder.Build()` automatically calls `AddBotEndpoints` and `AddScreens` for the entry assembly.
 `MapBotEndpoints` resolves them and calls `MapEndpoint` for each one.
 
+### Wizards (Мастера ввода)
+
+Система визардов позволяет собирать данные от пользователя в несколько шагов. Паттерн регистрации идентичен `ScreenRegistry`.
+
+The wizard system collects user data across multiple steps. The registration pattern mirrors `ScreenRegistry`.
+
+```
+WizardRegistry (Singleton) → string wizardId → Type wizardType
+    ↓ on each update (only when wizard is active)
+context.RequestServices.GetRequiredService(wizardType) → IBotWizard (Scoped)
+```
+
+**Ключевые компоненты / Key components:**
+
+- `WizardRegistry` — Singleton-реестр, хранит `string → Type`. Не создаёт экземпляры. / Singleton registry, stores `string → Type`. Does not instantiate wizards.
+- `BotWizard<TState>` — базовый класс визарда. Шаги описываются через `ConfigureSteps(WizardBuilder)`. / Base wizard class. Steps are described via `ConfigureSteps(WizardBuilder)`.
+- `IWizardStore` — хранилище состояния прохождения визарда. По умолчанию `InMemoryWizardStore`. / Wizard progress state store. Default: `InMemoryWizardStore`.
+- `WizardMiddleware` — перехватывает апдейт при активном `session.ActiveWizardId`. Резолвит визард из реестра. / Intercepts the update when `session.ActiveWizardId` is set. Resolves the wizard from the registry.
+
+**Запуск визарда / Starting a wizard:**
+
+```csharp
+// Возврат IEndpointResult — предпочтительный способ
+app.MapCommand("/register", () => BotResults.StartWizard<RegistrationWizard>());
+
+// Или императивно из обработчика (когда нужна логика до запуска)
+app.MapCommand("/register", async (UpdateContext ctx) =>
+{
+    await ctx.StartWizardAsync<RegistrationWizard>(ctx.CancellationToken);
+    return BotResults.Empty();
+});
+```
+
+**Регистрация / Registration:**
+
+```csharp
+// Автоматически из builder.Build()
+services.AddWizards(entryAssembly);
+
+// Или вручную
+builder.Services.AddWizards(typeof(RegistrationWizard).Assembly);
+```
+
+**Пример визарда / Wizard example:**
+
+```csharp
+public class RegistrationWizard : BotWizard<RegistrationState>
+{
+    protected override void ConfigureSteps(WizardBuilder<RegistrationState> builder)
+    {
+        builder
+            .Step("name",
+                renderer: (ctx, state) => new ScreenView("Введите имя:"),
+                processor: async (ctx, state) =>
+                {
+                    state.Name = ctx.MessageText!;
+                    return StepResult.GoTo("age");
+                })
+            .Step("age",
+                renderer: (ctx, state) => new ScreenView("Введите возраст:"),
+                processor: async (ctx, state) =>
+                {
+                    if (!int.TryParse(ctx.MessageText, out int age))
+                        return StepResult.Stay("Введите число");
+                    state.Age = age;
+                    return StepResult.Finish();
+                });
+    }
+
+    public override async Task<IEndpointResult> OnFinishedAsync(UpdateContext ctx, RegistrationState state)
+    {
+        // Сохранить данные, перейти на экран
+        return BotResults.NavigateToRoot<MainMenuScreen>();
+    }
+}
+```
+
 ### Screens и навигация (Screens & Navigation)
 
 UI-диалоги реализованы через экраны:
@@ -325,9 +422,9 @@ System navigation callback IDs are defined in the `NavCallbacks` class (constant
 
 #### Разница между GoBackAsync и NavigateBackAsync
 
-| Метод | Стек пуст | Callback-ответ |
-|---|---|---|
-| `GoBackAsync` | no-op (молчаливый) | нет |
+| Метод               | Стек пуст                      | Callback-ответ                      |
+| ------------------- | ------------------------------ | ----------------------------------- |
+| `GoBackAsync`       | no-op (молчаливый)             | нет                                 |
 | `NavigateBackAsync` | перерисовывает `CurrentScreen` | да (опциональный текст уведомления) |
 
 `GoBackAsync` используется в программном коде. `NavigateBackAsync` — в обработчиках callback-кнопок (`nav:back`), где нужно ответить на callback-запрос Telegram.

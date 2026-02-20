@@ -3,6 +3,7 @@ using TelegramBotFlow.App.Features.MainMenu;
 using TelegramBotFlow.Core.Data;
 using TelegramBotFlow.Core.Data.Middleware;
 using TelegramBotFlow.Core.Endpoints;
+using TelegramBotFlow.Core.Extensions;
 using TelegramBotFlow.Core.Hosting;
 
 Log.Logger = new LoggerConfiguration()
@@ -18,6 +19,10 @@ try
 
     builder.Services.AddBotCoreData(builder.Configuration);
 
+    builder.Services.AddBotEndpoints(typeof(Program).Assembly);
+    builder.Services.AddScreens(typeof(Program).Assembly);
+    builder.Services.AddWizards(typeof(Program).Assembly);
+
     BotApplication app = builder.Build();
 
     app.UseErrorHandling();
@@ -25,6 +30,7 @@ try
     app.UsePrivateChatOnly();
     app.UseSession();
     app.UseAccessPolicy();
+    app.UseWizards();
     app.Use<UserTrackingMiddleware>();
     app.UsePendingInput();
 

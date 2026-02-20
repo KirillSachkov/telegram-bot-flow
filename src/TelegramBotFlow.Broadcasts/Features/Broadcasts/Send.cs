@@ -14,7 +14,7 @@ public sealed class SendBroadcastEndpoint : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapPost("/api/broadcasts/{id:guid}/send", Handler)
+        _ = app.MapPost("/api/broadcasts/{id:guid}/send", Handler)
             .WithTags("Broadcasts")
             .WithSummary("Отправить рассылку всем пользователям");
     }

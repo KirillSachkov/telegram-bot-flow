@@ -21,7 +21,7 @@ public sealed class RouteEntryTests
         var route = RouteEntry.Command(routeCommand, NoOp);
         UpdateContext ctx = TestHelpers.CreateMessageContext(messageText);
 
-        route.Matches(ctx).Should().Be(expected);
+        _ = route.Matches(ctx).Should().Be(expected);
     }
 
     [Fact]
@@ -30,7 +30,7 @@ public sealed class RouteEntryTests
         var route = RouteEntry.Command("/start", NoOp);
         UpdateContext ctx = TestHelpers.CreateMessageContext("/start some arguments");
 
-        route.Matches(ctx).Should().BeTrue();
+        _ = route.Matches(ctx).Should().BeTrue();
     }
 
     [Theory]
@@ -47,7 +47,7 @@ public sealed class RouteEntryTests
         var route = RouteEntry.Callback(routePattern, NoOp);
         UpdateContext ctx = TestHelpers.CreateCallbackContext(callbackData);
 
-        route.Matches(ctx).Should().Be(expected);
+        _ = route.Matches(ctx).Should().Be(expected);
     }
 
     [Fact]
@@ -60,8 +60,8 @@ public sealed class RouteEntryTests
         UpdateContext matchCtx = TestHelpers.CreateMessageContext("привет мир");
         UpdateContext noMatchCtx = TestHelpers.CreateMessageContext("до свидания");
 
-        route.Matches(matchCtx).Should().BeTrue();
-        route.Matches(noMatchCtx).Should().BeFalse();
+        _ = route.Matches(matchCtx).Should().BeTrue();
+        _ = route.Matches(noMatchCtx).Should().BeFalse();
     }
 
     [Fact]
@@ -70,7 +70,7 @@ public sealed class RouteEntryTests
         var route = RouteEntry.Command("/start", NoOp);
         UpdateContext ctx = TestHelpers.CreateCallbackContext("start");
 
-        route.Matches(ctx).Should().BeFalse();
+        _ = route.Matches(ctx).Should().BeFalse();
     }
 
     [Fact]
@@ -86,7 +86,7 @@ public sealed class RouteEntryTests
         {
             CurrentScreen = "settings:main"
         };
-        route.Matches(matchCtx).Should().BeTrue();
+        _ = route.Matches(matchCtx).Should().BeTrue();
 
         // Wrong screen + correct text = no match
         UpdateContext wrongScreenCtx = TestHelpers.CreateMessageContext("Язык");
@@ -94,7 +94,7 @@ public sealed class RouteEntryTests
         {
             CurrentScreen = "settings:lang"
         };
-        route.Matches(wrongScreenCtx).Should().BeFalse();
+        _ = route.Matches(wrongScreenCtx).Should().BeFalse();
 
         // Correct screen + wrong text = no match
         UpdateContext wrongTextCtx = TestHelpers.CreateMessageContext("Назад");
@@ -102,10 +102,10 @@ public sealed class RouteEntryTests
         {
             CurrentScreen = "settings:main"
         };
-        route.Matches(wrongTextCtx).Should().BeFalse();
+        _ = route.Matches(wrongTextCtx).Should().BeFalse();
 
         // No session (Screen = null) + correct text = no match
         UpdateContext noSessionCtx = TestHelpers.CreateMessageContext("Язык");
-        route.Matches(noSessionCtx).Should().BeFalse();
+        _ = route.Matches(noSessionCtx).Should().BeFalse();
     }
 }

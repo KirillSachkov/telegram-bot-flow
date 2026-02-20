@@ -40,7 +40,7 @@ public sealed class UpdateResponder : IUpdateResponder
         if (context.MessageId is null)
             return;
 
-        await _bot.EditMessageText(
+        _ = await _bot.EditMessageText(
             context.ChatId,
             context.MessageId.Value,
             text,
@@ -56,7 +56,7 @@ public sealed class UpdateResponder : IUpdateResponder
         InlineKeyboardMarkup? replyMarkup = null,
         ParseMode parseMode = ParseMode.Html)
     {
-        await _bot.EditMessageText(
+        _ = await _bot.EditMessageText(
             context.ChatId,
             messageId,
             text,
@@ -92,7 +92,7 @@ public sealed class UpdateResponder : IUpdateResponder
 
     public async Task CopyMessageAsync(UpdateContext context, long fromChatId, int messageId)
     {
-        await _bot.CopyMessage(
+        _ = await _bot.CopyMessage(
             context.ChatId,
             fromChatId,
             messageId,

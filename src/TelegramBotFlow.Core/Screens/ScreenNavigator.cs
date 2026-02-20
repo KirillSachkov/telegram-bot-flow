@@ -61,7 +61,7 @@ public sealed class ScreenNavigator : IScreenNavigator
 
         if (previousScreen is not null)
         {
-            context.Session!.PopScreen();
+            _ = context.Session!.PopScreen();
             await _screenManager.RenderScreenAsync(context, previousScreen, pushToStack: false);
         }
 

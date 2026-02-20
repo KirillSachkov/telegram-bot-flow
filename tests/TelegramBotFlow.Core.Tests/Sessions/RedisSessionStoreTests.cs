@@ -15,20 +15,18 @@ public sealed class RedisSessionStoreTests
     {
         var session = new UserSession(42)
         {
-            CurrentScreen = "settings:main",
-            NavMessageId = 100,
-            CurrentMediaType = ScreenMediaType.Photo,
+            CurrentScreen = "settings:main", NavMessageId = 100, CurrentMediaType = ScreenMediaType.Photo,
         };
         session.NavigationStack.Add("main");
 
         JsonElement json = ParseJson(session);
 
-        json.GetProperty("createdAt").GetDateTime().Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(5));
-        json.GetProperty("lastActivity").GetDateTime().Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(5));
-        json.GetProperty("currentScreen").GetString().Should().Be("settings:main");
-        json.GetProperty("navMessageId").GetInt32().Should().Be(100);
-        json.GetProperty("navigationStack").GetArrayLength().Should().Be(1);
-        json.GetProperty("navigationStack")[0].GetString().Should().Be("main");
+        _ = json.GetProperty("createdAt").GetDateTime().Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(5));
+        _ = json.GetProperty("lastActivity").GetDateTime().Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(5));
+        _ = json.GetProperty("currentScreen").GetString().Should().Be("settings:main");
+        _ = json.GetProperty("navMessageId").GetInt32().Should().Be(100);
+        _ = json.GetProperty("navigationStack").GetArrayLength().Should().Be(1);
+        _ = json.GetProperty("navigationStack")[0].GetString().Should().Be("main");
     }
 
     [Fact]
@@ -40,9 +38,9 @@ public sealed class RedisSessionStoreTests
 
         JsonElement json = ParseJson(session);
 
-        json.TryGetProperty("userData", out JsonElement userData).Should().BeTrue();
-        userData.GetProperty("city").GetString().Should().Be("Moscow");
-        userData.GetProperty("lang").GetString().Should().Be("ru");
+        _ = json.TryGetProperty("userData", out JsonElement userData).Should().BeTrue();
+        _ = userData.GetProperty("city").GetString().Should().Be("Moscow");
+        _ = userData.GetProperty("lang").GetString().Should().Be("ru");
     }
 
     [Fact]
@@ -52,7 +50,7 @@ public sealed class RedisSessionStoreTests
 
         JsonElement json = ParseJson(session);
 
-        json.TryGetProperty("userData", out _).Should().BeFalse();
+        _ = json.TryGetProperty("userData", out _).Should().BeFalse();
     }
 
     [Fact]
@@ -62,10 +60,10 @@ public sealed class RedisSessionStoreTests
 
         JsonElement json = ParseJson(session);
 
-        json.TryGetProperty("currentScreen", out _).Should().BeFalse();
-        json.TryGetProperty("navMessageId", out _).Should().BeFalse();
-        json.TryGetProperty("navigationStack", out _).Should().BeFalse();
-        json.TryGetProperty("pendingInputActionId", out _).Should().BeFalse();
+        _ = json.TryGetProperty("currentScreen", out _).Should().BeFalse();
+        _ = json.TryGetProperty("navMessageId", out _).Should().BeFalse();
+        _ = json.TryGetProperty("navigationStack", out _).Should().BeFalse();
+        _ = json.TryGetProperty("pendingInputActionId", out _).Should().BeFalse();
     }
 
     [Fact]
@@ -77,7 +75,7 @@ public sealed class RedisSessionStoreTests
 
         JsonElement json = ParseJson(session);
 
-        json.GetProperty("lastActivity").GetDateTime().Should().Be(fixedTime);
+        _ = json.GetProperty("lastActivity").GetDateTime().Should().Be(fixedTime);
     }
 
     [Fact]
@@ -87,8 +85,8 @@ public sealed class RedisSessionStoreTests
 
         JsonElement json = ParseJson(session);
 
-        json.TryGetProperty("pendingInputActionId", out JsonElement pending).Should().BeTrue();
-        pending.GetString().Should().Be("roadmap:set");
+        _ = json.TryGetProperty("pendingInputActionId", out JsonElement pending).Should().BeTrue();
+        _ = pending.GetString().Should().Be("roadmap:set");
     }
 
     [Fact]
@@ -98,7 +96,7 @@ public sealed class RedisSessionStoreTests
 
         JsonElement json = ParseJson(session);
 
-        json.TryGetProperty("pendingInputActionId", out _).Should().BeFalse();
+        _ = json.TryGetProperty("pendingInputActionId", out _).Should().BeFalse();
     }
 
     // ── FromJson ─────────────────────────────────────────────────────────────
@@ -108,20 +106,18 @@ public sealed class RedisSessionStoreTests
     {
         var original = new UserSession(42)
         {
-            CurrentScreen = "contact:share",
-            NavMessageId = 55,
-            CurrentMediaType = ScreenMediaType.Video,
+            CurrentScreen = "contact:share", NavMessageId = 55, CurrentMediaType = ScreenMediaType.Video,
         };
         original.NavigationStack.Add("main");
         original.NavigationStack.Add("settings");
 
         UserSession restored = Roundtrip(original, 42);
 
-        restored.UserId.Should().Be(42);
-        restored.CurrentScreen.Should().Be("contact:share");
-        restored.NavMessageId.Should().Be(55);
-        restored.CurrentMediaType.Should().Be(ScreenMediaType.Video);
-        restored.NavigationStack.Should().HaveCount(2);
+        _ = restored.UserId.Should().Be(42);
+        _ = restored.CurrentScreen.Should().Be("contact:share");
+        _ = restored.NavMessageId.Should().Be(55);
+        _ = restored.CurrentMediaType.Should().Be(ScreenMediaType.Video);
+        _ = restored.NavigationStack.Should().HaveCount(2);
     }
 
     [Fact]
@@ -132,7 +128,7 @@ public sealed class RedisSessionStoreTests
 
         UserSession restored = Roundtrip(original, 42);
 
-        restored.CreatedAt.Should().BeCloseTo(originalCreatedAt, TimeSpan.FromMilliseconds(1));
+        _ = restored.CreatedAt.Should().BeCloseTo(originalCreatedAt, TimeSpan.FromMilliseconds(1));
     }
 
     [Fact]
@@ -144,7 +140,7 @@ public sealed class RedisSessionStoreTests
 
         UserSession restored = Roundtrip(original, 42);
 
-        restored.LastActivity.Should().Be(fixedTime);
+        _ = restored.LastActivity.Should().Be(fixedTime);
     }
 
     [Fact]
@@ -156,8 +152,8 @@ public sealed class RedisSessionStoreTests
 
         UserSession restored = Roundtrip(original, 42);
 
-        restored.GetString("name").Should().Be("John");
-        restored.GetString("email").Should().Be("john@test.com");
+        _ = restored.GetString("name").Should().Be("John");
+        _ = restored.GetString("email").Should().Be("john@test.com");
     }
 
     [Fact]
@@ -167,9 +163,9 @@ public sealed class RedisSessionStoreTests
 
         UserSession restored = Roundtrip(original, 42);
 
-        restored.CurrentScreen.Should().BeNull();
-        restored.NavMessageId.Should().BeNull();
-        restored.PendingInputActionId.Should().BeNull();
+        _ = restored.CurrentScreen.Should().BeNull();
+        _ = restored.NavMessageId.Should().BeNull();
+        _ = restored.PendingInputActionId.Should().BeNull();
     }
 
     [Fact]
@@ -179,7 +175,7 @@ public sealed class RedisSessionStoreTests
 
         UserSession restored = Roundtrip(original, 42);
 
-        restored.PendingInputActionId.Should().Be("profile:edit-name");
+        _ = restored.PendingInputActionId.Should().Be("profile:edit-name");
     }
 
     [Fact]
@@ -189,7 +185,7 @@ public sealed class RedisSessionStoreTests
 
         UserSession restored = Roundtrip(original, 42);
 
-        restored.PendingInputActionId.Should().BeNull();
+        _ = restored.PendingInputActionId.Should().BeNull();
     }
 
     // ── Roundtrip ─────────────────────────────────────────────────────────────
@@ -210,15 +206,15 @@ public sealed class RedisSessionStoreTests
 
         UserSession restored = Roundtrip(original, 99);
 
-        restored.UserId.Should().Be(99);
-        restored.CurrentScreen.Should().Be("settings:lang");
-        restored.NavMessageId.Should().Be(77);
-        restored.CurrentMediaType.Should().Be(ScreenMediaType.Photo);
-        restored.PendingInputActionId.Should().Be("settings:set-city");
-        restored.NavigationStack.Should().ContainSingle().Which.Should().Be("main");
-        restored.GetString("age").Should().Be("25");
-        restored.GetString("name").Should().Be("Alice");
-        restored.GetAll().Should().HaveCount(2);
+        _ = restored.UserId.Should().Be(99);
+        _ = restored.CurrentScreen.Should().Be("settings:lang");
+        _ = restored.NavMessageId.Should().Be(77);
+        _ = restored.CurrentMediaType.Should().Be(ScreenMediaType.Photo);
+        _ = restored.PendingInputActionId.Should().Be("settings:set-city");
+        _ = restored.NavigationStack.Should().ContainSingle().Which.Should().Be("main");
+        _ = restored.GetString("age").Should().Be("25");
+        _ = restored.GetString("name").Should().Be("Alice");
+        _ = restored.GetAll().Should().HaveCount(2);
     }
 
     [Fact]
@@ -230,17 +226,17 @@ public sealed class RedisSessionStoreTests
 
         string json1 = RedisSessionStore.ToJson(session);
         UserSession afterFirst = RedisSessionStore.FromJson(42, json1);
-        afterFirst.GetAll().Should().ContainKey("temp_code");
-        afterFirst.GetAll().Should().ContainKey("city");
+        _ = afterFirst.GetAll().Should().ContainKey("temp_code");
+        _ = afterFirst.GetAll().Should().ContainKey("city");
 
         session.Remove("temp_code");
 
         UserSession restored = Roundtrip(session, 42);
 
-        restored.GetString("temp_code").Should().BeNull();
-        restored.Has("temp_code").Should().BeFalse();
-        restored.GetString("city").Should().Be("Moscow");
-        restored.GetAll().Should().HaveCount(1);
+        _ = restored.GetString("temp_code").Should().BeNull();
+        _ = restored.Has("temp_code").Should().BeFalse();
+        _ = restored.GetString("city").Should().Be("Moscow");
+        _ = restored.GetAll().Should().HaveCount(1);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

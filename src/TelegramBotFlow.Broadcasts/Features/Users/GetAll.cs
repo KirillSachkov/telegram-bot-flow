@@ -16,7 +16,7 @@ public sealed class GetAllUsersEndpoint : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapGet("/api/users", Handler)
+        _ = app.MapGet("/api/users", Handler)
             .WithTags("Users")
             .WithSummary("Получить всех пользователей бота");
     }

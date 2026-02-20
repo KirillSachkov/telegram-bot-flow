@@ -51,7 +51,7 @@ public sealed class BotApplication
     /// <returns>Собранный экземпляр приложения бота.</returns>
     public static BotApplication Build(BotApplicationBuilder builder)
     {
-        builder.Services.AddTelegramBotFlow(builder.Configuration);
+        _ = builder.Services.AddTelegramBotFlow(builder.Configuration);
 
         WebApplication app = builder.WebAppBuilder.Build();
 
@@ -112,6 +112,13 @@ public sealed class BotApplication
     /// </summary>
     /// <returns>Текущий экземпляр приложения для fluent-конфигурации.</returns>
     public BotApplication UseSession() => Use<SessionMiddleware>();
+
+    /// <summary>
+    /// Добавляет middleware обработки визардов (форм). Перехватывает update-ы для активного визарда.
+    /// Должен быть добавлен после UseSession().
+    /// </summary>
+    /// <returns>Текущий экземпляр приложения для fluent-конфигурации.</returns>
+    public BotApplication UseWizards() => Use<WizardMiddleware>();
 
     /// <summary>
     /// Добавляет middleware вычисления административного доступа пользователя.

@@ -25,7 +25,7 @@ public sealed class GetAllSequencesEndpoint : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapGet("/api/sequences", Handler)
+        _ = app.MapGet("/api/sequences", Handler)
             .WithTags("Sequences")
             .WithSummary("Получить все последовательности");
     }
@@ -44,12 +44,12 @@ public sealed class GetAllSequencesEndpoint : IEndpoint
                 s.IsActive,
                 s.CreatedAt,
                 s.Steps.Select(st => new SequenceStepDto(
-                    st.Id,
-                    st.Order,
-                    st.FromChatId,
-                    st.MessageId,
-                    (int)st.DelayAfterJoin.TotalMinutes))
-                .ToList()))
+                        st.Id,
+                        st.Order,
+                        st.FromChatId,
+                        st.MessageId,
+                        (int)st.DelayAfterJoin.TotalMinutes))
+                    .ToList()))
             .ToListAsync(ct);
 
         return sequences;

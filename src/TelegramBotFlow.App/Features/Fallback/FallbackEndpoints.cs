@@ -17,7 +17,7 @@ public sealed class FallbackEndpoints : IBotEndpoint
     public void MapEndpoint(BotApplication app) =>
         app.MapFallback(async (UpdateContext ctx, IUpdateResponder responder) =>
         {
-            await responder.ReplyAsync(ctx, "Не понимаю. Нажмите кнопку в меню или /start");
+            _ = await responder.ReplyAsync(ctx, "Не понимаю. Нажмите кнопку в меню или /start");
             return BotResults.Empty();
         });
 }

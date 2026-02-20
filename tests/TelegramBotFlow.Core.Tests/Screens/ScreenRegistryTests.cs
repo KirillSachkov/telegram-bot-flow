@@ -12,15 +12,15 @@ public sealed class ScreenRegistryTests
     {
         var registry = new ScreenRegistry();
         var services = new ServiceCollection();
-        services.AddScoped<TestScreen>();
+        _ = services.AddScoped<TestScreen>();
         IServiceProvider sp = services.BuildServiceProvider();
 
         registry.Register<TestScreen>();
 
         IScreen screen = registry.Resolve("test", sp);
 
-        screen.Should().NotBeNull();
-        screen.Should().BeOfType<TestScreen>();
+        _ = screen.Should().NotBeNull();
+        _ = screen.Should().BeOfType<TestScreen>();
     }
 
     [Fact]
@@ -31,7 +31,7 @@ public sealed class ScreenRegistryTests
 
         Action act = () => registry.Resolve("nonexistent", sp);
 
-        act.Should().Throw<InvalidOperationException>()
+        _ = act.Should().Throw<InvalidOperationException>()
             .WithMessage("*nonexistent*");
     }
 
@@ -41,8 +41,8 @@ public sealed class ScreenRegistryTests
         var registry = new ScreenRegistry();
         registry.Register<TestScreen>();
 
-        registry.HasScreen("test").Should().BeTrue();
-        registry.HasScreen("unknown").Should().BeFalse();
+        _ = registry.HasScreen("test").Should().BeTrue();
+        _ = registry.HasScreen("unknown").Should().BeFalse();
     }
 
     [Fact]
@@ -52,8 +52,8 @@ public sealed class ScreenRegistryTests
         registry.Register<TestScreen>();
         registry.RegisterWithId("another", typeof(TestScreen));
 
-        registry.GetRegisteredIds().Should().Contain("test");
-        registry.GetRegisteredIds().Should().Contain("another");
+        _ = registry.GetRegisteredIds().Should().Contain("test");
+        _ = registry.GetRegisteredIds().Should().Contain("another");
     }
 
     [Fact]
@@ -62,8 +62,8 @@ public sealed class ScreenRegistryTests
         var registry = new ScreenRegistry();
         registry.RegisterWithId("custom-id", typeof(TestScreen));
 
-        registry.HasScreen("custom-id").Should().BeTrue();
-        registry.HasScreen("test").Should().BeFalse();
+        _ = registry.HasScreen("custom-id").Should().BeTrue();
+        _ = registry.HasScreen("test").Should().BeFalse();
     }
 
     [Theory]
@@ -73,7 +73,7 @@ public sealed class ScreenRegistryTests
     [InlineData(typeof(SimpleScreen), "simple")]
     public void GetIdFromType_UsesClassNameConvention(Type screenType, string expectedId)
     {
-        ScreenRegistry.GetIdFromType(screenType).Should().Be(expectedId);
+        _ = ScreenRegistry.GetIdFromType(screenType).Should().Be(expectedId);
     }
 
     [Fact]
@@ -82,30 +82,30 @@ public sealed class ScreenRegistryTests
         var registry = new ScreenRegistry();
         registry.Register<MainMenuTestScreen>();
 
-        registry.HasScreen("main_menu_test").Should().BeTrue();
+        _ = registry.HasScreen("main_menu_test").Should().BeTrue();
     }
 
     private sealed class TestScreen : IScreen
     {
-        public Task<ScreenView> RenderAsync(UpdateContext ctx) =>
-            Task.FromResult(new ScreenView("Test screen"));
+        public ValueTask<ScreenView> RenderAsync(UpdateContext ctx) =>
+            ValueTask.FromResult(new ScreenView("Test screen"));
     }
 
     private sealed class MainMenuTestScreen : IScreen
     {
-        public Task<ScreenView> RenderAsync(UpdateContext ctx) =>
-            Task.FromResult(new ScreenView("Main menu test screen"));
+        public ValueTask<ScreenView> RenderAsync(UpdateContext ctx) =>
+            ValueTask.FromResult(new ScreenView("Main menu test screen"));
     }
 
     private sealed class SettingsLangScreen : IScreen
     {
-        public Task<ScreenView> RenderAsync(UpdateContext ctx) =>
-            Task.FromResult(new ScreenView("Settings lang screen"));
+        public ValueTask<ScreenView> RenderAsync(UpdateContext ctx) =>
+            ValueTask.FromResult(new ScreenView("Settings lang screen"));
     }
 
     private sealed class SimpleScreen : IScreen
     {
-        public Task<ScreenView> RenderAsync(UpdateContext ctx) =>
-            Task.FromResult(new ScreenView("Simple"));
+        public ValueTask<ScreenView> RenderAsync(UpdateContext ctx) =>
+            ValueTask.FromResult(new ScreenView("Simple"));
     }
 }

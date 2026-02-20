@@ -31,7 +31,7 @@ public sealed class UpdateRouterTests
 
         await terminal(ctx);
 
-        handlerCalls.Should().Equal("first");
+        _ = handlerCalls.Should().Equal("first");
     }
 
     [Fact]
@@ -44,6 +44,6 @@ public sealed class UpdateRouterTests
 
         Func<Task> act = () => terminal(ctx);
 
-        await act.Should().NotThrowAsync();
+        _ = await act.Should().NotThrowAsync();
     }
 }

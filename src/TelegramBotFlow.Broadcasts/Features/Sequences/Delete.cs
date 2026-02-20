@@ -12,7 +12,7 @@ public sealed class DeleteSequenceEndpoint : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapDelete("/api/sequences/{id:guid}", Handler)
+        _ = app.MapDelete("/api/sequences/{id:guid}", Handler)
             .WithTags("Sequences")
             .WithSummary("Удалить последовательность");
     }
@@ -26,8 +26,8 @@ public sealed class DeleteSequenceEndpoint : IEndpoint
         if (sequence is null)
             return UnitResult.Failure(GeneralErrors.NotFound(id, "Последовательность"));
 
-        db.Sequences.Remove(sequence);
-        await db.SaveChangesAsync(ct);
+        _ = db.Sequences.Remove(sequence);
+        _ = await db.SaveChangesAsync(ct);
 
         return UnitResult.Success<Error>();
     }

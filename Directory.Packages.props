@@ -5,6 +5,7 @@
   </PropertyGroup>
   <ItemGroup>
     <!-- Telegram -->
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.3" />
     <PackageVersion Include="Telegram.Bot" Version="22.9.0" />
     <!-- Functional Extensions -->
     <PackageVersion Include="CSharpFunctionalExtensions" Version="3.6.0" />

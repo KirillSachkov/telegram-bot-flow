@@ -37,7 +37,7 @@ internal sealed class BotRuntime
 
     private async Task ConfigureWebhookAsync(BotConfiguration config, UpdatePipeline pipeline)
     {
-        _app.MapPost(config.WebhookPath, async (
+        _ = _app.MapPost(config.WebhookPath, async (
             Update update,
             IServiceProvider sp,
             CancellationToken ct) =>

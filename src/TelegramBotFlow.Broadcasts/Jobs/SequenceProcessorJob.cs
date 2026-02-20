@@ -55,9 +55,11 @@ public sealed class SequenceProcessorJob(
 
                     if (sent)
                     {
-                        db.UserSequenceProgress.Add(new Domain.UserSequenceProgress
+                        _ = db.UserSequenceProgress.Add(new Domain.UserSequenceProgress
                         {
-                            UserId = userId, SequenceId = sequence.Id, StepId = step.Id
+                            UserId = userId,
+                            SequenceId = sequence.Id,
+                            StepId = step.Id
                         });
 
                         logger.LogInformation(
@@ -66,7 +68,7 @@ public sealed class SequenceProcessorJob(
                     }
                 }
 
-                await db.SaveChangesAsync(ct);
+                _ = await db.SaveChangesAsync(ct);
             }
         }
     }

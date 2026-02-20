@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using TelegramBotFlow.Core.Context;
 using TelegramBotFlow.Core.Data;
 using TelegramBotFlow.Core.Screens;
@@ -26,7 +26,7 @@ public sealed class AdminRoadmapScreen : IScreen
     /// </summary>
     /// <param name="ctx">Контекст текущего update-а.</param>
     /// <returns>Административный экран управления roadmap.</returns>
-    public async Task<ScreenView> RenderAsync(UpdateContext ctx)
+    public async ValueTask<ScreenView> RenderAsync(UpdateContext ctx)
     {
         BotSettings? settings = await _db.Settings
             .AsNoTracking()

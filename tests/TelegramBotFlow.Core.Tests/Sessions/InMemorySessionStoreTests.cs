@@ -12,8 +12,8 @@ public sealed class InMemorySessionStoreTests
     {
         UserSession session = await _store.GetOrCreateAsync(123);
 
-        session.Should().NotBeNull();
-        session.UserId.Should().Be(123);
+        _ = session.Should().NotBeNull();
+        _ = session.UserId.Should().Be(123);
     }
 
     [Fact]
@@ -24,7 +24,7 @@ public sealed class InMemorySessionStoreTests
 
         UserSession session2 = await _store.GetOrCreateAsync(123);
 
-        session2.GetString("key").Should().Be("value");
+        _ = session2.GetString("key").Should().Be("value");
     }
 
     [Fact]
@@ -33,7 +33,7 @@ public sealed class InMemorySessionStoreTests
         UserSession session1 = await _store.GetOrCreateAsync(123);
         UserSession session2 = await _store.GetOrCreateAsync(456);
 
-        session1.UserId.Should().NotBe(session2.UserId);
+        _ = session1.UserId.Should().NotBe(session2.UserId);
     }
 
     [Fact]
@@ -43,8 +43,8 @@ public sealed class InMemorySessionStoreTests
         DateTime firstActivity = session.LastActivity;
 
         await Task.Delay(10);
-        await _store.GetOrCreateAsync(123);
+        _ = await _store.GetOrCreateAsync(123);
 
-        session.LastActivity.Should().BeAfter(firstActivity);
+        _ = session.LastActivity.Should().BeAfter(firstActivity);
     }
 }
