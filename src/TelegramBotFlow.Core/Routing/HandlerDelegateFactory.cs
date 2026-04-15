@@ -1,14 +1,13 @@
 using System.Linq.Expressions;
 using System.Reflection;
-using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
+using TelegramBotFlow.Core.Routing;
 using TelegramBotFlow.Core.Context;
 using TelegramBotFlow.Core.Pipeline;
-using TelegramBotFlow.Core.Screens;
 
 namespace TelegramBotFlow.Core.Routing;
 
-public static class HandlerDelegateFactory
+internal static class HandlerDelegateFactory
 {
     private static readonly Type _taskEndpointResultType = typeof(Task<IEndpointResult>);
     private static readonly Type _endpointResultType = typeof(IEndpointResult);
@@ -20,39 +19,36 @@ public static class HandlerDelegateFactory
     public static UpdateDelegate Create(Delegate handler)
     {
         MethodInfo m = handler.Method;
-        ValidateReturnType(m.ReturnType);
+        ValidateHandlerReturnType(m.ReturnType);
         Func<UpdateContext, string?, object?>[] resolvers = BuildResolvers(m.GetParameters());
         object? target = handler.Target;
         Func<object?, object?[], object?> invoker = CompileInvoker(m);
 
-        return context => InvokeAndDispatchAsync(invoker, target, resolvers, context, callbackAction: null);
+        return ctx => InvokeAndDispatchAsync(invoker, target, resolvers, ctx, callbackAction: null);
     }
 
     /// <summary>
     /// Creates a delegate for input handlers.
     /// Required return type: <c>Task&lt;IEndpointResult&gt;</c>.
-    /// Clears <c>PendingInputActionId</c> before invocation; restores it when result has <c>KeepPending = true</c>.
+    /// Clears <c>PendingInputActionId</c> before invocation and passes <paramref name="actionId"/>
+    /// via <see cref="BotExecutionContext.PendingActionId"/> so <c>StayResult</c> can restore it.
     /// </summary>
     public static UpdateDelegate CreateForInput(Delegate handler, string actionId)
     {
         MethodInfo m = handler.Method;
-        ValidateReturnType(m.ReturnType);
+        ValidateHandlerReturnType(m.ReturnType);
         var resolvers = BuildResolvers(m.GetParameters());
         object? target = handler.Target;
         Func<object?, object?[], object?> invoker = CompileInvoker(m);
 
         return async context =>
         {
-            context.Session?.SetPending(null);
+            context.Session?.Navigation.SetPending(null);
 
             object?[] args = ApplyResolvers(resolvers, context, callbackAction: null);
-            IEndpointResult er = await UnwrapResult(invoker(target, args));
+            IEndpointResult er = await UnwrapResultInternal(invoker(target, args));
 
-            if (er.KeepPending)
-                context.Session?.SetPending(actionId);
-
-            IScreenNavigator navigator = context.RequestServices.GetRequiredService<IScreenNavigator>();
-            await er.ExecuteAsync(context, navigator);
+            await er.ExecuteAsync(BotExecutionContext.FromUpdateContext(context, pendingActionId: actionId));
         };
     }
 
@@ -64,103 +60,16 @@ public static class HandlerDelegateFactory
     public static UpdateDelegate CreateForCallbackGroup(Delegate handler, string prefix)
     {
         MethodInfo m = handler.Method;
-        ValidateReturnType(m.ReturnType);
+        ValidateHandlerReturnType(m.ReturnType);
         var resolvers = BuildResolvers(m.GetParameters(), hasCallbackAction: true);
         object? target = handler.Target;
         Func<object?, object?[], object?> invoker = CompileInvoker(m);
 
-        return context =>
+        return ctx =>
         {
-            string action = context.CallbackData![(prefix.Length + 1)..];
-            return InvokeAndDispatchAsync(invoker, target, resolvers, context, callbackAction: action);
+            string action = ctx.CallbackData![(prefix.Length + 1)..];
+            return InvokeAndDispatchAsync(invoker, target, resolvers, ctx, callbackAction: action);
         };
-    }
-
-    /// <summary>
-    /// Creates a delegate for action handlers expecting a typed payload.
-    /// </summary>
-    public static UpdateDelegate CreateForActionWithPayload<TPayload>(Delegate handler, string prefix)
-    {
-        MethodInfo m = handler.Method;
-        ValidateReturnType(m.ReturnType);
-
-        bool payloadConsumed = false;
-        ParameterInfo[] parameters = m.GetParameters();
-        var resolvers = new Func<UpdateContext, string, object?>[parameters.Length];
-
-        for (int i = 0; i < parameters.Length; i++)
-        {
-            Type paramType = parameters[i].ParameterType;
-
-            if (paramType == typeof(UpdateContext))
-            {
-                resolvers[i] = static (ctx, _) => ctx;
-            }
-            else if (paramType == typeof(CancellationToken))
-            {
-                resolvers[i] = static (ctx, _) => ctx.CancellationToken;
-            }
-            else if (paramType == typeof(TPayload) && !payloadConsumed)
-            {
-                payloadConsumed = true;
-                resolvers[i] = static (ctx, payloadData) =>
-                {
-                    if (payloadData.StartsWith("j:"))
-                    {
-                        string json = payloadData[2..];
-                        return JsonSerializer.Deserialize<TPayload>(json)!;
-                    }
-                    else if (payloadData.StartsWith("s:"))
-                    {
-                        string shortId = payloadData[2..];
-                        if (ctx.Session is null) throw new Exceptions.PayloadExpiredException();
-                        return ctx.Session.GetPayload<TPayload>(shortId);
-                    }
-
-                    throw new InvalidOperationException($"Invalid payload format: {payloadData}");
-                };
-            }
-            else
-            {
-                Type serviceType = paramType;
-                resolvers[i] = (ctx, _) => ctx.RequestServices.GetRequiredService(serviceType);
-            }
-        }
-
-        object? target = handler.Target;
-        Func<object?, object?[], object?> invoker = CompileInvoker(m);
-
-        return context =>
-        {
-            string payloadData = context.CallbackData![(prefix.Length + 1)..];
-            return InvokeAndDispatchWithPayloadAsync(invoker, target, resolvers, context, payloadData);
-        };
-    }
-
-    private static async Task InvokeAndDispatchWithPayloadAsync(
-        Func<object?, object?[], object?> invoker,
-        object? target,
-        Func<UpdateContext, string, object?>[] resolvers,
-        UpdateContext context,
-        string payloadData)
-    {
-        object?[] args;
-        try
-        {
-            args = new object?[resolvers.Length];
-            for (int i = 0; i < resolvers.Length; i++)
-                args[i] = resolvers[i](context, payloadData);
-        }
-        catch (Exceptions.PayloadExpiredException ex)
-        {
-            var responder = context.RequestServices.GetRequiredService<IUpdateResponder>();
-            await responder.AnswerCallbackAsync(context, ex.Message, showAlert: true);
-            return;
-        }
-
-        IEndpointResult er = await UnwrapResult(invoker(target, args));
-        IScreenNavigator navigator = context.RequestServices.GetRequiredService<IScreenNavigator>();
-        await er.ExecuteAsync(context, navigator);
     }
 
     private static async Task InvokeAndDispatchAsync(
@@ -171,12 +80,11 @@ public static class HandlerDelegateFactory
         string? callbackAction)
     {
         object?[] args = ApplyResolvers(resolvers, context, callbackAction);
-        IEndpointResult er = await UnwrapResult(invoker(target, args));
-        IScreenNavigator navigator = context.RequestServices.GetRequiredService<IScreenNavigator>();
-        await er.ExecuteAsync(context, navigator);
+        IEndpointResult er = await UnwrapResultInternal(invoker(target, args));
+        await er.ExecuteAsync(BotExecutionContext.FromUpdateContext(context));
     }
 
-    private static void ValidateReturnType(Type returnType)
+    internal static void ValidateHandlerReturnType(Type returnType)
     {
         if (returnType == _taskEndpointResultType || returnType == _endpointResultType)
             return;
@@ -186,7 +94,7 @@ public static class HandlerDelegateFactory
             $"Required: Task<IEndpointResult> or IEndpointResult.");
     }
 
-    private static ValueTask<IEndpointResult> UnwrapResult(object? result) =>
+    internal static ValueTask<IEndpointResult> UnwrapResultInternal(object? result) =>
         result is Task<IEndpointResult> task
             ? new ValueTask<IEndpointResult>(task)
             : ValueTask.FromResult((IEndpointResult)result!);

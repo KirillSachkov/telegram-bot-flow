@@ -1,7 +1,7 @@
+using TelegramBotFlow.Core.Routing;
 using TelegramBotFlow.Core.Context;
 using TelegramBotFlow.Core.Endpoints;
 using TelegramBotFlow.Core.Hosting;
-using TelegramBotFlow.Core.Routing;
 using TelegramBotFlow.Core.Screens;
 using TelegramBotFlow.Core.Wizards;
 
@@ -24,8 +24,7 @@ public class ProfileSetupState
 public sealed class ProfileSetupEndpoint : IBotEndpoint
 {
     public void MapEndpoint(BotApplication app) =>
-        app.MapAction<StartProfileSetupAction>(
-            (UpdateContext _) => BotResults.StartWizard<ProfileSetupWizard>());
+        app.MapAction<StartProfileSetupAction>((UpdateContext _) => BotResults.StartWizard<ProfileSetupWizard>());
 }
 
 // ── Wizard ─────────────────────────────────────────────────────────────────
@@ -50,7 +49,6 @@ public sealed class ProfileSetupWizard : BotWizard<ProfileSetupState>
                     state.Name = text;
                     return StepResult.GoTo("age");
                 })
-
             .TextStep(
                 id: "age",
                 prompt: static (_, state) =>
@@ -69,8 +67,8 @@ public sealed class ProfileSetupWizard : BotWizard<ProfileSetupState>
 
     public override Task<IEndpointResult> OnFinishedAsync(UpdateContext ctx, ProfileSetupState state)
     {
-        ctx.Session?.Set("name", state.Name);
-        ctx.Session?.Set("age", state.Age.ToString());
+        ctx.Session?.Data.Set("name", state.Name);
+        ctx.Session?.Data.Set("age", state.Age.ToString());
 
         return Task.FromResult(BotResults.NavigateToRoot<ProfileSetupResultScreen>());
     }
@@ -84,8 +82,8 @@ public sealed class ProfileSetupResultScreen : IScreen
 {
     public ValueTask<ScreenView> RenderAsync(UpdateContext ctx)
     {
-        string name = ctx.Session?.GetString("name") ?? "—";
-        string age = ctx.Session?.GetString("age") ?? "—";
+        string name = ctx.Session?.Data.GetString("name") ?? "—";
+        string age = ctx.Session?.Data.GetString("age") ?? "—";
 
         return ValueTask.FromResult(new ScreenView(
                 $"✅ <b>Профиль сохранён!</b>\n\n" +

@@ -1,8 +1,8 @@
+using TelegramBotFlow.Core.Routing;
 using TelegramBotFlow.Core.Context;
 using TelegramBotFlow.Core.Data;
 using TelegramBotFlow.Core.Endpoints;
 using TelegramBotFlow.Core.Hosting;
-using TelegramBotFlow.Core.Routing;
 
 namespace TelegramBotFlow.App.Features.Roadmap;
 
@@ -27,7 +27,7 @@ public sealed class ClearRoadmapEndpoint : IBotEndpoint
         if (settings is { Roadmap: not null })
         {
             settings.Roadmap = null;
-            _ = await db.SaveChangesAsync(ctx.CancellationToken);
+             await db.SaveChangesAsync(ctx.CancellationToken);
         }
 
         return BotResults.Refresh("✅ Привязка удалена");

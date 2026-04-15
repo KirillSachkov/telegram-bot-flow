@@ -1,7 +1,7 @@
+using TelegramBotFlow.Core.Routing;
 using TelegramBotFlow.Core.Context;
 using TelegramBotFlow.Core.Endpoints;
 using TelegramBotFlow.Core.Hosting;
-using TelegramBotFlow.Core.Routing;
 using TelegramBotFlow.Core.Screens;
 using TelegramBotFlow.Core.Wizards;
 
@@ -25,8 +25,7 @@ public class FeedbackState
 public sealed class FeedbackEndpoint : IBotEndpoint
 {
     public void MapEndpoint(BotApplication app) =>
-        app.MapAction<StartFeedbackAction>(
-            (UpdateContext _) => BotResults.StartWizard<FeedbackWizard>());
+        app.MapAction<StartFeedbackAction>((UpdateContext _) => BotResults.StartWizard<FeedbackWizard>());
 }
 
 // ── Wizard ─────────────────────────────────────────────────────────────────
@@ -51,7 +50,6 @@ public sealed class FeedbackWizard : BotWizard<FeedbackState>
                     state.Rating = int.Parse(value);
                     return StepResult.GoTo("category");
                 })
-
             .ButtonStep(
                 id: "category",
                 prompt: static (_, state) =>
@@ -65,7 +63,6 @@ public sealed class FeedbackWizard : BotWizard<FeedbackState>
                     return StepResult.GoTo("comment");
                 },
                 columns: 1)
-
             .TextStep(
                 id: "comment",
                 prompt: "💬 <b>Обратная связь</b> — шаг 3 из 3\n\nНапишите комментарий:",

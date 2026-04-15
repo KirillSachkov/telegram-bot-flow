@@ -1,11 +1,11 @@
 using Microsoft.Extensions.Options;
 using Telegram.Bot;
 using Telegram.Bot.Types;
+using TelegramBotFlow.Core.Routing;
 using TelegramBotFlow.Core.Context;
 using TelegramBotFlow.Core.Data;
 using TelegramBotFlow.Core.Endpoints;
 using TelegramBotFlow.Core.Hosting;
-using TelegramBotFlow.Core.Routing;
 
 namespace TelegramBotFlow.App.Features.Roadmap;
 
@@ -44,11 +44,10 @@ public sealed class SetRoadmapInputEndpoint : IBotEndpoint
 
             settings.Roadmap = new RoadmapMessageConfig
             {
-                SourceChatId = storageChannelId,
-                SourceMessageId = copied.Id
+                SourceChatId = storageChannelId, SourceMessageId = copied.Id
             };
 
-            _ = await db.SaveChangesAsync(ctx.CancellationToken);
+             await db.SaveChangesAsync(ctx.CancellationToken);
 
             await bot.DeleteMessage(ctx.ChatId, ctx.MessageId!.Value, ctx.CancellationToken);
         }
@@ -56,11 +55,10 @@ public sealed class SetRoadmapInputEndpoint : IBotEndpoint
         {
             settings.Roadmap = new RoadmapMessageConfig
             {
-                SourceChatId = ctx.ChatId,
-                SourceMessageId = ctx.MessageId!.Value
+                SourceChatId = ctx.ChatId, SourceMessageId = ctx.MessageId!.Value
             };
 
-            _ = await db.SaveChangesAsync(ctx.CancellationToken);
+             await db.SaveChangesAsync(ctx.CancellationToken);
         }
 
         return BotResults.Back("✅ Roadmap успешно сохранён");

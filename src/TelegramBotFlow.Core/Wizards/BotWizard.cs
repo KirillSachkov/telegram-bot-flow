@@ -1,34 +1,9 @@
 using System.Text.Json;
-using TelegramBotFlow.Core.Context;
 using TelegramBotFlow.Core.Routing;
+using TelegramBotFlow.Core.Context;
 using TelegramBotFlow.Core.Screens;
 
 namespace TelegramBotFlow.Core.Wizards;
-
-/// <summary>
-/// DTO для ответа от Визарда к Middleware, определяющий дальнейшее поведение.
-/// </summary>
-public sealed record WizardTransition(
-    bool IsFinished,
-    IEndpointResult? EndpointResult = null);
-
-/// <summary>
-/// Общий контракт для всех визардов, независимый от типа состояния.
-/// Используется Middleware для обработки апдейтов без использования рефлексии.
-/// </summary>
-public interface IBotWizard
-{
-    /// <summary>
-    /// Принимает сырой стейт из базы, обрабатывает апдейт и возвращает команду для Middleware.
-    /// Состояние <paramref name="storageState"/> может быть изменено внутри метода.
-    /// </summary>
-    Task<WizardTransition> ProcessUpdateAsync(UpdateContext context, WizardStorageState storageState);
-
-    /// <summary>
-    /// Инициализирует и запускает первый шаг визарда.
-    /// </summary>
-    Task<WizardTransition> InitializeAsync(UpdateContext context, WizardStorageState storageState);
-}
 
 /// <summary>
 /// Базовый класс для всех визардов (машин состояний).
@@ -49,8 +24,6 @@ public abstract class BotWizard<TState> : IBotWizard where TState : class, new()
     /// Вызывается после успешного завершения всех шагов визарда.
     /// Должен вернуть результат для роутинга (например, <see cref="NavigateToRootResult"/>).
     /// </summary>
-    /// <param name="context">Текущий Update-контекст.</param>
-    /// <param name="state">Итоговое заполненное состояние визарда.</param>
     public abstract Task<IEndpointResult> OnFinishedAsync(UpdateContext context, TState state);
 
     /// <summary>
@@ -89,12 +62,9 @@ public abstract class BotWizard<TState> : IBotWizard where TState : class, new()
         TState state = new();
 
         if (initialStep.OnEnter is not null)
-        {
             await initialStep.OnEnter(context, state);
-        }
 
         ScreenView view = await initialStep.Renderer(context, state);
-
         storageState.PayloadJson = JsonSerializer.Serialize(state);
 
         return new WizardTransition(false, BotResults.ShowView(view));
@@ -113,8 +83,13 @@ public abstract class BotWizard<TState> : IBotWizard where TState : class, new()
 
         StepResult result = await currentStep.Processor(context, state);
 
+        // Удалять текстовое сообщение пользователя нужно при продвижении по шагам.
+        // Stay (ошибка валидации) — не удаляем, чтобы пользователь видел что ввёл.
+        bool hasIncomingMessage = context.Update.Message is not null;
+
         if (result is StepResult.GoToResult goTo)
         {
+            storageState.StepHistory.Add(storageState.CurrentStepId);
             storageState.CurrentStepId = goTo.StepId;
             storageState.PayloadJson = JsonSerializer.Serialize(state);
 
@@ -127,13 +102,13 @@ public abstract class BotWizard<TState> : IBotWizard where TState : class, new()
             }
 
             ScreenView view = await nextStep.Renderer(context, state);
-            return new WizardTransition(false, BotResults.ShowView(view));
+            return new WizardTransition(false, BotResults.ShowView(view), ShouldDeleteUserMessage: hasIncomingMessage);
         }
 
         if (result is StepResult.FinishResult)
         {
             IEndpointResult finalResult = await OnFinishedAsync(context, state);
-            return new WizardTransition(true, finalResult);
+            return new WizardTransition(true, finalResult, ShouldDeleteUserMessage: hasIncomingMessage);
         }
 
         if (result is StepResult.StayResult stay)
@@ -144,10 +119,37 @@ public abstract class BotWizard<TState> : IBotWizard where TState : class, new()
                 ? BotResults.Empty()
                 : BotResults.Stay(stay.Notification);
 
-            return new WizardTransition(false, endpointResult);
+            return new WizardTransition(false, endpointResult, ShouldDeleteUserMessage: false);
         }
 
+        if (result is StepResult.GoBackResult)
+            return await GoBackAsync(context, storageState);
+
         throw new InvalidOperationException("Unknown step result");
+    }
+
+    public async Task<WizardTransition> GoBackAsync(UpdateContext context, WizardStorageState storageState)
+    {
+        EnsureConfigured();
+
+        if (storageState.StepHistory.Count == 0)
+        {
+            // Первый шаг — выходим из визарда целиком, возвращаясь на предыдущий экран.
+            return new WizardTransition(true, BotResults.Back());
+        }
+
+        string previousStepId = storageState.StepHistory[^1];
+        storageState.StepHistory.RemoveAt(storageState.StepHistory.Count - 1);
+        storageState.CurrentStepId = previousStepId;
+
+        TState state = string.IsNullOrWhiteSpace(storageState.PayloadJson)
+            ? new TState()
+            : JsonSerializer.Deserialize<TState>(storageState.PayloadJson)!;
+
+        WizardStep<TState> prevStep = _steps![previousStepId];
+        ScreenView view = await prevStep.Renderer(context, state);
+
+        return new WizardTransition(false, BotResults.ShowView(view));
     }
 
     private void EnsureConfigured()

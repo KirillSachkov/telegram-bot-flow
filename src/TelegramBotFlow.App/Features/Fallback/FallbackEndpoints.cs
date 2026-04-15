@@ -1,7 +1,7 @@
+using TelegramBotFlow.Core.Routing;
 using TelegramBotFlow.Core.Context;
 using TelegramBotFlow.Core.Endpoints;
 using TelegramBotFlow.Core.Hosting;
-using TelegramBotFlow.Core.Routing;
 
 namespace TelegramBotFlow.App.Features.Fallback;
 
@@ -17,7 +17,7 @@ public sealed class FallbackEndpoints : IBotEndpoint
     public void MapEndpoint(BotApplication app) =>
         app.MapFallback(async (UpdateContext ctx, IUpdateResponder responder) =>
         {
-            _ = await responder.ReplyAsync(ctx, "Не понимаю. Нажмите кнопку в меню или /start");
+            await responder.ReplyAsync(ctx, "Не понимаю. Нажмите кнопку в меню или /start");
             return BotResults.Empty();
         });
 }
