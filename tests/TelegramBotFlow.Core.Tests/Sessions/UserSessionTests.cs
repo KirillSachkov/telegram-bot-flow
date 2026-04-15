@@ -62,7 +62,7 @@ public sealed class UserSessionTests
         session.Data.Set("key", "value");
         session.Navigation.CurrentScreen = "settings:main";
         session.Navigation.NavMessageId = 100;
-        session.Navigation.NavigationStack.Add("main");
+        session.Navigation.PopulateNavigationStack(["main"]);
 
         session.Clear();
 
