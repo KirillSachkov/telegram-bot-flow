@@ -35,15 +35,16 @@ internal sealed class NavigationService : INavigationService
 
     public async Task NavigateBackAsync(UpdateContext context)
     {
-        // Peek для определения целевого экрана, затем pop —
-        // при пустом стеке перерисовываем CurrentScreen без его обнуления
-        string? previousScreen = context.Session?.Navigation.NavigationStack is { Count: > 0 }
+        if (context.Session is null)
+            return;
+
+        string? previousScreen = context.Session.Navigation.NavigationStack is { Count: > 0 }
             ? context.Session.Navigation.NavigationStack[^1]
-            : context.Session?.Navigation.CurrentScreen;
+            : context.Session.Navigation.CurrentScreen;
 
         if (previousScreen is not null)
         {
-            context.Session!.Navigation.PopScreen();
+            context.Session.Navigation.PopScreen();
             await _screenManager.RenderScreenAsync(context, previousScreen, pushToStack: false);
         }
     }
