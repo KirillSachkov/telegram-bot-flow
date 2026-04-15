@@ -6,7 +6,7 @@ namespace TelegramBotFlow.Core.Routing;
 /// <summary>
 /// Сопоставляет входящий update с первым подходящим маршрутом и вызывает его обработчик.
 /// </summary>
-public sealed class UpdateRouter
+internal sealed class UpdateRouter
 {
     private readonly List<RouteEntry> _routes = [];
     private readonly ILogger<UpdateRouter> _logger;

@@ -14,12 +14,12 @@ public sealed class AccessPolicyMiddlewareTests
         var middleware = new AccessPolicyMiddleware(accessPolicy);
         UpdateContext context = TestHelpers.CreateMessageContext("/start");
 
-        _ = accessPolicy.IsAdmin(context).Returns(true);
+        accessPolicy.IsAdmin(context).Returns(true);
 
         await middleware.InvokeAsync(context, _ => Task.CompletedTask);
 
         Assert.True(context.IsAdmin);
-        _ = accessPolicy.Received(1).IsAdmin(context);
+        accessPolicy.Received(1).IsAdmin(context);
     }
 
     [Fact]

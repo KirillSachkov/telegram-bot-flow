@@ -17,7 +17,7 @@ public sealed class RoutePriorityTests
 
         _router.AddRoute(RouteEntry.Message(
             ctx => ctx.MessageText == "test",
-            _ =>
+            ctx =>
             {
                 calls.Add("normal");
                 return Task.CompletedTask;
@@ -25,7 +25,7 @@ public sealed class RoutePriorityTests
 
         _router.AddRoute(RouteEntry.Message(
             ctx => ctx.MessageText == "test",
-            _ =>
+            ctx =>
             {
                 calls.Add("high");
                 return Task.CompletedTask;
@@ -37,7 +37,7 @@ public sealed class RoutePriorityTests
 
         await terminal(ctx);
 
-        _ = calls.Should().Equal("high");
+        calls.Should().Equal("high");
     }
 
     [Fact]
@@ -45,12 +45,12 @@ public sealed class RoutePriorityTests
     {
         var calls = new List<string>();
 
-        _router.AddRoute(RouteEntry.Command("/start", _ =>
+        _router.AddRoute(RouteEntry.Command("/start", ctx =>
         {
             calls.Add("start");
             return Task.CompletedTask;
         }));
-        _router.SetFallback(_ =>
+        _router.SetFallback(ctx =>
         {
             calls.Add("fallback");
             return Task.CompletedTask;
@@ -61,7 +61,7 @@ public sealed class RoutePriorityTests
 
         await terminal(ctx);
 
-        _ = calls.Should().Equal("fallback");
+        calls.Should().Equal("fallback");
     }
 
     [Fact]
@@ -69,12 +69,12 @@ public sealed class RoutePriorityTests
     {
         var calls = new List<string>();
 
-        _router.AddRoute(RouteEntry.Command("/start", _ =>
+        _router.AddRoute(RouteEntry.Command("/start", ctx =>
         {
             calls.Add("start");
             return Task.CompletedTask;
         }));
-        _router.SetFallback(_ =>
+        _router.SetFallback(ctx =>
         {
             calls.Add("fallback");
             return Task.CompletedTask;
@@ -85,6 +85,6 @@ public sealed class RoutePriorityTests
 
         await terminal(ctx);
 
-        _ = calls.Should().Equal("start");
+        calls.Should().Equal("start");
     }
 }

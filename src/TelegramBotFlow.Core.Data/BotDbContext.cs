@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 
 namespace TelegramBotFlow.Core.Data;
 
@@ -13,11 +13,10 @@ public class BotDbContext<TUser>(DbContextOptions options)
     : DbContext(options) where TUser : BotUser, new()
 {
     public DbSet<TUser> Users => Set<TUser>();
-    public DbSet<BotSettings> Settings => Set<BotSettings>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        _ = modelBuilder.ApplyConfigurationsFromAssembly(typeof(BotDbContext<>).Assembly);
+        modelBuilder.ApplyConfigurationsFromAssembly(typeof(BotDbContext<>).Assembly);
     }
 }
 

@@ -1,4 +1,4 @@
-using TelegramBotFlow.Core.Context;
+﻿using TelegramBotFlow.Core.Context;
 using TelegramBotFlow.Core.Screens;
 
 namespace TelegramBotFlow.Core.Wizards;
@@ -33,8 +33,8 @@ public sealed class WizardStep<TState> where TState : class, new()
     public Func<UpdateContext, TState, Task>? OnEnter { get; }
 
     public WizardStep(
-        string id, 
-        Func<UpdateContext, TState, Task<ScreenView>> renderer, 
+        string id,
+        Func<UpdateContext, TState, Task<ScreenView>> renderer,
         Func<UpdateContext, TState, Task<StepResult>> processor,
         Func<UpdateContext, TState, Task>? onEnter = null)
     {

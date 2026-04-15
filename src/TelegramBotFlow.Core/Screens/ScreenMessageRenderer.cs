@@ -1,12 +1,13 @@
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
+using Telegram.Bot.Types.ReplyMarkups;
 using TelegramBotFlow.Core.Context;
 
 namespace TelegramBotFlow.Core.Screens;
 
-public sealed class ScreenMessageRenderer : IScreenMessageRenderer
+internal sealed class ScreenMessageRenderer : IScreenMessageRenderer
 {
     private readonly ITelegramBotClient _bot;
     private readonly ILogger<ScreenMessageRenderer> _logger;
@@ -22,38 +23,39 @@ public sealed class ScreenMessageRenderer : IScreenMessageRenderer
     public async Task<Message> RenderAsync(
         UpdateContext context,
         ScreenView view,
+        InlineKeyboardMarkup? keyboard,
         int? existingMessageId,
         ScreenMediaType oldMediaType,
         ScreenMediaType newMediaType)
     {
         if (existingMessageId is null)
         {
-            return await SendNewAsync(context, view);
+            return await SendNewAsync(context, view, keyboard);
         }
 
         if (oldMediaType == ScreenMediaType.None && newMediaType == ScreenMediaType.None)
         {
-            return await EditTextAsync(context, existingMessageId.Value, view);
+            return await EditTextAsync(context, existingMessageId.Value, view, keyboard);
         }
 
         if (oldMediaType == newMediaType && oldMediaType != ScreenMediaType.None)
         {
-            return await EditMediaAsync(context, existingMessageId.Value, view);
+            return await EditMediaAsync(context, existingMessageId.Value, view, keyboard);
         }
 
         await TryDeleteAsync(context, existingMessageId.Value);
-        return await SendNewAsync(context, view);
+        return await SendNewAsync(context, view, keyboard);
     }
 
-    private async Task<Message> SendNewAsync(UpdateContext context, ScreenView view)
+    private async Task<Message> SendNewAsync(UpdateContext context, ScreenView view, InlineKeyboardMarkup? keyboard)
     {
         if (view.MediaType == ScreenMediaType.None)
         {
             return await _bot.SendMessage(
                 context.ChatId,
                 view.Text,
-                replyMarkup: view.Keyboard,
-                parseMode: ParseMode.Html,
+                replyMarkup: keyboard,
+                parseMode: view.ParseMode,
                 cancellationToken: context.CancellationToken);
         }
 
@@ -63,44 +65,45 @@ public sealed class ScreenMessageRenderer : IScreenMessageRenderer
                 context.ChatId,
                 view.Media!,
                 caption: view.Text,
-                replyMarkup: view.Keyboard,
-                parseMode: ParseMode.Html,
+                replyMarkup: keyboard,
+                parseMode: view.ParseMode,
                 cancellationToken: context.CancellationToken),
 
             ScreenMediaType.Video => await _bot.SendVideo(
                 context.ChatId,
                 view.Media!,
                 caption: view.Text,
-                replyMarkup: view.Keyboard,
-                parseMode: ParseMode.Html,
+                replyMarkup: keyboard,
+                parseMode: view.ParseMode,
                 cancellationToken: context.CancellationToken),
 
             ScreenMediaType.Animation => await _bot.SendAnimation(
                 context.ChatId,
                 view.Media!,
                 caption: view.Text,
-                replyMarkup: view.Keyboard,
-                parseMode: ParseMode.Html,
+                replyMarkup: keyboard,
+                parseMode: view.ParseMode,
                 cancellationToken: context.CancellationToken),
 
             ScreenMediaType.Document => await _bot.SendDocument(
                 context.ChatId,
                 view.Media!,
                 caption: view.Text,
-                replyMarkup: view.Keyboard,
-                parseMode: ParseMode.Html,
+                replyMarkup: keyboard,
+                parseMode: view.ParseMode,
                 cancellationToken: context.CancellationToken),
 
             _ => await _bot.SendMessage(
                 context.ChatId,
                 view.Text,
-                replyMarkup: view.Keyboard,
-                parseMode: ParseMode.Html,
+                replyMarkup: keyboard,
+                parseMode: view.ParseMode,
                 cancellationToken: context.CancellationToken)
         };
     }
 
-    private async Task<Message> EditTextAsync(UpdateContext context, int messageId, ScreenView view)
+    private async Task<Message> EditTextAsync(
+        UpdateContext context, int messageId, ScreenView view, InlineKeyboardMarkup? keyboard)
     {
         try
         {
@@ -108,25 +111,26 @@ public sealed class ScreenMessageRenderer : IScreenMessageRenderer
                 context.ChatId,
                 messageId,
                 view.Text,
-                replyMarkup: view.Keyboard,
-                parseMode: ParseMode.Html,
+                replyMarkup: keyboard,
+                parseMode: view.ParseMode,
                 cancellationToken: context.CancellationToken);
         }
         catch (Telegram.Bot.Exceptions.ApiRequestException ex) when (ex.ErrorCode == 400 && ex.Message.Contains("message is not modified"))
         {
-            // Игнорируем ошибку "сообщение не изменено"
             _logger.LogDebug("Message {MessageId} is not modified, ignoring", messageId);
-            return context.Update.CallbackQuery!.Message!;
+            Message? existingMessage = context.Update.CallbackQuery?.Message;
+            return existingMessage ?? await SendNewAsync(context, view, keyboard);
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to edit text message {MessageId}, sending new message", messageId);
             await TryDeleteAsync(context, messageId);
-            return await SendNewAsync(context, view);
+            return await SendNewAsync(context, view, keyboard);
         }
     }
 
-    private async Task<Message> EditMediaAsync(UpdateContext context, int messageId, ScreenView view)
+    private async Task<Message> EditMediaAsync(
+        UpdateContext context, int messageId, ScreenView view, InlineKeyboardMarkup? keyboard)
     {
         try
         {
@@ -135,22 +139,22 @@ public sealed class ScreenMessageRenderer : IScreenMessageRenderer
                 ScreenMediaType.Photo => new InputMediaPhoto(view.Media!)
                 {
                     Caption = view.Text,
-                    ParseMode = ParseMode.Html
+                    ParseMode = view.ParseMode
                 },
                 ScreenMediaType.Video => new InputMediaVideo(view.Media!)
                 {
                     Caption = view.Text,
-                    ParseMode = ParseMode.Html
+                    ParseMode = view.ParseMode
                 },
                 ScreenMediaType.Animation => new InputMediaAnimation(view.Media!)
                 {
                     Caption = view.Text,
-                    ParseMode = ParseMode.Html
+                    ParseMode = view.ParseMode
                 },
                 ScreenMediaType.Document => new InputMediaDocument(view.Media!)
                 {
                     Caption = view.Text,
-                    ParseMode = ParseMode.Html
+                    ParseMode = view.ParseMode
                 },
                 _ => throw new InvalidOperationException($"Unsupported media type: {view.MediaType}")
             };
@@ -159,14 +163,14 @@ public sealed class ScreenMessageRenderer : IScreenMessageRenderer
                 context.ChatId,
                 messageId,
                 inputMedia,
-                replyMarkup: view.Keyboard,
+                replyMarkup: keyboard,
                 cancellationToken: context.CancellationToken);
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to edit media message {MessageId}, sending new message", messageId);
             await TryDeleteAsync(context, messageId);
-            return await SendNewAsync(context, view);
+            return await SendNewAsync(context, view, keyboard);
         }
     }
 

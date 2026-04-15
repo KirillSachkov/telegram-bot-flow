@@ -1,8 +1,9 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using NSubstitute;
-using TelegramBotFlow.Core.Context;
 using TelegramBotFlow.Core.Routing;
 using TelegramBotFlow.Core.Screens;
+using TelegramBotFlow.Core.Context;
+using TelegramBotFlow.Core.Pipeline;
 using TelegramBotFlow.Core.Sessions;
 
 namespace TelegramBotFlow.Core.Tests.Routing;
@@ -11,19 +12,27 @@ public sealed class HandlerDelegateFactoryTests
 {
     // -- Helpers --
 
-    private static IServiceProvider BuildServices(IScreenNavigator? navigator = null)
+    private static IServiceProvider BuildServices(INavigationService? navigator = null)
     {
-        var services = Substitute.For<IServiceProvider>();
-        var nav = navigator ?? Substitute.For<IScreenNavigator>();
-        _ = services.GetService(typeof(IScreenNavigator)).Returns(nav);
+        IServiceProvider services = Substitute.For<IServiceProvider>();
+        INavigationService nav = navigator ?? Substitute.For<INavigationService>();
+        IUpdateResponder responder = Substitute.For<IUpdateResponder>();
+        services.GetService(typeof(INavigationService)).Returns(nav);
+        services.GetService(typeof(IUpdateResponder)).Returns(responder);
         return services;
     }
 
-    private static UpdateContext CreateContext(IServiceProvider? services = null)
+    private static UpdateContext CreateMessageContext(IServiceProvider? services = null)
         => TestHelpers.CreateMessageContext("test", services: services ?? BuildServices());
 
     private static UpdateContext CreateCallbackContext(string data, IServiceProvider? services = null)
         => TestHelpers.CreateCallbackContext(data, services: services ?? BuildServices());
+
+    private static UpdateContext WithSession(UpdateContext ctx)
+    {
+        ctx.Session = new UserSession(ctx.UserId);
+        return ctx;
+    }
 
     // -- Create: validation --
 
@@ -34,8 +43,7 @@ public sealed class HandlerDelegateFactoryTests
 
         Action act = () => HandlerDelegateFactory.Create(handler);
 
-        _ = act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*Task<IEndpointResult>*");
+        act.Should().Throw<InvalidOperationException>().WithMessage("*Task<IEndpointResult>*");
     }
 
     [Fact]
@@ -45,8 +53,7 @@ public sealed class HandlerDelegateFactoryTests
 
         Action act = () => HandlerDelegateFactory.Create(handler);
 
-        _ = act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*Task<IEndpointResult>*");
+        act.Should().Throw<InvalidOperationException>().WithMessage("*Task<IEndpointResult>*");
     }
 
     [Fact]
@@ -56,7 +63,7 @@ public sealed class HandlerDelegateFactoryTests
 
         Action act = () => HandlerDelegateFactory.Create(handler);
 
-        _ = act.Should().NotThrow();
+        act.Should().NotThrow();
     }
 
     // -- Create: execution --
@@ -64,195 +71,138 @@ public sealed class HandlerDelegateFactoryTests
     [Fact]
     public async Task Create_Should_Execute_Result_When_Handler_Returns_EndpointResult()
     {
-        var navigator = Substitute.For<IScreenNavigator>();
-        var services = BuildServices(navigator);
-        UpdateContext ctx = CreateContext(services);
-
         var result = Substitute.For<IEndpointResult>();
-        _ = result.KeepPending.Returns(false);
+        Delegate handler = () => Task.FromResult(result);
 
-        Delegate handler = (UpdateContext _) => Task.FromResult(result);
+        UpdateDelegate del = HandlerDelegateFactory.Create(handler);
+        UpdateContext ctx = CreateMessageContext();
 
-        var del = HandlerDelegateFactory.Create(handler);
         await del(ctx);
 
-        await result.Received(1).ExecuteAsync(ctx, navigator);
+        await result.Received(1).ExecuteAsync(Arg.Is<BotExecutionContext>(c => c.Update == ctx));
     }
 
     [Fact]
     public async Task Create_Should_Inject_Services_Into_Handler_Parameters()
     {
-        var services = BuildServices();
-        bool serviceCalled = false;
+        var capturedService = (IUpdateResponder?)null;
+        var responder = Substitute.For<IUpdateResponder>();
+        IServiceProvider services = BuildServices();
+        services.GetService(typeof(IUpdateResponder)).Returns(responder);
 
-        Delegate handler = (IServiceProvider _) =>
+        Delegate handler = (IUpdateResponder svc) =>
         {
-            serviceCalled = true;
+            capturedService = svc;
             return Task.FromResult(BotResults.Empty());
         };
 
-        // IServiceProvider is itself registered as a service
-        _ = services.GetService(typeof(IServiceProvider)).Returns(services);
+        UpdateDelegate del = HandlerDelegateFactory.Create(handler);
+        UpdateContext ctx = CreateMessageContext(services);
 
-        var del = HandlerDelegateFactory.Create(handler);
-        await del(CreateContext(services));
+        await del(ctx);
 
-        _ = serviceCalled.Should().BeTrue();
+        capturedService.Should().BeSameAs(responder);
     }
 
-    // -- CreateForInput: validation --
+    // -- CreateForInput --
 
     [Fact]
-    public void CreateForInput_Should_Throw_When_Handler_Returns_Task()
+    public async Task CreateForInput_ClearsPendingActionId_BeforeInvocation()
     {
-        Delegate handler = () => Task.CompletedTask;
+        string? pendingAtInvocation = "not-cleared";
 
-        Action act = () => HandlerDelegateFactory.CreateForInput(handler, "action_id");
+        Delegate handler = (UpdateContext ctx) =>
+        {
+            pendingAtInvocation = ctx.Session?.Navigation.PendingInputActionId;
+            return Task.FromResult(BotResults.Empty());
+        };
 
-        _ = act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*Task<IEndpointResult>*");
+        UpdateDelegate del = HandlerDelegateFactory.CreateForInput(handler, "my-action");
+        UpdateContext ctx = WithSession(CreateMessageContext());
+        ctx.Session!.Navigation.SetPending("my-action");
+
+        await del(ctx);
+
+        pendingAtInvocation.Should().BeNull("pending should be cleared before handler runs");
     }
 
     [Fact]
-    public void CreateForInput_Should_Not_Throw_When_Handler_Returns_TaskEndpointResult()
+    public async Task CreateForInput_PassesPendingActionIdToExecutionContext()
     {
-        Delegate handler = () => Task.FromResult(BotResults.Back());
+        BotExecutionContext? capturedCtx = null;
 
-        Action act = () => HandlerDelegateFactory.CreateForInput(handler, "action_id");
+        var result = Substitute.For<IEndpointResult>();
+        result.ExecuteAsync(Arg.Any<BotExecutionContext>())
+            .Returns(c =>
+            {
+                capturedCtx = c.Arg<BotExecutionContext>();
+                return Task.CompletedTask;
+            });
 
-        _ = act.Should().NotThrow();
+        Delegate handler = () => Task.FromResult(result);
+        UpdateDelegate del = HandlerDelegateFactory.CreateForInput(handler, "my-action");
+        UpdateContext ctx = WithSession(CreateMessageContext());
+
+        await del(ctx);
+
+        capturedCtx.Should().NotBeNull();
+        capturedCtx!.PendingActionId.Should().Be("my-action");
     }
 
-    // -- CreateForInput: execution --
+    [Fact]
+    public async Task CreateForInput_StayResult_RestoresPendingAction()
+    {
+        Delegate handler = () => Task.FromResult(BotResults.Stay());
+        UpdateDelegate del = HandlerDelegateFactory.CreateForInput(handler, "my-action");
+        UpdateContext ctx = WithSession(CreateMessageContext());
+        ctx.Session!.Navigation.SetPending("my-action");
+
+        await del(ctx);
+
+        ctx.Session.Navigation.PendingInputActionId.Should().Be("my-action");
+    }
 
     [Fact]
-    public async Task CreateForInput_Should_Clear_Pending_Before_Invocation()
+    public async Task CreateForInput_OtherResult_LeavesPendingCleared()
     {
-        var services = BuildServices();
-        UpdateContext ctx = CreateContext(services);
-        ctx.Session = new UserSession(123) { PendingInputActionId = "old_action" };
-
         Delegate handler = () => Task.FromResult(BotResults.Empty());
+        UpdateDelegate del = HandlerDelegateFactory.CreateForInput(handler, "my-action");
+        UpdateContext ctx = WithSession(CreateMessageContext());
+        ctx.Session!.Navigation.SetPending("my-action");
 
-        var del = HandlerDelegateFactory.CreateForInput(handler, "action_id");
         await del(ctx);
 
-        _ = ctx.Session.PendingInputActionId.Should().BeNull();
+        ctx.Session.Navigation.PendingInputActionId.Should().BeNull();
+    }
+
+    // -- CreateForCallbackGroup --
+
+    [Fact]
+    public void CreateForCallbackGroup_Should_Throw_When_Handler_Returns_Void()
+    {
+        Delegate handler = (string action) => { };
+
+        Action act = () => HandlerDelegateFactory.CreateForCallbackGroup(handler, "nav");
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*Task<IEndpointResult>*");
     }
 
     [Fact]
-    public async Task CreateForInput_Should_Restore_Pending_When_KeepPending_Is_True()
+    public async Task CreateForCallbackGroup_PassesActionPartToFirstStringParameter()
     {
-        var services = BuildServices();
-        UpdateContext ctx = CreateContext(services);
-        ctx.Session = new UserSession(123);
-
-        var result = Substitute.For<IEndpointResult>();
-        _ = result.KeepPending.Returns(true);
-
-        Delegate handler = () => Task.FromResult(result);
-
-        var del = HandlerDelegateFactory.CreateForInput(handler, "my_input");
-        await del(ctx);
-
-        _ = ctx.Session.PendingInputActionId.Should().Be("my_input");
-    }
-
-    [Fact]
-    public async Task CreateForInput_Should_Not_Restore_Pending_When_KeepPending_Is_False()
-    {
-        var services = BuildServices();
-        UpdateContext ctx = CreateContext(services);
-        ctx.Session = new UserSession(123) { PendingInputActionId = "original" };
-
-        var result = Substitute.For<IEndpointResult>();
-        _ = result.KeepPending.Returns(false);
-
-        Delegate handler = () => Task.FromResult(result);
-
-        var del = HandlerDelegateFactory.CreateForInput(handler, "my_input");
-        await del(ctx);
-
-        _ = ctx.Session.PendingInputActionId.Should().BeNull();
-    }
-
-    [Fact]
-    public async Task CreateForInput_Should_Execute_Result()
-    {
-        var navigator = Substitute.For<IScreenNavigator>();
-        var services = BuildServices(navigator);
-        UpdateContext ctx = CreateContext(services);
-
-        var result = Substitute.For<IEndpointResult>();
-        _ = result.KeepPending.Returns(false);
-
-        Delegate handler = () => Task.FromResult(result);
-
-        var del = HandlerDelegateFactory.CreateForInput(handler, "action_id");
-        await del(ctx);
-
-        await result.Received(1).ExecuteAsync(ctx, navigator);
-    }
-
-    // -- CreateForCallbackGroup: validation --
-
-    [Fact]
-    public void CreateForCallbackGroup_Should_Throw_When_Handler_Returns_Task()
-    {
-        Delegate handler = (string _) => Task.CompletedTask;
-
-        Action act = () => HandlerDelegateFactory.CreateForCallbackGroup(handler, "prefix");
-
-        _ = act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*Task<IEndpointResult>*");
-    }
-
-    [Fact]
-    public void CreateForCallbackGroup_Should_Not_Throw_When_Handler_Returns_TaskEndpointResult()
-    {
-        Delegate handler = (string _) => Task.FromResult(BotResults.Empty());
-
-        Action act = () => HandlerDelegateFactory.CreateForCallbackGroup(handler, "prefix");
-
-        _ = act.Should().NotThrow();
-    }
-
-    // -- CreateForCallbackGroup: execution --
-
-    [Fact]
-    public async Task CreateForCallbackGroup_Should_Pass_Action_Part_To_Handler()
-    {
-        string? receivedAction = null;
+        string? capturedAction = null;
 
         Delegate handler = (string action) =>
         {
-            receivedAction = action;
+            capturedAction = action;
             return Task.FromResult(BotResults.Empty());
         };
 
-        var del = HandlerDelegateFactory.CreateForCallbackGroup(handler, "nav");
+        UpdateDelegate del = HandlerDelegateFactory.CreateForCallbackGroup(handler, "nav");
         UpdateContext ctx = CreateCallbackContext("nav:back");
 
         await del(ctx);
 
-        _ = receivedAction.Should().Be("back");
-    }
-
-    [Fact]
-    public async Task CreateForCallbackGroup_Should_Execute_Result()
-    {
-        var navigator = Substitute.For<IScreenNavigator>();
-        var services = BuildServices(navigator);
-        UpdateContext ctx = CreateCallbackContext("pfx:action", services);
-
-        var result = Substitute.For<IEndpointResult>();
-        _ = result.KeepPending.Returns(false);
-
-        Delegate handler = (string _) => Task.FromResult(result);
-
-        var del = HandlerDelegateFactory.CreateForCallbackGroup(handler, "pfx");
-        await del(ctx);
-
-        await result.Received(1).ExecuteAsync(ctx, navigator);
+        capturedAction.Should().Be("back");
     }
 }

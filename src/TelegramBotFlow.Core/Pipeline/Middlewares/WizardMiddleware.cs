@@ -1,8 +1,6 @@
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using TelegramBotFlow.Core.Constants;
 using TelegramBotFlow.Core.Context;
-using TelegramBotFlow.Core.Routing;
 using TelegramBotFlow.Core.Screens;
 using TelegramBotFlow.Core.Wizards;
 
@@ -10,9 +8,12 @@ namespace TelegramBotFlow.Core.Pipeline.Middlewares;
 
 /// <summary>
 /// Middleware перехвата апдейтов, если пользователь находится в активном визарде.
-/// Должен быть зарегистрирован после SessionMiddleware, но до бизнес-логики и маршрутизаторов.
+/// Должен быть зарегистрирован после SessionMiddleware, но до роутера.
+///
+/// Middleware занимается только оркестрацией — не принимает UI-решений самостоятельно.
+/// Решение об удалении сообщения делегируется визарду через <see cref="WizardTransition.ShouldDeleteUserMessage"/>.
 /// </summary>
-public sealed class WizardMiddleware : IUpdateMiddleware
+internal sealed class WizardMiddleware : IUpdateMiddleware
 {
     private readonly IWizardStore _wizardStore;
     private readonly WizardRegistry _wizardRegistry;
@@ -36,7 +37,7 @@ public sealed class WizardMiddleware : IUpdateMiddleware
             return;
         }
 
-        string? activeWizardId = context.Session.ActiveWizardId;
+        string? activeWizardId = context.Session.Navigation.ActiveWizardId;
 
         if (string.IsNullOrWhiteSpace(activeWizardId))
         {
@@ -47,7 +48,19 @@ public sealed class WizardMiddleware : IUpdateMiddleware
         if (context.MessageText is BotCommands.CANCEL or BotCommands.START)
         {
             _logger.LogInformation("Wizard {WizardId} cancelled by user via command", activeWizardId);
-            context.Session.ActiveWizardId = null;
+            context.Session.Navigation.ActiveWizardId = null;
+            await _wizardStore.DeleteAsync(context.UserId, activeWizardId, context.CancellationToken);
+            await next(context);
+            return;
+        }
+
+        // nav:menu и nav:close — всегда выходят из визарда и передают управление роутеру.
+        // Кнопка "Главное меню" и "Закрыть" должны работать внутри визарда.
+        if (context.CallbackData is NavCallbacks.MENU or NavCallbacks.CLOSE)
+        {
+            _logger.LogInformation("Wizard {WizardId} cancelled by user via nav callback {Callback}",
+                activeWizardId, context.CallbackData);
+            context.Session.Navigation.ActiveWizardId = null;
             await _wizardStore.DeleteAsync(context.UserId, activeWizardId, context.CancellationToken);
             await next(context);
             return;
@@ -59,7 +72,7 @@ public sealed class WizardMiddleware : IUpdateMiddleware
         if (storageState is null)
         {
             _logger.LogWarning("Wizard {WizardId} state not found or expired", activeWizardId);
-            context.Session.ActiveWizardId = null;
+            context.Session.Navigation.ActiveWizardId = null;
             await next(context);
             return;
         }
@@ -67,29 +80,32 @@ public sealed class WizardMiddleware : IUpdateMiddleware
         if (!_wizardRegistry.HasWizard(activeWizardId))
         {
             _logger.LogError("Wizard implementation {WizardId} not found in registry", activeWizardId);
-            context.Session.ActiveWizardId = null;
+            context.Session.Navigation.ActiveWizardId = null;
             await _wizardStore.DeleteAsync(context.UserId, activeWizardId, context.CancellationToken);
             await next(context);
             return;
         }
 
         IBotWizard wizardInstance = _wizardRegistry.Resolve(activeWizardId, context.RequestServices);
+        BotExecutionContext botContext = BotExecutionContext.FromUpdateContext(context);
 
         try
         {
-            WizardTransition transition = await wizardInstance.ProcessUpdateAsync(context, storageState);
+            // nav:back — GoBack внутри визарда (возврат на предыдущий шаг).
+            // Если шагов в истории нет, GoBackAsync вернёт IsFinished=true и выполнит Back().
+            bool isNavBack = context.CallbackData == NavCallbacks.BACK;
 
-            // Удаляем текстовое сообщение пользователя только когда шаг продвигается вперёд:
-            // Stay сам удаляет своё сообщение; для callback-обновлений message — это бот-сообщение, не трогаем.
-            if (context.Update.Message is not null && transition.EndpointResult is not StayResult)
-            {
-                IUpdateResponder responder = context.RequestServices.GetRequiredService<IUpdateResponder>();
-                await responder.DeleteMessageAsync(context);
-            }
+            WizardTransition transition = isNavBack
+                ? await wizardInstance.GoBackAsync(context, storageState)
+                : await wizardInstance.ProcessUpdateAsync(context, storageState);
+
+            // Решение об удалении сообщения принято самим визардом — middleware не инспектирует тип результата
+            if (transition.ShouldDeleteUserMessage)
+                await botContext.Responder.DeleteMessageAsync(context);
 
             if (transition.IsFinished)
             {
-                context.Session.ActiveWizardId = null;
+                context.Session.Navigation.ActiveWizardId = null;
                 await _wizardStore.DeleteAsync(context.UserId, activeWizardId, context.CancellationToken);
             }
             else
@@ -98,10 +114,7 @@ public sealed class WizardMiddleware : IUpdateMiddleware
             }
 
             if (transition.EndpointResult != null)
-            {
-                IScreenNavigator navigator = context.RequestServices.GetRequiredService<IScreenNavigator>();
-                await transition.EndpointResult.ExecuteAsync(context, navigator);
-            }
+                await transition.EndpointResult.ExecuteAsync(botContext);
         }
         catch (Exception ex)
         {

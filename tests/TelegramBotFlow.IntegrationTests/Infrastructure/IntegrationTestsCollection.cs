@@ -1,4 +1,4 @@
-namespace TelegramBotFlow.IntegrationTests.Infrastructure;
+﻿namespace TelegramBotFlow.IntegrationTests.Infrastructure;
 
 [CollectionDefinition(nameof(RedisIntegrationTests))]
 public class RedisIntegrationTests : ICollectionFixture<RedisFixture>;

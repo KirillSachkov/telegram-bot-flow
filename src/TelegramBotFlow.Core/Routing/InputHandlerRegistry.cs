@@ -5,7 +5,7 @@ namespace TelegramBotFlow.Core.Routing;
 /// <summary>
 /// Реестр обработчиков пользовательского ввода по идентификатору действия.
 /// </summary>
-public sealed class InputHandlerRegistry
+internal sealed class InputHandlerRegistry
 {
     private readonly Dictionary<string, UpdateDelegate> _handlers = [];
 

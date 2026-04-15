@@ -1,11 +1,11 @@
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using TelegramBotFlow.Core.Context;
 using TelegramBotFlow.Core.Hosting;
 
 namespace TelegramBotFlow.Core.Pipeline.Middlewares;
 
-public sealed class ErrorHandlingMiddleware : IUpdateMiddleware
+internal sealed class ErrorHandlingMiddleware : IUpdateMiddleware
 {
     private readonly ILogger<ErrorHandlingMiddleware> _logger;
     private readonly IUpdateResponder _responder;
@@ -51,7 +51,7 @@ public sealed class ErrorHandlingMiddleware : IUpdateMiddleware
         {
             if (context.ChatId != 0)
             {
-                _ = await _responder.ReplyAsync(context, _errorMessage);
+                await _responder.ReplyAsync(context, _errorMessage);
             }
         }
         catch (Exception ex)

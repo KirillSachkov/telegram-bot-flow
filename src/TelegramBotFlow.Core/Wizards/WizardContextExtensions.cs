@@ -1,33 +1,33 @@
-using Microsoft.Extensions.DependencyInjection;
+﻿using TelegramBotFlow.Core.Routing;
 using TelegramBotFlow.Core.Context;
-using TelegramBotFlow.Core.Routing;
-using TelegramBotFlow.Core.Screens;
 
 namespace TelegramBotFlow.Core.Wizards;
 
 /// <summary>
-/// Методы расширения для работы с визардами.
+/// Методы расширения для запуска визардов из обработчиков.
+/// В большинстве случаев предпочтительнее возвращать
+/// <c>BotResults.StartWizard&lt;TWizard&gt;()</c> из обработчика напрямую.
 /// </summary>
 public static class WizardContextExtensions
 {
     /// <summary>
-    /// Запускает визард заданного типа <typeparamref name="TWizard"/>.
-    /// <para>
-    /// Метод является тонким фасадом над <see cref="StartWizardResult"/> — вся логика
-    /// инициализации живёт в <c>IEndpointResult.ExecuteAsync</c>, следуя паттерну пайплайна.
-    /// В большинстве случаев предпочтительнее возвращать
-    /// <c>BotResults.StartWizard&lt;TWizard&gt;()</c> из обработчика напрямую.
-    /// </para>
+    /// Запускает визард из <see cref="BotExecutionContext"/>.
+    /// Используй в реализациях <see cref="IEndpointResult.ExecuteAsync"/>, если нужно
+    /// запустить визард императивно, а не через return-intent.
     /// </summary>
-    /// <typeparam name="TWizard">Тип визарда, наследованный от <see cref="BotWizard{TState}"/>.</typeparam>
-    /// <param name="context">Текущий контекст апдейта.</param>
-    /// <param name="cancellationToken">Токен отмены.</param>
-    public static async Task StartWizardAsync<TWizard>(
+    public static Task StartWizardAsync<TWizard>(
+        this BotExecutionContext ctx,
+        CancellationToken cancellationToken = default)
+        where TWizard : class, IBotWizard
+        => BotResults.StartWizard<TWizard>().ExecuteAsync(ctx);
+
+    /// <summary>
+    /// Запускает визард из <see cref="UpdateContext"/>.
+    /// Делегирует в перегрузку на <see cref="BotExecutionContext"/>.
+    /// </summary>
+    public static Task StartWizardAsync<TWizard>(
         this UpdateContext context,
         CancellationToken cancellationToken = default)
         where TWizard : class, IBotWizard
-    {
-        IScreenNavigator navigator = context.RequestServices.GetRequiredService<IScreenNavigator>();
-        await BotResults.StartWizard<TWizard>().ExecuteAsync(context, navigator);
-    }
+        => BotExecutionContext.FromUpdateContext(context).StartWizardAsync<TWizard>(cancellationToken);
 }

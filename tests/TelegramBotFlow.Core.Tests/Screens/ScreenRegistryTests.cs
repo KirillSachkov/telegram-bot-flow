@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using TelegramBotFlow.Core.Context;
 using TelegramBotFlow.Core.Screens;
@@ -12,15 +12,15 @@ public sealed class ScreenRegistryTests
     {
         var registry = new ScreenRegistry();
         var services = new ServiceCollection();
-        _ = services.AddScoped<TestScreen>();
+        services.AddScoped<TestScreen>();
         IServiceProvider sp = services.BuildServiceProvider();
 
         registry.Register<TestScreen>();
 
         IScreen screen = registry.Resolve("test", sp);
 
-        _ = screen.Should().NotBeNull();
-        _ = screen.Should().BeOfType<TestScreen>();
+        screen.Should().NotBeNull();
+        screen.Should().BeOfType<TestScreen>();
     }
 
     [Fact]
@@ -31,8 +31,8 @@ public sealed class ScreenRegistryTests
 
         Action act = () => registry.Resolve("nonexistent", sp);
 
-        _ = act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*nonexistent*");
+        act.Should().Throw<InvalidOperationException>()
+           .WithMessage("*nonexistent*");
     }
 
     [Fact]
@@ -41,8 +41,8 @@ public sealed class ScreenRegistryTests
         var registry = new ScreenRegistry();
         registry.Register<TestScreen>();
 
-        _ = registry.HasScreen("test").Should().BeTrue();
-        _ = registry.HasScreen("unknown").Should().BeFalse();
+        registry.HasScreen("test").Should().BeTrue();
+        registry.HasScreen("unknown").Should().BeFalse();
     }
 
     [Fact]
@@ -52,8 +52,8 @@ public sealed class ScreenRegistryTests
         registry.Register<TestScreen>();
         registry.RegisterWithId("another", typeof(TestScreen));
 
-        _ = registry.GetRegisteredIds().Should().Contain("test");
-        _ = registry.GetRegisteredIds().Should().Contain("another");
+        registry.GetRegisteredIds().Should().Contain("test");
+        registry.GetRegisteredIds().Should().Contain("another");
     }
 
     [Fact]
@@ -62,8 +62,8 @@ public sealed class ScreenRegistryTests
         var registry = new ScreenRegistry();
         registry.RegisterWithId("custom-id", typeof(TestScreen));
 
-        _ = registry.HasScreen("custom-id").Should().BeTrue();
-        _ = registry.HasScreen("test").Should().BeFalse();
+        registry.HasScreen("custom-id").Should().BeTrue();
+        registry.HasScreen("test").Should().BeFalse();
     }
 
     [Theory]
@@ -73,7 +73,7 @@ public sealed class ScreenRegistryTests
     [InlineData(typeof(SimpleScreen), "simple")]
     public void GetIdFromType_UsesClassNameConvention(Type screenType, string expectedId)
     {
-        _ = ScreenRegistry.GetIdFromType(screenType).Should().Be(expectedId);
+        ScreenRegistry.GetIdFromType(screenType).Should().Be(expectedId);
     }
 
     [Fact]
@@ -82,7 +82,7 @@ public sealed class ScreenRegistryTests
         var registry = new ScreenRegistry();
         registry.Register<MainMenuTestScreen>();
 
-        _ = registry.HasScreen("main_menu_test").Should().BeTrue();
+        registry.HasScreen("main_menu_test").Should().BeTrue();
     }
 
     private sealed class TestScreen : IScreen

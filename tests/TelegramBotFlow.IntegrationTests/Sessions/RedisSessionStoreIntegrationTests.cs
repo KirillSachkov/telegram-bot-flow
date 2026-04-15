@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using FluentAssertions;
 using TelegramBotFlow.Core.Screens;
 using TelegramBotFlow.Core.Sessions;
@@ -21,10 +21,10 @@ public sealed class RedisSessionStoreIntegrationTests : RedisSessionTestsBase
 
         UserSession session = await store.GetOrCreateAsync(100);
 
-        _ = session.UserId.Should().Be(100);
+        session.UserId.Should().Be(100);
 
         bool exists = await Db.KeyExistsAsync("bot:session:100");
-        _ = exists.Should().BeTrue();
+        exists.Should().BeTrue();
     }
 
     [Fact]
@@ -32,15 +32,15 @@ public sealed class RedisSessionStoreIntegrationTests : RedisSessionTestsBase
     {
         RedisSessionStore store = CreateStore();
         UserSession original = await store.GetOrCreateAsync(200);
-        original.Set("name", "Alice");
-        original.CurrentScreen = "main";
+        original.Data.Set("name", "Alice");
+        original.Navigation.CurrentScreen = "main";
         await store.SaveAsync(original);
 
         UserSession restored = await store.GetOrCreateAsync(200);
 
-        _ = restored.UserId.Should().Be(200);
-        _ = restored.GetString("name").Should().Be("Alice");
-        _ = restored.CurrentScreen.Should().Be("main");
+        restored.UserId.Should().Be(200);
+        restored.Data.GetString("name").Should().Be("Alice");
+        restored.Navigation.CurrentScreen.Should().Be("main");
     }
 
     [Fact]
@@ -48,21 +48,21 @@ public sealed class RedisSessionStoreIntegrationTests : RedisSessionTestsBase
     {
         RedisSessionStore store = CreateStore();
         UserSession session = await store.GetOrCreateAsync(300);
-        session.CurrentScreen = "settings:main";
-        session.NavMessageId = 42;
-        session.NavigationStack.Add("main");
+        session.Navigation.CurrentScreen = "settings:main";
+        session.Navigation.NavMessageId = 42;
+        session.Navigation.NavigationStack.Add("main");
 
         await store.SaveAsync(session);
 
         string json = (await Db.StringGetAsync("bot:session:300"))!;
-        _ = json.Should().NotBeNullOrEmpty();
+        json.Should().NotBeNullOrEmpty();
 
         JsonElement element = JsonSerializer.Deserialize<JsonElement>(json);
-        _ = element.TryGetProperty("createdAt", out _).Should().BeTrue();
-        _ = element.TryGetProperty("lastActivity", out _).Should().BeTrue();
-        _ = element.GetProperty("currentScreen").GetString().Should().Be("settings:main");
-        _ = element.GetProperty("navMessageId").GetInt32().Should().Be(42);
-        _ = element.GetProperty("navigationStack")[0].GetString().Should().Be("main");
+        element.TryGetProperty("createdAt", out _).Should().BeTrue();
+        element.TryGetProperty("lastActivity", out _).Should().BeTrue();
+        element.GetProperty("currentScreen").GetString().Should().Be("settings:main");
+        element.GetProperty("navMessageId").GetInt32().Should().Be(42);
+        element.GetProperty("navigationStack")[0].GetString().Should().Be("main");
     }
 
     [Fact]
@@ -70,18 +70,18 @@ public sealed class RedisSessionStoreIntegrationTests : RedisSessionTestsBase
     {
         RedisSessionStore store = CreateStore();
         UserSession session = await store.GetOrCreateAsync(400);
-        session.Set("city", "Moscow");
-        session.Set("lang", "ru");
+        session.Data.Set("city", "Moscow");
+        session.Data.Set("lang", "ru");
 
         await store.SaveAsync(session);
 
         string json = (await Db.StringGetAsync("bot:session:400"))!;
-        _ = json.Should().NotBeNullOrEmpty();
+        json.Should().NotBeNullOrEmpty();
 
         JsonElement element = JsonSerializer.Deserialize<JsonElement>(json);
-        _ = element.TryGetProperty("userData", out JsonElement userData).Should().BeTrue();
-        _ = userData.GetProperty("city").GetString().Should().Be("Moscow");
-        _ = userData.GetProperty("lang").GetString().Should().Be("ru");
+        element.TryGetProperty("userData", out JsonElement userData).Should().BeTrue();
+        userData.GetProperty("city").GetString().Should().Be("Moscow");
+        userData.GetProperty("lang").GetString().Should().Be("ru");
     }
 
     [Fact]
@@ -89,27 +89,27 @@ public sealed class RedisSessionStoreIntegrationTests : RedisSessionTestsBase
     {
         RedisSessionStore store = CreateStore();
         UserSession original = await store.GetOrCreateAsync(500);
-        original.CurrentScreen = "contact:share";
-        original.NavMessageId = 99;
-        original.CurrentMediaType = ScreenMediaType.Photo;
-        original.NavigationStack.Add("main");
-        original.NavigationStack.Add("settings");
-        original.Set("age", "30");
-        original.Set("city", "Berlin");
+        original.Navigation.CurrentScreen = "contact:share";
+        original.Navigation.NavMessageId = 99;
+        original.Navigation.CurrentMediaType = ScreenMediaType.Photo;
+        original.Navigation.NavigationStack.Add("main");
+        original.Navigation.NavigationStack.Add("settings");
+        original.Data.Set("age", "30");
+        original.Data.Set("city", "Berlin");
         await store.SaveAsync(original);
 
         UserSession restored = await store.GetOrCreateAsync(500);
 
-        _ = restored.UserId.Should().Be(500);
-        _ = restored.CurrentScreen.Should().Be("contact:share");
-        _ = restored.NavMessageId.Should().Be(99);
-        _ = restored.CurrentMediaType.Should().Be(ScreenMediaType.Photo);
-        _ = restored.NavigationStack.Should().HaveCount(2);
-        _ = restored.NavigationStack[0].Should().Be("main");
-        _ = restored.NavigationStack[1].Should().Be("settings");
-        _ = restored.GetString("age").Should().Be("30");
-        _ = restored.GetString("city").Should().Be("Berlin");
-        _ = restored.GetAll().Should().HaveCount(2);
+        restored.UserId.Should().Be(500);
+        restored.Navigation.CurrentScreen.Should().Be("contact:share");
+        restored.Navigation.NavMessageId.Should().Be(99);
+        restored.Navigation.CurrentMediaType.Should().Be(ScreenMediaType.Photo);
+        restored.Navigation.NavigationStack.Should().HaveCount(2);
+        restored.Navigation.NavigationStack[0].Should().Be("main");
+        restored.Navigation.NavigationStack[1].Should().Be("settings");
+        restored.Data.GetString("age").Should().Be("30");
+        restored.Data.GetString("city").Should().Be("Berlin");
+        restored.Data.GetAll().Should().HaveCount(2);
     }
 
     [Fact]
@@ -122,7 +122,7 @@ public sealed class RedisSessionStoreIntegrationTests : RedisSessionTestsBase
 
         UserSession restored = await store.GetOrCreateAsync(600);
 
-        _ = restored.CreatedAt.Should().BeCloseTo(originalCreatedAt, TimeSpan.FromMilliseconds(10));
+        restored.CreatedAt.Should().BeCloseTo(originalCreatedAt, TimeSpan.FromMilliseconds(10));
     }
 
     [Fact]
@@ -136,10 +136,10 @@ public sealed class RedisSessionStoreIntegrationTests : RedisSessionTestsBase
 
         await store.SaveAsync(session);
 
-        _ = session.LastActivity.Should().BeAfter(firstActivity);
+        session.LastActivity.Should().BeAfter(firstActivity);
 
         UserSession restored = await store.GetOrCreateAsync(700);
-        _ = restored.LastActivity.Should().BeAfter(firstActivity);
+        restored.LastActivity.Should().BeAfter(firstActivity);
     }
 
     [Fact]
@@ -147,18 +147,18 @@ public sealed class RedisSessionStoreIntegrationTests : RedisSessionTestsBase
     {
         RedisSessionStore store = CreateStore();
         UserSession session = await store.GetOrCreateAsync(800);
-        session.Set("temp_code", "1234");
-        session.Set("city", "Moscow");
+        session.Data.Set("temp_code", "1234");
+        session.Data.Set("city", "Moscow");
         await store.SaveAsync(session);
 
-        session.Remove("temp_code");
+        session.Data.Remove("temp_code");
         await store.SaveAsync(session);
 
         UserSession restored = await store.GetOrCreateAsync(800);
-        _ = restored.Has("temp_code").Should().BeFalse();
-        _ = restored.GetString("temp_code").Should().BeNull();
-        _ = restored.GetString("city").Should().Be("Moscow");
-        _ = restored.GetAll().Should().HaveCount(1);
+        restored.Data.Has("temp_code").Should().BeFalse();
+        restored.Data.GetString("temp_code").Should().BeNull();
+        restored.Data.GetString("city").Should().Be("Moscow");
+        restored.Data.GetAll().Should().HaveCount(1);
     }
 
     [Fact]
@@ -166,18 +166,18 @@ public sealed class RedisSessionStoreIntegrationTests : RedisSessionTestsBase
     {
         RedisSessionStore store = CreateStore();
         UserSession session = await store.GetOrCreateAsync(900);
-        session.CurrentScreen = "main";
-        session.NavMessageId = 10;
-        session.Set("data", "value");
+        session.Navigation.CurrentScreen = "main";
+        session.Navigation.NavMessageId = 10;
+        session.Data.Set("data", "value");
         await store.SaveAsync(session);
 
         session.Clear();
         await store.SaveAsync(session);
 
         UserSession restored = await store.GetOrCreateAsync(900);
-        _ = restored.CurrentScreen.Should().BeNull();
-        _ = restored.NavMessageId.Should().BeNull();
-        _ = restored.GetAll().Should().BeEmpty();
+        restored.Navigation.CurrentScreen.Should().BeNull();
+        restored.Navigation.NavMessageId.Should().BeNull();
+        restored.Data.GetAll().Should().BeEmpty();
     }
 
     [Fact]
@@ -189,8 +189,8 @@ public sealed class RedisSessionStoreIntegrationTests : RedisSessionTestsBase
         await store.SaveAsync(session);
 
         TimeSpan? ttl = await Db.KeyTimeToLiveAsync("bot:session:1000");
-        _ = ttl.Should().NotBeNull();
-        _ = ttl!.Value.TotalMinutes.Should().BeGreaterThan(4).And.BeLessThanOrEqualTo(5);
+        ttl.Should().NotBeNull();
+        ttl!.Value.TotalMinutes.Should().BeGreaterThan(4).And.BeLessThanOrEqualTo(5);
     }
 
     [Fact]
@@ -202,7 +202,7 @@ public sealed class RedisSessionStoreIntegrationTests : RedisSessionTestsBase
         await store.SaveAsync(session);
 
         TimeSpan? ttl = await Db.KeyTimeToLiveAsync("bot:session:1100");
-        _ = ttl.Should().BeNull();
+        ttl.Should().BeNull();
     }
 
     [Fact]
@@ -211,18 +211,18 @@ public sealed class RedisSessionStoreIntegrationTests : RedisSessionTestsBase
         RedisSessionStore store = CreateStore();
         UserSession session = await store.GetOrCreateAsync(1200);
 
-        session.Set("step", "1");
-        session.CurrentScreen = "screen_v1";
+        session.Data.Set("step", "1");
+        session.Navigation.CurrentScreen = "screen_v1";
         await store.SaveAsync(session);
 
-        session.Set("step", "2");
-        session.CurrentScreen = "screen_v2";
+        session.Data.Set("step", "2");
+        session.Navigation.CurrentScreen = "screen_v2";
         await store.SaveAsync(session);
 
         UserSession restored = await store.GetOrCreateAsync(1200);
 
-        _ = restored.GetString("step").Should().Be("2");
-        _ = restored.CurrentScreen.Should().Be("screen_v2");
+        restored.Data.GetString("step").Should().Be("2");
+        restored.Navigation.CurrentScreen.Should().Be("screen_v2");
     }
 
     [Fact]
@@ -231,18 +231,18 @@ public sealed class RedisSessionStoreIntegrationTests : RedisSessionTestsBase
         RedisSessionStore store = CreateStore();
 
         UserSession sessionA = await store.GetOrCreateAsync(1300);
-        sessionA.Set("name", "Alice");
+        sessionA.Data.Set("name", "Alice");
         await store.SaveAsync(sessionA);
 
         UserSession sessionB = await store.GetOrCreateAsync(1400);
-        sessionB.Set("name", "Bob");
+        sessionB.Data.Set("name", "Bob");
         await store.SaveAsync(sessionB);
 
         UserSession restoredA = await store.GetOrCreateAsync(1300);
         UserSession restoredB = await store.GetOrCreateAsync(1400);
 
-        _ = restoredA.GetString("name").Should().Be("Alice");
-        _ = restoredB.GetString("name").Should().Be("Bob");
+        restoredA.Data.GetString("name").Should().Be("Alice");
+        restoredB.Data.GetString("name").Should().Be("Bob");
     }
 
     [Fact]
@@ -250,12 +250,12 @@ public sealed class RedisSessionStoreIntegrationTests : RedisSessionTestsBase
     {
         RedisSessionStore store = CreateStore();
         UserSession session = await store.GetOrCreateAsync(1500);
-        session.Set("key1", "val1");
+        session.Data.Set("key1", "val1");
         await store.SaveAsync(session);
 
         StackExchange.Redis.RedisValue raw = await Db.StringGetAsync("bot:session:1500");
 
-        _ = raw.IsNullOrEmpty.Should().BeFalse();
-        _ = raw.ToString().Should().StartWith("{");
+        raw.IsNullOrEmpty.Should().BeFalse();
+        raw.ToString().Should().StartWith("{");
     }
 }

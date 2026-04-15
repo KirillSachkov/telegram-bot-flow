@@ -1,4 +1,4 @@
-namespace TelegramBotFlow.Core.Data;
+﻿namespace TelegramBotFlow.Core.Data;
 
 /// <summary>
 /// Base user entity tracked by the bot.

@@ -1,4 +1,4 @@
-using System.Threading.Channels;
+﻿using System.Threading.Channels;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -12,7 +12,7 @@ namespace TelegramBotFlow.Core.Hosting;
 /// Фоновый сервис получения Telegram update-ов в режиме polling.
 /// Только читает обновления и складывает их в Channel для обработки воркерами.
 /// </summary>
-public sealed class PollingService : BackgroundService
+internal sealed class PollingService : BackgroundService
 {
     private readonly ITelegramBotClient _bot;
     private readonly ILogger<PollingService> _logger;

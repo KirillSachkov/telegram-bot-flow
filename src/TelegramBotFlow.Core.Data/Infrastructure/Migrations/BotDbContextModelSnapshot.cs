@@ -22,17 +22,6 @@ namespace TelegramBotFlow.Core.Data.Infrastructure.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("TelegramBotFlow.Core.Data.BotSettings", b =>
-                {
-                    b.Property<int>("Id")
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("bot_settings", (string)null);
-                });
-
             modelBuilder.Entity("TelegramBotFlow.Core.Data.BotUser", b =>
                 {
                     b.Property<long>("TelegramId")
@@ -52,33 +41,6 @@ namespace TelegramBotFlow.Core.Data.Infrastructure.Migrations
                     b.HasKey("TelegramId");
 
                     b.ToTable("users", (string)null);
-                });
-
-            modelBuilder.Entity("TelegramBotFlow.Core.Data.BotSettings", b =>
-                {
-                    b.OwnsOne("TelegramBotFlow.Core.Data.RoadmapMessageConfig", "Roadmap", b1 =>
-                        {
-                            b1.Property<int>("BotSettingsId");
-
-                            b1.Property<long>("SourceChatId")
-                                .HasJsonPropertyName("source_chat_id");
-
-                            b1.Property<int>("SourceMessageId")
-                                .HasJsonPropertyName("source_message_id");
-
-                            b1.HasKey("BotSettingsId");
-
-                            b1.ToTable("bot_settings");
-
-                            b1
-                                .ToJson("roadmap")
-                                .HasColumnType("jsonb");
-
-                            b1.WithOwner()
-                                .HasForeignKey("BotSettingsId");
-                        });
-
-                    b.Navigation("Roadmap");
                 });
 #pragma warning restore 612, 618
         }

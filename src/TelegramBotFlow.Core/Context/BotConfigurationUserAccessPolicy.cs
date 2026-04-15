@@ -3,7 +3,7 @@ using TelegramBotFlow.Core.Hosting;
 
 namespace TelegramBotFlow.Core.Context;
 
-public sealed class BotConfigurationUserAccessPolicy : IUserAccessPolicy
+internal sealed class BotConfigurationUserAccessPolicy : IUserAccessPolicy
 {
     private readonly IOptions<BotConfiguration> _options;
 

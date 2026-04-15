@@ -1,11 +1,11 @@
-using Microsoft.AspNetCore.Builder;
+﻿using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
+using TelegramBotFlow.Core.Routing;
 using TelegramBotFlow.Core.Context;
 using TelegramBotFlow.Core.Endpoints;
 using TelegramBotFlow.Core.Extensions;
 using TelegramBotFlow.Core.Pipeline;
 using TelegramBotFlow.Core.Pipeline.Middlewares;
-using TelegramBotFlow.Core.Routing;
 using TelegramBotFlow.Core.Screens;
 using TelegramBotFlow.Core.UI;
 
@@ -51,7 +51,7 @@ public sealed class BotApplication
     /// <returns>Собранный экземпляр приложения бота.</returns>
     public static BotApplication Build(BotApplicationBuilder builder)
     {
-        _ = builder.Services.AddTelegramBotFlow(builder.Configuration);
+        builder.Services.AddTelegramBotFlow(builder.Configuration);
 
         WebApplication app = builder.WebAppBuilder.Build();
 
@@ -173,35 +173,19 @@ public sealed class BotApplication
     public BotApplication MapAction<TAction, TPayload>(Delegate handler) where TAction : IBotAction
     {
         string callbackId = typeof(TAction).Name;
-        UpdateDelegate inner = HandlerDelegateFactory.CreateForActionWithPayload<TPayload>(handler, callbackId);
-
-        _router.AddRoute(RouteEntry.Callback($"{callbackId}:*", async ctx =>
-        {
-            IUpdateResponder responder = ctx.RequestServices.GetRequiredService<IUpdateResponder>();
-            await responder.AnswerCallbackAsync(ctx);
-            await inner(ctx);
-        }));
-
+        UpdateDelegate inner = PayloadDelegateFactory.Create<TPayload>(handler, callbackId);
+        _router.AddRoute(RouteEntry.Callback($"{callbackId}:*", inner));
         return this;
     }
 
     /// <summary>
     /// Регистрирует обработчик action-кнопки.
-    /// Автоматически отвечает на callback (убирает часики с кнопки),
-    /// затем вызывает обработчик. Обработчик должен возвращать
-    /// <c>Task&lt;IEndpointResult&gt;</c>.
+    /// Результат хэндлера сам отвечает на callback (<see cref="IEndpointResult.ExecuteAsync"/>).
+    /// Обработчик должен возвращать <c>Task&lt;IEndpointResult&gt;</c>.
     /// </summary>
     public BotApplication MapAction(string callbackId, Delegate handler)
     {
-        UpdateDelegate inner = HandlerDelegateFactory.Create(handler);
-
-        _router.AddRoute(RouteEntry.Callback(callbackId, async ctx =>
-        {
-            IUpdateResponder responder = ctx.RequestServices.GetRequiredService<IUpdateResponder>();
-            await responder.AnswerCallbackAsync(ctx);
-            await inner(ctx);
-        }));
-
+        _router.AddRoute(RouteEntry.Callback(callbackId, HandlerDelegateFactory.Create(handler)));
         return this;
     }
 
@@ -227,26 +211,16 @@ public sealed class BotApplication
     public BotApplication UseNavigation<TMenuScreen>() where TMenuScreen : IScreen
     {
         Type menuScreenType = typeof(TMenuScreen);
-        return MapCallbackGroup("nav", async (
-            UpdateContext ctx,
-            string screenId,
-            IUpdateResponder responder) =>
+        return MapCallbackGroup("nav", (UpdateContext ctx, string screenId) =>
         {
-            await responder.AnswerCallbackAsync(ctx);
-
-            if (screenId == "back")
-                return BotResults.Back();
-
-            if (screenId == "close")
-                return BotResults.Refresh();
-
-            if (screenId == "menu")
+            IEndpointResult result = screenId switch
             {
-                ctx.Session?.ResetNavigation();
-                return new NavigateToResult(menuScreenType);
-            }
-
-            return BotResults.NavigateTo(screenId);
+                "back" => BotResults.Back(),
+                "close" => BotResults.Refresh(),
+                "menu" => new NavigateToRootResult(menuScreenType),
+                _ => BotResults.NavigateTo(screenId)
+            };
+            return Task.FromResult(result);
         });
     }
 

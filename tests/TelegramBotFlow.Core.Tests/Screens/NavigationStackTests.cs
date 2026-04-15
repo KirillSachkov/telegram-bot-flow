@@ -10,49 +10,49 @@ public sealed class NavigationStackTests
     {
         var session = new UserSession(1);
 
-        session.PushScreen("main");
+        session.Navigation.PushScreen("main");
 
-        _ = session.CurrentScreen.Should().Be("main");
-        _ = session.NavigationStack.Should().BeEmpty();
+        session.Navigation.CurrentScreen.Should().Be("main");
+        session.Navigation.NavigationStack.Should().BeEmpty();
     }
 
     [Fact]
     public void PushScreen_SecondScreen_PushesFirstToStack()
     {
         var session = new UserSession(1);
-        session.PushScreen("main");
+        session.Navigation.PushScreen("main");
 
-        session.PushScreen("settings");
+        session.Navigation.PushScreen("settings");
 
-        _ = session.CurrentScreen.Should().Be("settings");
-        _ = session.NavigationStack.Should().ContainSingle().Which.Should().Be("main");
+        session.Navigation.CurrentScreen.Should().Be("settings");
+        session.Navigation.NavigationStack.Should().ContainSingle().Which.Should().Be("main");
     }
 
     [Fact]
     public void PopScreen_ReturnsToLastScreen()
     {
         var session = new UserSession(1);
-        session.PushScreen("main");
-        session.PushScreen("settings");
-        session.PushScreen("lang");
+        session.Navigation.PushScreen("main");
+        session.Navigation.PushScreen("settings");
+        session.Navigation.PushScreen("lang");
 
-        string? popped = session.PopScreen();
+        string? popped = session.Navigation.PopScreen();
 
-        _ = popped.Should().Be("settings");
-        _ = session.CurrentScreen.Should().Be("settings");
-        _ = session.NavigationStack.Should().ContainSingle().Which.Should().Be("main");
+        popped.Should().Be("settings");
+        session.Navigation.CurrentScreen.Should().Be("settings");
+        session.Navigation.NavigationStack.Should().ContainSingle().Which.Should().Be("main");
     }
 
     [Fact]
     public void PopScreen_EmptyStack_ReturnsNull()
     {
         var session = new UserSession(1);
-        session.PushScreen("main");
+        session.Navigation.PushScreen("main");
 
-        string? popped = session.PopScreen();
+        string? popped = session.Navigation.PopScreen();
 
-        _ = popped.Should().BeNull();
-        _ = session.CurrentScreen.Should().Be("main");
+        popped.Should().BeNull();
+        session.Navigation.CurrentScreen.Should().Be("main");
     }
 
     [Fact]
@@ -60,67 +60,67 @@ public sealed class NavigationStackTests
     {
         var session = new UserSession(1);
 
-        string? popped = session.PopScreen();
+        string? popped = session.Navigation.PopScreen();
 
-        _ = popped.Should().BeNull();
+        popped.Should().BeNull();
     }
 
     [Fact]
     public void Clear_ResetsNavigationStack()
     {
         var session = new UserSession(1);
-        session.PushScreen("main");
-        session.PushScreen("settings");
-        session.PushScreen("lang");
+        session.Navigation.PushScreen("main");
+        session.Navigation.PushScreen("settings");
+        session.Navigation.PushScreen("lang");
 
         session.Clear();
 
-        _ = session.CurrentScreen.Should().BeNull();
-        _ = session.NavigationStack.Should().BeEmpty();
-        _ = session.NavMessageId.Should().BeNull();
+        session.Navigation.CurrentScreen.Should().BeNull();
+        session.Navigation.NavigationStack.Should().BeEmpty();
+        session.Navigation.NavMessageId.Should().BeNull();
     }
 
     [Fact]
     public void DeepNavigation_And_BackToRoot()
     {
         var session = new UserSession(1);
-        session.PushScreen("main");
-        session.PushScreen("settings");
-        session.PushScreen("lang");
-        session.PushScreen("lang_confirm");
+        session.Navigation.PushScreen("main");
+        session.Navigation.PushScreen("settings");
+        session.Navigation.PushScreen("lang");
+        session.Navigation.PushScreen("lang_confirm");
 
-        _ = session.PopScreen().Should().Be("lang");
-        _ = session.PopScreen().Should().Be("settings");
-        _ = session.PopScreen().Should().Be("main");
-        _ = session.PopScreen().Should().BeNull();
-        _ = session.CurrentScreen.Should().Be("main");
+        session.Navigation.PopScreen().Should().Be("lang");
+        session.Navigation.PopScreen().Should().Be("settings");
+        session.Navigation.PopScreen().Should().Be("main");
+        session.Navigation.PopScreen().Should().BeNull();
+        session.Navigation.CurrentScreen.Should().Be("main");
     }
 
     [Fact]
     public void PushScreen_DuplicateInStack_TruncatesToExisting()
     {
         var session = new UserSession(1);
-        session.PushScreen("main");
-        session.PushScreen("profile");
-        session.PushScreen("settings");
+        session.Navigation.PushScreen("main");
+        session.Navigation.PushScreen("profile");
+        session.Navigation.PushScreen("settings");
 
-        session.PushScreen("profile");
+        session.Navigation.PushScreen("profile");
 
-        _ = session.CurrentScreen.Should().Be("profile");
-        _ = session.NavigationStack.Should().Equal("main");
+        session.Navigation.CurrentScreen.Should().Be("profile");
+        session.Navigation.NavigationStack.Should().Equal("main");
     }
 
     [Fact]
     public void PushScreen_SameAsCurrent_NoOp()
     {
         var session = new UserSession(1);
-        session.PushScreen("main");
-        session.PushScreen("settings");
+        session.Navigation.PushScreen("main");
+        session.Navigation.PushScreen("settings");
 
-        session.PushScreen("settings");
+        session.Navigation.PushScreen("settings");
 
-        _ = session.CurrentScreen.Should().Be("settings");
-        _ = session.NavigationStack.Should().ContainSingle().Which.Should().Be("main");
+        session.Navigation.CurrentScreen.Should().Be("settings");
+        session.Navigation.NavigationStack.Should().ContainSingle().Which.Should().Be("main");
     }
 
     [Fact]
@@ -129,24 +129,24 @@ public sealed class NavigationStackTests
         var session = new UserSession(1);
 
         for (int i = 0; i <= UserSession.MAX_NAVIGATION_DEPTH + 5; i++)
-            session.PushScreen($"screen_{i}");
+            session.Navigation.PushScreen($"screen_{i}");
 
-        _ = session.NavigationStack.Should().HaveCount(UserSession.MAX_NAVIGATION_DEPTH);
-        _ = session.NavigationStack[0].Should().NotBe("screen_0");
+        session.Navigation.NavigationStack.Should().HaveCount(UserSession.MAX_NAVIGATION_DEPTH);
+        session.Navigation.NavigationStack[0].Should().NotBe("screen_0");
     }
 
     [Fact]
     public void PushScreen_DuplicateOfRoot_ClearsStack()
     {
         var session = new UserSession(1);
-        session.PushScreen("main");
-        session.PushScreen("a");
-        session.PushScreen("b");
-        session.PushScreen("c");
+        session.Navigation.PushScreen("main");
+        session.Navigation.PushScreen("a");
+        session.Navigation.PushScreen("b");
+        session.Navigation.PushScreen("c");
 
-        session.PushScreen("main");
+        session.Navigation.PushScreen("main");
 
-        _ = session.CurrentScreen.Should().Be("main");
-        _ = session.NavigationStack.Should().BeEmpty();
+        session.Navigation.CurrentScreen.Should().Be("main");
+        session.Navigation.NavigationStack.Should().BeEmpty();
     }
 }

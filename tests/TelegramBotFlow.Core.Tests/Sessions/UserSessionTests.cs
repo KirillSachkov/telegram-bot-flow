@@ -10,9 +10,9 @@ public sealed class UserSessionTests
     public void Set_And_GetString_WorkCorrectly()
     {
         var session = new UserSession(1);
-        session.Set("name", "Test");
+        session.Data.Set("name", "Test");
 
-        _ = session.GetString("name").Should().Be("Test");
+        session.Data.GetString("name").Should().Be("Test");
     }
 
     [Fact]
@@ -20,57 +20,57 @@ public sealed class UserSessionTests
     {
         var session = new UserSession(1);
 
-        _ = session.GetString("missing").Should().BeNull();
+        session.Data.GetString("missing").Should().BeNull();
     }
 
     [Fact]
     public void GetInt_ParsesStringToInt()
     {
         var session = new UserSession(1);
-        session.Set("age", "25");
+        session.Data.Set("age", "25");
 
-        _ = session.GetInt("age").Should().Be(25);
-        _ = session.GetInt("missing").Should().BeNull();
+        session.Data.GetInt("age").Should().Be(25);
+        session.Data.GetInt("missing").Should().BeNull();
     }
 
     [Fact]
     public void GetBool_ParsesTrueString()
     {
         var session = new UserSession(1);
-        session.Set("active", "true");
-        session.Set("inactive", "false");
+        session.Data.Set("active", "true");
+        session.Data.Set("inactive", "false");
 
-        _ = session.GetBool("active").Should().BeTrue();
-        _ = session.GetBool("inactive").Should().BeFalse();
-        _ = session.GetBool("missing").Should().BeFalse();
+        session.Data.GetBool("active").Should().BeTrue();
+        session.Data.GetBool("inactive").Should().BeFalse();
+        session.Data.GetBool("missing").Should().BeNull();
     }
 
     [Fact]
     public void Has_ReturnsTrueForExistingKey()
     {
         var session = new UserSession(1);
-        session.Set("key", "value");
+        session.Data.Set("key", "value");
 
-        _ = session.Has("key").Should().BeTrue();
-        _ = session.Has("other").Should().BeFalse();
+        session.Data.Has("key").Should().BeTrue();
+        session.Data.Has("other").Should().BeFalse();
     }
 
     [Fact]
     public void Clear_RemovesAllDataAndResetsNavigation()
     {
         var session = new UserSession(1);
-        session.Set("key", "value");
-        session.CurrentScreen = "settings:main";
-        session.NavMessageId = 100;
-        session.NavigationStack.Add("main");
+        session.Data.Set("key", "value");
+        session.Navigation.CurrentScreen = "settings:main";
+        session.Navigation.NavMessageId = 100;
+        session.Navigation.NavigationStack.Add("main");
 
         session.Clear();
 
-        _ = session.Has("key").Should().BeFalse();
-        _ = session.CurrentScreen.Should().BeNull();
-        _ = session.NavMessageId.Should().BeNull();
-        _ = session.NavigationStack.Should().BeEmpty();
-        _ = session.CurrentMediaType.Should().Be(ScreenMediaType.None);
+        session.Data.Has("key").Should().BeFalse();
+        session.Navigation.CurrentScreen.Should().BeNull();
+        session.Navigation.NavMessageId.Should().BeNull();
+        session.Navigation.NavigationStack.Should().BeEmpty();
+        session.Navigation.CurrentMediaType.Should().Be(ScreenMediaType.None);
     }
 
     [Fact]
@@ -78,11 +78,11 @@ public sealed class UserSessionTests
     {
         var session = new UserSession(1);
 
-        _ = session.CurrentScreen.Should().BeNull();
+        session.Navigation.CurrentScreen.Should().BeNull();
 
-        session.CurrentScreen = "settings:main";
+        session.Navigation.CurrentScreen = "settings:main";
 
-        _ = session.CurrentScreen.Should().Be("settings:main");
+        session.Navigation.CurrentScreen.Should().Be("settings:main");
     }
 
     [Fact]
@@ -90,36 +90,99 @@ public sealed class UserSessionTests
     {
         var session = new UserSession(1);
 
-        session.PushScreen("main");
-        _ = session.CurrentScreen.Should().Be("main");
-        _ = session.NavigationStack.Should().BeEmpty();
+        session.Navigation.PushScreen("main");
+        session.Navigation.CurrentScreen.Should().Be("main");
+        session.Navigation.NavigationStack.Should().BeEmpty();
 
-        session.PushScreen("settings");
-        _ = session.CurrentScreen.Should().Be("settings");
-        _ = session.NavigationStack.Should().ContainSingle().Which.Should().Be("main");
+        session.Navigation.PushScreen("settings");
+        session.Navigation.CurrentScreen.Should().Be("settings");
+        session.Navigation.NavigationStack.Should().ContainSingle().Which.Should().Be("main");
 
-        session.PushScreen("lang");
-        _ = session.CurrentScreen.Should().Be("lang");
-        _ = session.NavigationStack.Should().HaveCount(2);
+        session.Navigation.PushScreen("lang");
+        session.Navigation.CurrentScreen.Should().Be("lang");
+        session.Navigation.NavigationStack.Should().HaveCount(2);
     }
 
     [Fact]
     public void PopScreen_ReturnsToLastScreen()
     {
         var session = new UserSession(1);
-        session.PushScreen("main");
-        session.PushScreen("settings");
-        session.PushScreen("lang");
+        session.Navigation.PushScreen("main");
+        session.Navigation.PushScreen("settings");
+        session.Navigation.PushScreen("lang");
 
-        string? popped = session.PopScreen();
-        _ = popped.Should().Be("settings");
-        _ = session.CurrentScreen.Should().Be("settings");
+        string? popped = session.Navigation.PopScreen();
+        popped.Should().Be("settings");
+        session.Navigation.CurrentScreen.Should().Be("settings");
 
-        popped = session.PopScreen();
-        _ = popped.Should().Be("main");
-        _ = session.CurrentScreen.Should().Be("main");
+        popped = session.Navigation.PopScreen();
+        popped.Should().Be("main");
+        session.Navigation.CurrentScreen.Should().Be("main");
 
-        popped = session.PopScreen();
-        _ = popped.Should().BeNull();
+        popped = session.Navigation.PopScreen();
+        popped.Should().BeNull();
+    }
+
+    // -- SessionData.Get<T> / Set<T> --
+
+    [Fact]
+    public void Set_Generic_And_Get_Generic_RoundtripObject()
+    {
+        var session = new UserSession(1);
+        var filter = new TestFilter { Category = "tech", Page = 3 };
+
+        session.Data.Set("filters", filter);
+        var restored = session.Data.Get<TestFilter>("filters");
+
+        restored.Should().NotBeNull();
+        restored!.Category.Should().Be("tech");
+        restored.Page.Should().Be(3);
+    }
+
+    [Fact]
+    public void Get_Generic_MissingKey_ReturnsDefault()
+    {
+        var session = new UserSession(1);
+
+        int? result = session.Data.Get<int?>("missing");
+
+        result.Should().BeNull();
+    }
+
+    [Fact]
+    public void Set_Generic_OverwritesPreviousValue()
+    {
+        var session = new UserSession(1);
+        session.Data.Set("counter", 1);
+        session.Data.Set("counter", 42);
+
+        session.Data.Get<int>("counter").Should().Be(42);
+    }
+
+    [Fact]
+    public void Set_Generic_And_GetString_ReturnJsonRepresentation()
+    {
+        var session = new UserSession(1);
+        session.Data.Set("count", 5);
+
+        // GetString должен вернуть JSON-строку "5"
+        session.Data.GetString("count").Should().Be("5");
+    }
+
+    [Fact]
+    public void Set_String_And_Get_Generic_PrimitivesWork()
+    {
+        var session = new UserSession(1);
+        session.Data.Set("page", "7");
+
+        // Get<int> парсит из строки JSON "7"
+        session.Data.Get<int>("page").Should().Be(7);
+    }
+
+    // Helper type for generic session tests
+    private sealed class TestFilter
+    {
+        public string Category { get; set; } = string.Empty;
+        public int Page { get; set; }
     }
 }

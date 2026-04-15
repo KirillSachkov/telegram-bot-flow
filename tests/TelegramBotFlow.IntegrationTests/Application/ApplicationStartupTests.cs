@@ -1,6 +1,7 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Telegram.Bot;
+using TelegramBotFlow.Core.Context;
 using TelegramBotFlow.Core.Pipeline;
 using TelegramBotFlow.Core.Pipeline.Middlewares;
 using TelegramBotFlow.Core.Routing;
@@ -25,8 +26,8 @@ public class ApplicationStartupTests : IClassFixture<BotWebApplicationFactory>
         HttpClient client = _factory.CreateClient();
         IServiceProvider services = _factory.Services;
 
-        _ = client.Should().NotBeNull();
-        _ = services.Should().NotBeNull();
+        client.Should().NotBeNull();
+        services.Should().NotBeNull();
     }
 
     [Fact]
@@ -34,9 +35,7 @@ public class ApplicationStartupTests : IClassFixture<BotWebApplicationFactory>
     {
         ITelegramBotClient? botClient = _factory.Services.GetService<ITelegramBotClient>();
 
-        _ = botClient.Should().NotBeNull();
-        _ = botClient.Should().BeSameAs(_factory.MockTelegramBotClient,
-            "application should use mocked bot client");
+        botClient.Should().NotBeNull("ITelegramBotClient stub должен быть зарегистрирован");
     }
 
     [Fact]
@@ -46,9 +45,9 @@ public class ApplicationStartupTests : IClassFixture<BotWebApplicationFactory>
         ISessionStore? sessionStore = _factory.Services.GetService<ISessionStore>();
         UpdatePipeline? updatePipeline = _factory.Services.GetService<UpdatePipeline>();
 
-        _ = updateRouter.Should().NotBeNull("UpdateRouter should be registered");
-        _ = sessionStore.Should().NotBeNull("ISessionStore should be registered");
-        _ = updatePipeline.Should().NotBeNull("UpdatePipeline should be registered");
+        updateRouter.Should().NotBeNull("UpdateRouter should be registered");
+        sessionStore.Should().NotBeNull("ISessionStore should be registered");
+        updatePipeline.Should().NotBeNull("UpdatePipeline should be registered");
     }
 
     [Fact]
@@ -61,9 +60,9 @@ public class ApplicationStartupTests : IClassFixture<BotWebApplicationFactory>
         LoggingMiddleware? logging = scopedServices.GetService<LoggingMiddleware>();
         SessionMiddleware? session = scopedServices.GetService<SessionMiddleware>();
 
-        _ = errorHandling.Should().NotBeNull("ErrorHandlingMiddleware should be registered");
-        _ = logging.Should().NotBeNull("LoggingMiddleware should be registered");
-        _ = session.Should().NotBeNull("SessionMiddleware should be registered");
+        errorHandling.Should().NotBeNull("ErrorHandlingMiddleware should be registered");
+        logging.Should().NotBeNull("LoggingMiddleware should be registered");
+        session.Should().NotBeNull("SessionMiddleware should be registered");
     }
 
     [Fact]
@@ -75,8 +74,8 @@ public class ApplicationStartupTests : IClassFixture<BotWebApplicationFactory>
         UpdateRouter router1 = _factory.Services.GetRequiredService<UpdateRouter>();
         UpdateRouter router2 = _factory.Services.GetRequiredService<UpdateRouter>();
 
-        _ = bot1.Should().BeSameAs(bot2, "singleton should return same instance");
-        _ = router1.Should().BeSameAs(router2, "singleton should return same instance");
+        bot1.Should().BeSameAs(bot2, "singleton should return same instance");
+        router1.Should().BeSameAs(router2, "singleton should return same instance");
     }
 
     [Fact]
@@ -88,8 +87,8 @@ public class ApplicationStartupTests : IClassFixture<BotWebApplicationFactory>
         ErrorHandlingMiddleware middleware1 = scope1.ServiceProvider.GetRequiredService<ErrorHandlingMiddleware>();
         ErrorHandlingMiddleware middleware2 = scope2.ServiceProvider.GetRequiredService<ErrorHandlingMiddleware>();
 
-        _ = middleware1.Should().NotBeSameAs(middleware2,
-            "scoped services should return different instances in different scopes");
+        middleware1.Should().NotBeSameAs(middleware2,
+           "scoped services should return different instances in different scopes");
     }
 
     [Fact]
@@ -102,11 +101,11 @@ public class ApplicationStartupTests : IClassFixture<BotWebApplicationFactory>
                 using IServiceScope scope = _factory.Services.CreateScope();
                 ErrorHandlingMiddleware errorHandling =
                     scope.ServiceProvider.GetRequiredService<ErrorHandlingMiddleware>();
-                _ = errorHandling.Should().NotBeNull();
+                errorHandling.Should().NotBeNull();
             }
         };
 
-        _ = action.Should().NotThrow("creating multiple scopes should not cause errors");
+        action.Should().NotThrow("creating multiple scopes should not cause errors");
     }
 
     [Fact]
@@ -115,18 +114,19 @@ public class ApplicationStartupTests : IClassFixture<BotWebApplicationFactory>
         Microsoft.Extensions.Configuration.IConfiguration? configuration =
             _factory.Services.GetService<Microsoft.Extensions.Configuration.IConfiguration>();
 
-        _ = configuration.Should().NotBeNull();
-        _ = configuration["Bot:Token"].Should().Be("fake-token-for-testing");
-        _ = configuration["Bot:Mode"].Should().Be("Polling");
+        configuration.Should().NotBeNull();
+        configuration["Bot:Token"].Should().Be("fake-token-for-testing");
+        configuration["Bot:Mode"].Should().Be("Polling");
     }
 
     [Fact]
-    public void MockTelegramBotClient_Should_Be_Available_And_Usable()
+    public void MockResponder_Should_Be_Registered_And_Resolvable()
     {
-        ITelegramBotClient mockBot = _factory.MockTelegramBotClient;
-        ITelegramBotClient registeredBot = _factory.Services.GetRequiredService<ITelegramBotClient>();
+        using IServiceScope scope = _factory.Services.CreateScope();
+        IUpdateResponder? responder = scope.ServiceProvider.GetService<IUpdateResponder>();
 
-        _ = mockBot.Should().NotBeNull();
-        _ = registeredBot.Should().BeSameAs(mockBot);
+        responder.Should().NotBeNull("IUpdateResponder должен быть зарегистрирован");
+        responder.Should().BeSameAs(_factory.MockResponder,
+            "в тестах должен использоваться мок IUpdateResponder");
     }
 }

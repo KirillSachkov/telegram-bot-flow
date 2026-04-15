@@ -1,9 +1,9 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Telegram.Bot.Types;
+using TelegramBotFlow.Core.Routing;
 using TelegramBotFlow.Core.Context;
 using TelegramBotFlow.Core.Pipeline;
-using TelegramBotFlow.Core.Routing;
 using TelegramBotFlow.Core.Screens;
 using TelegramBotFlow.Core.Wizards;
 using TelegramBotFlow.IntegrationTests.Infrastructure;
@@ -11,7 +11,7 @@ using TelegramBotFlow.IntegrationTests.Infrastructure;
 namespace TelegramBotFlow.IntegrationTests.Wizards;
 
 [Collection(nameof(BotApplicationTests))]
-public class WizardTests : IClassFixture<BotWebApplicationFactory>
+public class WizardTests
 {
     private readonly BotWebApplicationFactory _factory;
     private IServiceScope _scope;
@@ -25,7 +25,7 @@ public class WizardTests : IClassFixture<BotWebApplicationFactory>
     private async Task SendUpdateAsync(Update update)
     {
         var pipeline = _factory.Services.GetRequiredService<UpdatePipeline>();
-        var context = new UpdateContext(update, _scope.ServiceProvider, new CancellationToken());
+        var context = new UpdateContext(update, _scope.ServiceProvider);
         try
         {
             await pipeline.ProcessAsync(context);
@@ -54,7 +54,7 @@ public class WizardTests : IClassFixture<BotWebApplicationFactory>
         };
 
         // Act 1 - trigger wizard
-        var ctx = new UpdateContext(startWizardUpdate, _scope.ServiceProvider, new CancellationToken());
+        var ctx = new UpdateContext(startWizardUpdate, _scope.ServiceProvider);
         var sessionStore = _scope.ServiceProvider.GetRequiredService<TelegramBotFlow.Core.Sessions.ISessionStore>();
         ctx.Session = await sessionStore.GetOrCreateAsync(12345, CancellationToken.None);
         await ctx.StartWizardAsync<TestWizard>(ctx.CancellationToken);
@@ -64,8 +64,8 @@ public class WizardTests : IClassFixture<BotWebApplicationFactory>
         var store = _scope.ServiceProvider.GetRequiredService<IWizardStore>();
         var state = await store.GetAsync(12345, nameof(TestWizard), CancellationToken.None);
 
-        _ = state.Should().NotBeNull();
-        _ = state!.CurrentStepId.Should().Be("step1");
+        state.Should().NotBeNull();
+        state!.CurrentStepId.Should().Be("step1");
 
         // Act 2 - send age (first step)
         var step1Update = new Update
@@ -84,9 +84,9 @@ public class WizardTests : IClassFixture<BotWebApplicationFactory>
 
         // Assert 2 - moved to step 2
         state = await store.GetAsync(12345, nameof(TestWizard), CancellationToken.None);
-        _ = state.Should().NotBeNull();
-        _ = state!.CurrentStepId.Should().Be("step2");
-        _ = state.PayloadJson.Should().Contain("\"Age\":25");
+        state.Should().NotBeNull();
+        state!.CurrentStepId.Should().Be("step2");
+        state.PayloadJson.Should().Contain("\"Age\":25");
 
         // Act 3 - send name (second step)
         var step2Update = new Update
@@ -105,7 +105,7 @@ public class WizardTests : IClassFixture<BotWebApplicationFactory>
 
         // Assert 3 - wizard finished and state removed
         state = await store.GetAsync(12345, nameof(TestWizard), CancellationToken.None);
-        _ = state.Should().BeNull();
+        state.Should().BeNull();
     }
 }
 
@@ -121,7 +121,7 @@ public class TestWizard : BotWizard<TestWizardState>
 {
     protected override void ConfigureSteps(WizardBuilder<TestWizardState> builder)
     {
-        _ = builder
+        builder
             .Step(
                 id: "step1",
                 renderer: (ctx, state) => new ScreenView("Enter your age:"),

@@ -5,7 +5,7 @@ namespace TelegramBotFlow.Core.Pipeline;
 /// <summary>
 /// Выполняет цепочку middleware и терминальный обработчик для одного update-а.
 /// </summary>
-public sealed class UpdatePipeline
+internal sealed class UpdatePipeline
 {
     private readonly UpdateDelegate _pipeline;
 

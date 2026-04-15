@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using TelegramBotFlow.Core.UI;
 
 namespace TelegramBotFlow.Core.Tests.UI;
@@ -15,9 +15,9 @@ public sealed class ReplyKeyboardTests
             .Button("Settings")
             .Build();
 
-        _ = markup.Keyboard.Should().HaveCount(2);
-        _ = markup.Keyboard.First().Should().HaveCount(2);
-        _ = markup.Keyboard.Last().Should().HaveCount(1);
+        markup.Keyboard.Should().HaveCount(2);
+        markup.Keyboard.First().Should().HaveCount(2);
+        markup.Keyboard.Last().Should().HaveCount(1);
     }
 
     [Fact]
@@ -27,7 +27,7 @@ public sealed class ReplyKeyboardTests
             .Button("Test")
             .Build();
 
-        _ = markup.ResizeKeyboard.Should().BeTrue();
+        markup.ResizeKeyboard.Should().BeTrue();
     }
 
     [Fact]
@@ -38,6 +38,6 @@ public sealed class ReplyKeyboardTests
             .OneTime()
             .Build();
 
-        _ = markup.OneTimeKeyboard.Should().BeTrue();
+        markup.OneTimeKeyboard.Should().BeTrue();
     }
 }

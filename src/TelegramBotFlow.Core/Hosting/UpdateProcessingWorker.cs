@@ -1,4 +1,4 @@
-using System.Threading.Channels;
+﻿using System.Threading.Channels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -11,7 +11,7 @@ namespace TelegramBotFlow.Core.Hosting;
 /// <summary>
 /// Фоновый воркер, который параллельно вычитывает обновления из канала и отправляет их в Pipeline.
 /// </summary>
-public sealed class UpdateProcessingWorker : BackgroundService
+internal sealed class UpdateProcessingWorker : BackgroundService
 {
     private readonly ChannelReader<Update> _reader;
     private readonly UpdatePipeline _pipeline;
