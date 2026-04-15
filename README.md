@@ -1,439 +1,209 @@
-# Telegram Bot Flow
+# TelegramBotFlow
 
-Template-проект для создания Telegram-ботов на .NET 10 с middleware pipeline и Minimal API-стилем регистрации обработчиков.
+A .NET framework for building Telegram bots with middleware pipeline, screen navigation, wizard FSM, and sessions -- inspired by ASP.NET Core Minimal APIs.
 
-## Концепция
-
-Бот выступает **тонким клиентом** — вся бизнес-логика на бэкенде, бот занимается UI, маршрутизацией команд и вызовом backend API. Проект копируется целиком в новый репозиторий и адаптируется под конкретного бота.
-
-## Документация
-
-- **[Руководство по использованию (USAGE)](docs/USAGE.md)** — логика меню, навигация, управление UI, методы и примеры для разработки бота (экраны, кнопки, input, BotResults, сессия).
-- [Архитектура](docs/ARCHITECTURE.md), [API](docs/API.md), [Changelog](docs/CHANGELOG.md) — в папке `docs/`.
-
-## Запуск в режиме разработки
-
-### Предварительные требования
-
-- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
-- Telegram-бот, созданный через [@BotFather](https://t.me/BotFather)
-- Docker (опционально — для Seq логирования)
-
-### Шаг 1. Клонировать проект
-
-```bash
-git clone <repo-url> my-bot
-cd my-bot
-```
-
-### Шаг 2. Получить токен бота
-
-1. Откройте [@BotFather](https://t.me/BotFather) в Telegram
-2. Отправьте `/newbot` и следуйте инструкциям
-3. Скопируйте полученный токен (формат: `123456789:ABCdefGHIjklMNOpqrsTUVwxyz`)
-
-### Шаг 3. Настроить токен
-
-Откройте `src/TelegramBotFlow.App/appsettings.Development.json` и вставьте токен:
-
-```json
-{
-    "Bot": {
-        "Token": "YOUR_BOT_TOKEN_HERE",
-        "Mode": "Polling"
-    },
-    "Serilog": {
-        "MinimumLevel": {
-            "Default": "Debug"
-        }
-    }
-}
-```
-
-> **Важно:** Никогда не коммитьте токен в git. Файл `appsettings.Development.json` уже содержит placeholder `YOUR_BOT_TOKEN_HERE` — замените его на реальный токен только локально.
-
-Альтернативный способ — через переменную окружения:
-
-```bash
-export Bot__Token="YOUR_BOT_TOKEN_HERE"
-```
-
-### Шаг 4. Запустить бота
-
-```bash
-dotnet run --project src/TelegramBotFlow.App
-```
-
-В консоли должно появиться:
-
-```
-[INF] Bot @your_bot_username started in polling mode
-```
-
-Теперь откройте бота в Telegram и отправьте `/start`.
-
-### Шаг 5 (опционально). Запустить Seq для просмотра логов
-
-Seq — веб-интерфейс для структурированных логов. Запускается через Docker:
-
-```bash
-docker compose -f docker-compose-infra.yml up -d
-```
-
-После запуска откройте http://localhost:8081 — все логи бота будут отображаться в реальном времени.
-
-### Шаг 6. Запустить тесты
-
-```bash
-dotnet test
-```
-
-## Структура проекта
-
-```
-src/
-  TelegramBotFlow.Core/          — framework (не нужно менять при копировании)
-        Context/                     — UpdateContext, IUpdateResponder, access policy
-    Endpoints/                   — IBotEndpoint, auto-discovery
-    Extensions/                  — DI-регистрация сервисов
-        Screens/                     — IScreen, ScreenManager, ScreenNavigator
-    Hosting/                     — BotApplication, Polling, Webhook
-    Pipeline/                    — Middleware pipeline
-        Pipeline/Middlewares/        — ErrorHandling, Logging, Session, AccessPolicy
-    Routing/                     — UpdateRouter, RouteEntry
-    Sessions/                    — ISessionStore, InMemorySessionStore
-    UI/                          — InlineKeyboard, ReplyKeyboard, MenuBuilder
-
-  TelegramBotFlow.Core.Data/     — EF Core data layer (BotUser, BotDbContext)
-    BotUser.cs                   — базовая сущность пользователя (наследуемая)
-    BotDbContext.cs               — generic DbContext<TUser> + default
-    Middleware/                  — UserTrackingMiddleware (generic + non-generic)
-    Configurations/              — EF конфигурация BotUser
-    Infrastructure/Migrations/   — миграция InitUsers
-
-  TelegramBotFlow.Broadcasts/    — модуль рассылок (EF Core + Quartz.NET)
-    Domain/                      — Broadcast, BroadcastSequence, и др.
-    Infrastructure/              — BroadcastsDbContext, EF конфигурации, миграции
-    Features/                    — REST API endpoints (Broadcasts, Sequences, Users)
-    Services/                    — BroadcastSender (отправка с rate limiting)
-    Jobs/                        — Quartz jobs (SequenceProcessor, BroadcastExecution)
-
-  TelegramBotFlow.App/           — ваш бот (точка кастомизации)
-    Program.cs                   — конфигурация pipeline и middleware
-    Features/                    — фичи по папкам (IBotEndpoint + IScreen)
-        Start/                      — StartHandler (/start, /help)
-        MainMenu/                   — MainMenuScreen
-        Profile/                    — ProfileScreen
-        Settings/                   — SettingsScreen
-        Help/                       — HelpScreen
-        Roadmap/                    — GetRoadmapEndpoint, ClearRoadmapEndpoint, SetRoadmapInputEndpoint, экраны, маркеры действий
-        Fallback/                   — FallbackEndpoints
-    appsettings.json             — конфигурация (токен, режим, логирование, БД)
-
-tests/
-  TelegramBotFlow.Core.Tests/    — unit-тесты framework
-```
-
-## Как устроен Program.cs
+## Quick Start
 
 ```csharp
-var builder = BotApplication.CreateBuilder(args);
+BotApplicationBuilder builder = BotApplication.CreateBuilder(args);
+builder.Services.AddScreens(typeof(Program).Assembly);
 
-builder.Services.AddBotCoreData(builder.Configuration);
+BotApplication app = builder.Build();
 
-var app = builder.Build();
+app.UseErrorHandling();
+app.UseSession();
 
-// Middleware pipeline (порядок важен!)
-app.UseErrorHandling();  // 1. Ловит все ошибки
-app.UseLogging();        // 2. Логирует вход/выход + время
-app.UseSession();        // 3. Загружает сессию пользователя
-app.UseAccessPolicy();   // 4. Заполняет ctx.IsAdmin
-app.Use<UserTrackingMiddleware>(); // 5. Обновляет users в БД
-app.UsePendingInput();   // 6. Маршрутизирует ввод по PendingInputActionId
+app.MapCommand("start", (UpdateContext ctx) =>
+{
+    ctx.Session?.Clear();
+    return Task.FromResult(BotResults.NavigateToRoot<MainMenuScreen>());
+});
 
-// Меню бота (кнопка "/" в Telegram)
-app.SetMenu(menu => menu
-    .Command("start", "Главное меню"));
-
-// Навигация по экранам (nav:* callback встроен во фреймворк)
 app.UseNavigation<MainMenuScreen>();
-
-// Auto-discovery всех IBotEndpoint из текущей сборки
-app.MapBotEndpoints();
-
 await app.RunAsync();
 ```
 
-Навигация по экранам (callback `nav:*`) встроена во фреймворк и подключается через `UseNavigation<T>()`, где `T` — экран главного меню (кнопка «Главное меню»).
+```csharp
+public class MainMenuScreen : IScreen
+{
+    public ValueTask<ScreenView> RenderAsync(UpdateContext ctx) =>
+        ValueTask.FromResult(
+            new ScreenView("<b>Main Menu</b>\nChoose an option:")
+                .Button<SettingsAction>("Settings")
+                .Row()
+                .Button<HelpAction>("Help"));
+}
+```
 
-## Как создать свой endpoint
+Add `appsettings.json`:
 
-Создайте класс в `Features/` (в папке своей фичи), реализующий `IBotEndpoint`:
+```json
+{ "Bot": { "Token": "YOUR_BOT_TOKEN" } }
+```
+
+## Features
+
+- **Middleware pipeline** -- composable request processing (error handling, logging, sessions, access control, custom middleware)
+- **Screen navigation** -- stack-based UI with back/forward/root transitions, media support, navigation args
+- **Wizard FSM** -- multi-step forms with state management, step history, validation, OnEnter hooks
+- **Sessions** -- per-user session with data storage and navigation state (in-memory or Redis)
+- **User storage** -- `IBotUserStore<TUser>` abstraction with EF Core/PostgreSQL implementation
+- **Typed actions** -- `IBotAction` marker interface for type-safe callback routing (no magic strings)
+- **Input handling** -- `AwaitInput<T>()` / `MapInput<T>()` pattern for text input flows
+- **Payload encoding** -- automatic inline/stored payload strategy based on Telegram's 64-byte callback_data limit
+- **Polling & Webhook** -- both modes supported, webhook includes secret token validation
+- **Startup validation** -- middleware ordering verified at startup to prevent runtime errors
+
+## Installation
+
+```bash
+# Core framework (required)
+dotnet add package TelegramBotFlow.Core
+
+# Redis sessions (optional, replaces in-memory)
+dotnet add package TelegramBotFlow.Core.Redis
+
+# PostgreSQL user storage (optional)
+dotnet add package TelegramBotFlow.Data.Postgres
+```
+
+## Concepts
+
+### Pipeline
+
+Every Telegram update flows through a middleware pipeline before reaching the router. Middlewares are registered with `Use<T>()` and execute in registration order. Built-in middlewares:
+
+| Middleware | Method | Purpose |
+|---|---|---|
+| `ErrorHandlingMiddleware` | `UseErrorHandling()` | Catches exceptions, sends error message to user |
+| `LoggingMiddleware` | `UseLogging()` | Logs update processing |
+| `PrivateChatOnlyMiddleware` | `UsePrivateChatOnly()` | Blocks non-private-chat updates |
+| `SessionMiddleware` | `UseSession()` | Loads/saves per-user session with lock |
+| `AccessPolicyMiddleware` | `UseAccessPolicy()` | Resolves admin access from config |
+| `WizardMiddleware` | `UseWizards()` | Intercepts updates for active wizards |
+| `UserTrackingMiddleware<T>` | `Use<UserTrackingMiddleware<T>>()` | Auto-creates user records in DB |
+| `PendingInputMiddleware` | `UsePendingInput()` | Routes text messages to input handlers |
+
+### Screens
+
+Screens are the UI building blocks. Implement `IScreen` and return a `ScreenView` with text, buttons, and media:
 
 ```csharp
-public sealed class MyCommandEndpoint : IBotEndpoint
+public class ProfileScreen : IScreen
 {
-    public void MapEndpoint(BotApplication app)
+    private readonly IUserService _users;
+
+    public ProfileScreen(IUserService users) => _users = users;
+
+    public async ValueTask<ScreenView> RenderAsync(UpdateContext ctx)
     {
-        app.MapCommand("/mycommand", async (UpdateContext ctx, IUpdateResponder responder) =>
-        {
-            await responder.ReplyAsync(ctx, "Ответ на команду!");
-        });
-    }
-}
-```
-
-Endpoint будет автоматически найден и зарегистрирован через `AddBotEndpoints` + `MapBotEndpoints`.
-
-## Типы обработчиков
-
-| Метод              | Что обрабатывает                                                       | Пример                                                             |
-| ------------------ | ---------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| `MapCommand`       | Команды (`/start`, `/help`)                                            | `app.MapCommand("/start", handler)`                                |
-| `MapCallback`      | Нажатия InlineKeyboard                                                 | `app.MapCallback("profile", handler)`                              |
-| `MapCallbackGroup` | Callback с префиксом                                                   | `app.MapCallbackGroup("order", handler)`                           |
-| `MapAction`        | Action-кнопки с авто-ответом на callback (и поддержкой Typed Payloads) | `app.MapAction<DeleteAction, DeletePayload>(handler)`              |
-| `MapInput`         | Ввод пользователя для ожидаемого action                                | `app.MapInput("roadmap_set_message", handler)`                     |
-| `MapMessage`       | Текст по предикату                                                     | `app.MapMessage(ctx => ctx.MessageText == "Привет", handler)`      |
-| `MapUpdate`        | Любой тип Update                                                       | `app.MapUpdate(ctx => ctx.Update.Message?.Photo != null, handler)` |
-| `MapFallback`      | Fallback при отсутствии route                                          | `app.MapFallback(handler)`                                         |
-
-## XML-документация кода
-
-Ключевые классы и методы в `src/TelegramBotFlow.App` и `src/TelegramBotFlow.Core` покрыты XML-комментариями (`/// <summary>`, `param`, `returns`) для удобной навигации по API и генерации reference-документации.
-
-Параметры handler-а резолвятся через DI: кроме `UpdateContext` можно принимать сервисы (`IUpdateResponder`, `IScreenNavigator`, DbContext и т.д.).
-
-### MapAction vs MapCallback
-
-`MapAction` — упрощённый вариант `MapCallback` для кнопок-действий:
-
-- автоматически отвечает на callback (убирает часики с кнопки)
-- если обработчик возвращает `ScreenView`, показывает его в nav-сообщении с кнопкой "← Назад"
-- поддерживает передачу типизированных параметров (Payloads) для обхода ограничения Telegram в 64 байта
-
-```csharp
-app.MapAction<DeleteAction, DeletePayload>(async (DeletePayload payload) => ...);
-```
-
-## Screens (экраны)
-
-Экраны — основной способ строить UI бота. Экран реализует `IScreen`:
-
-```csharp
-public sealed class MainMenuScreen : IScreen
-{
-    public Task<ScreenView> RenderAsync(UpdateContext ctx) =>
-        Task.FromResult(new ScreenView("Добро пожаловать! Выберите раздел:")
-            .NavigateButton<ProfileScreen>("Профиль")
-            .NavigateButton<SettingsScreen>("Настройки")
+        var user = await _users.GetAsync(ctx.UserId);
+        return new ScreenView($"<b>{user.Name}</b>\nJoined: {user.JoinedAt:d}")
+            .WithPhoto(user.AvatarUrl)
+            .NavigateButton<EditProfileScreen>("Edit Profile")
             .Row()
-            .NavigateButton<HelpScreen>("Помощь")
-            .Row()
-            .Button("🗺 Получить Roadmap", "get_roadmap"));
-}
-```
-
-Идентификатор экрана вычисляется автоматически: `MainMenuScreen` → `main_menu`, `ProfileScreen` → `profile`.
-
-### ScreenView API
-
-| Метод                           | Описание                                                      |
-| ------------------------------- | ------------------------------------------------------------- |
-| `NavigateButton<TScreen>(text)` | Кнопка навигации к экрану (callback: `nav:{screenId}`)        |
-| `Button(text, callbackData)`    | Произвольная callback-кнопка                                  |
-| `UrlButton(text, url)`          | Кнопка-ссылка                                                 |
-| `Row()`                         | Начать новую строку кнопок                                    |
-| `BackButton(text?)`             | Кнопка "← Назад" (Pop из стека)                               |
-| `CloseButton(text?)`            | Кнопка "← Назад" для action-результатов (без изменения стека) |
-| `MenuButton(text?)`             | Кнопка "☰ Главное меню" (сброс истории навигации)            |
-
-### Медиа в экранах
-
-```csharp
-new ScreenView("Заголовок")
-    .WithPhoto(InputFile.FromUri("https://example.com/img.jpg"))
-    .BackButton();
-
-// Также: .WithVideo(), .WithAnimation(), .WithDocument()
-```
-
-### Навигация
-
-```csharp
-// Перейти к экрану
-await navigator.NavigateToAsync<ProfileScreen>(ctx);
-
-// Назад по стеку
-await navigator.GoBackAsync(ctx);
-
-// Перерисовать текущий экран
-await navigator.RefreshScreenAsync(ctx);
-```
-
-## UI-элементы
-
-### InlineKeyboard (кнопки под сообщением)
-
-```csharp
-var keyboard = new InlineKeyboard()
-    .Button("Текст кнопки", "callback_data")  // callback-кнопка
-    .Url("Ссылка", "https://example.com")      // кнопка-ссылка
-    .Row()                                      // новая строка
-    .Button("Ещё кнопка", "another")
-    .Build();
-
-await responder.ReplyAsync(ctx, "Сообщение:", keyboard);
-
-// Shortcut для одной кнопки:
-InlineKeyboard.SingleButton("Текст", "data");
-InlineKeyboard.SingleUrl("Текст", "https://...");
-```
-
-### ReplyKeyboard (кнопки вместо клавиатуры)
-
-```csharp
-var keyboard = new ReplyKeyboard()
-    .Button("Вариант 1")                       // текстовая кнопка
-    .Button("Вариант 2")
-    .Row()                                      // новая строка
-    .RequestContact("Отправить телефон")        // запрос контакта
-    .RequestLocation("Отправить геолокацию")    // запрос геолокации
-    .OneTime()                                  // скрыть после нажатия
-    .Build();
-
-await responder.ReplyAsync(ctx, "Выберите:", keyboard);
-
-// Убрать ReplyKeyboard:
-await responder.ReplyAsync(ctx, "Готово", ReplyKeyboard.Remove());
-```
-
-## Режимы работы
-
-| Режим       | Когда использовать             | Конфигурация        |
-| ----------- | ------------------------------ | ------------------- |
-| **Polling** | Разработка, нет публичного URL | `"Mode": "Polling"` |
-| **Webhook** | Production, есть HTTPS URL     | `"Mode": "Webhook"` |
-
-Настройка в `appsettings.json`:
-
-```json
-{
-    "Bot": {
-        "Token": "...",
-        "Mode": "Polling",
-        "WebhookUrl": "https://example.com",
-        "WebhookPath": "/api/bot/webhook"
+            .BackButton();
     }
 }
 ```
 
-## Доступ администраторов
+Navigation results: `BotResults.NavigateTo<T>()`, `BotResults.Back()`, `BotResults.NavigateToRoot<T>()`, `BotResults.Refresh()`.
 
-Проверка прав администратора выполняется middleware `UseAccessPolicy()` и использует `Bot:AdminUserIds`.
+Screen IDs follow a convention: `MainMenuScreen` becomes `main_menu`. Override with `[ScreenId("custom")]`.
 
-```json
+### Wizards
+
+Multi-step forms with typed state. Each step has a renderer (view) and a processor (logic):
+
+```csharp
+public class FeedbackWizard : BotWizard<FeedbackState>
 {
-    "Bot": {
-        "AdminUserIds": [123456789, 987654321]
+    protected override void ConfigureSteps(WizardBuilder<FeedbackState> builder)
+    {
+        builder
+            .Step("message",
+                (ctx, state) => new ScreenView("Enter your feedback:"),
+                (ctx, state) =>
+                {
+                    if (string.IsNullOrWhiteSpace(ctx.MessageText))
+                        return StepResult.Stay("Please enter some text");
+                    state.Message = ctx.MessageText;
+                    return StepResult.Finish();
+                });
+    }
+
+    public override async Task<IEndpointResult> OnFinishedAsync(
+        UpdateContext context, FeedbackState state)
+    {
+        // Save feedback...
+        return BotResults.Back("Thank you!");
     }
 }
 ```
 
-## Рассылки (Broadcasts)
+Step results: `StepResult.GoTo("stepId")`, `StepResult.Stay()`, `StepResult.Finish()`, `StepResult.GoBack()`.
 
-Модуль рассылок позволяет:
+### Sessions
 
-- **Ручные рассылки** — отправить любое сообщение (текст, фото, видео, документ) всем пользователям бота
-- **Последовательности** — автоматические цепочки сообщений после вступления пользователя
+Per-user session with two compartments:
 
-### Создание рассылок через Telegram (copyMessage)
+- **`Data`** -- key-value store for application data (`session.Data.Set("key", value)`)
+- **`Navigation`** -- framework-managed state (current screen, stack, pending input, active wizard)
 
-Посты для рассылок создаются прямо в Telegram — вы отправляете сообщение боту, и он использует `copyMessage` для доставки:
+Default: in-memory. For production, use Redis:
 
-1. Добавьте свой Telegram ID в `appsettings.json` → `Bot:AdminUserIds`
-2. Отправьте боту `/broadcast`
-3. Отправьте сообщение (текст с форматированием, фото, видео — что угодно)
-4. Бот покажет кнопки **[Отправить всем]** и **[Удалить]**
-5. Нажмите **Отправить всем** — рассылка запустится через Quartz job
-
-### Создание последовательностей
-
-Команда `/sequence` в текущей версии не запускает Telegram-мастер.
-Для создания последовательностей используйте REST API в модуле рассылок.
-
-### Конфигурация
-
-```json
-{
-    "Bot": {
-        "AdminUserIds": [123456789]
-    }
-}
+```csharp
+builder.Services.AddRedisSessionStore(builder.Configuration);
 ```
 
-### REST API (мониторинг и управление)
+### User Storage
 
-После запуска бота Swagger UI доступен по адресу: http://localhost:5000/swagger
+`IBotUserStore<TUser>` provides persistence for bot users. The built-in `EfBotUserStore` uses EF Core:
 
-| Метод    | URL                          | Описание                    |
-| -------- | ---------------------------- | --------------------------- |
-| `GET`    | `/api/users`                 | Список пользователей бота   |
-| `GET`    | `/api/broadcasts`            | Список рассылок             |
-| `POST`   | `/api/broadcasts/{id}/send`  | Отправить рассылку          |
-| `DELETE` | `/api/broadcasts/{id}`       | Удалить рассылку            |
-| `GET`    | `/api/sequences`             | Список последовательностей  |
-| `PATCH`  | `/api/sequences/{id}/toggle` | Вкл/выкл последовательность |
-| `DELETE` | `/api/sequences/{id}`        | Удалить последовательность  |
+```csharp
+builder.Services.AddBotCoreData(builder.Configuration);      // default BotUser
+builder.Services.AddBotCoreData<AppUser, AppDbContext>(cfg);  // custom user type
+```
 
-### Как работают последовательности
+The `UserTrackingMiddleware<TUser>` auto-creates user records on first contact with 1-hour MemoryCache deduplication.
 
-1. Пользователь пишет боту — `UserTrackingMiddleware` сохраняет его в БД
-2. Вы создаёте последовательность через REST API модуля рассылок
-3. `SequenceProcessorJob` (Quartz, каждую минуту) находит пользователей, для которых пора отправить следующий шаг
-4. Сообщение копируется через `copyMessage`, прогресс записывается в БД
+## Configuration
 
-## Запуск через Docker (production)
+Bot settings are read from the `"Bot"` configuration section:
+
+| Property | Type | Default | Description |
+|---|---|---|---|
+| `Token` | `string` | required | Bot API token |
+| `Mode` | `BotMode` | `POLLING` | `POLLING` or `WEBHOOK` |
+| `WebhookUrl` | `string?` | `null` | Public URL for webhook |
+| `WebhookPath` | `string` | `/api/bot/webhook` | Webhook endpoint path |
+| `WebhookSecretToken` | `string?` | `null` | Webhook secret validation |
+| `AdminUserIds` | `long[]` | `[]` | Admin Telegram user IDs |
+| `ErrorMessage` | `string` | `"An error occurred..."` | Error message for users |
+| `AllowedUpdates` | `UpdateType[]` | `[Message, CallbackQuery]` | Allowed update types |
+
+## Packages
+
+| Package | Description | Dependencies |
+|---|---|---|
+| `TelegramBotFlow.Core.Abstractions` | Contracts and interfaces | Telegram.Bot |
+| `TelegramBotFlow.Core` | Runtime, pipeline, routing | Core.Abstractions, ASP.NET Core |
+| `TelegramBotFlow.Core.Redis` | Redis session store | Core.Abstractions, StackExchange.Redis |
+| `TelegramBotFlow.Data.Postgres` | EF Core user storage | Core, Npgsql.EntityFrameworkCore.PostgreSQL |
+
+## Running
 
 ```bash
-# Создать .env с токеном и паролем БД
-cp .env.example .env
-# Вписать BOT_TOKEN и DB_PASSWORD в .env
-
-# Запустить бот + PostgreSQL + Seq
-docker compose up -d --build
-```
-
-### Для разработки (только инфраструктура)
-
-```bash
-docker compose -f docker-compose-infra.yml up -d
-dotnet ef database update --project src/TelegramBotFlow.Core.Data --startup-project src/TelegramBotFlow.App
-dotnet ef database update --project src/TelegramBotFlow.Broadcasts --startup-project src/TelegramBotFlow.App
+# Development (polling mode)
 dotnet run --project src/TelegramBotFlow.App
+
+# Infrastructure (PostgreSQL + Seq)
+docker compose -f docker-compose-infra.yml up -d
+
+# Tests (Docker required for integration tests)
+dotnet test TelegramBotFlow.slnx
 ```
 
-## Стек
+## License
 
-- .NET 10, ASP.NET Core
-- [Telegram.Bot](https://github.com/TelegramBots/Telegram.Bot) 22.9.0
-- PostgreSQL 16 + EF Core 10
-- Quartz.NET (фоновые задачи, PostgreSQL persistence)
-- SachkovTech shared packages (Error, Envelope, IEndpoint, EndpointResult)
-- CSharpFunctionalExtensions (Result pattern)
-- FluentValidation
-- Serilog (Console + Seq)
-- Swagger UI
-- xUnit + NSubstitute + FluentAssertions (тесты)
-- Docker Compose
-
-## Расширение
-
-- **Новый обработчик**: создать класс `IBotEndpoint` в `Features/` (в папке фичи) — найдётся автоматически
-- **Новый экран**: создать класс `IScreen` в `Features/` (в папке фичи) — зарегистрировать через `AddScreens<TAssembly>()`
-- **Новый middleware**: реализовать `IUpdateMiddleware`, зарегистрировать через `app.Use<T>()`
-- **Другое хранилище сессий**: реализовать `ISessionStore`
-- **Backend API**: добавить `HttpClient` через `builder.Services.AddHttpClient<T>()`
-- **Новый REST endpoint**: реализовать `IEndpoint` (из SachkovTech.Framework) — найдётся автоматически
-- **Кастомный пользователь**: наследовать `BotUser`, использовать `AddBotCoreData<TUser, TContext>()`
-
+MIT
