@@ -11,6 +11,7 @@ using TelegramBotFlow.App.Features.MainMenu;
 using TelegramBotFlow.Core.Context;
 using TelegramBotFlow.Core.Data;
 using TelegramBotFlow.Core.Screens;
+using TelegramBotFlow.Core.Users;
 using TelegramBotFlow.Core.Wizards;
 
 namespace TelegramBotFlow.IntegrationTests.Infrastructure;

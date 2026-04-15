@@ -1,7 +1,7 @@
 ﻿using Serilog;
 using TelegramBotFlow.App.Features.MainMenu;
 using TelegramBotFlow.Core.Data;
-using TelegramBotFlow.Core.Data.Middleware;
+using TelegramBotFlow.Core.Pipeline.Middlewares;
 using TelegramBotFlow.Core.Endpoints;
 using TelegramBotFlow.Core.Extensions;
 using TelegramBotFlow.Core.Hosting;
@@ -31,7 +31,7 @@ try
     app.UseSession();
     app.UseAccessPolicy();
     app.UseWizards();
-    app.Use<UserTrackingMiddleware>();
+    app.Use<UserTrackingMiddleware<BotUser>>();
     app.UsePendingInput();
 
     app.SetMenu(menu => menu

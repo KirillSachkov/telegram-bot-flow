@@ -1,12 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <PackageId>TelegramBotFlow.Core.Data</PackageId>
+    <RootNamespace>TelegramBotFlow.Core.Data</RootNamespace>
+    <PackageId>TelegramBotFlow.Data.Postgres</PackageId>
     <Version>1.0.0</Version>
     <Authors>SachkovTech</Authors>
     <Company>SachkovTech</Company>
     <Product>TelegramBotFlow</Product>
-    <Description>EF Core data layer for TelegramBotFlow: BotUser, BotDbContext, UserTrackingMiddleware</Description>
+    <Description>EF Core / PostgreSQL data layer for TelegramBotFlow: BotUser, BotDbContext, EfBotUserStore</Description>
     <PackageTags>telegram;bot;framework;efcore;postgresql;data</PackageTags>
     <RepositoryType>git</RepositoryType>
 
@@ -17,7 +18,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.Caching.Memory" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
   </ItemGroup>
 
