@@ -8,21 +8,20 @@ internal sealed class InMemorySessionLockProvider : ISessionLockProvider
 {
     private const int STRIPE_COUNT = 1024;
     private readonly SemaphoreSlim[] _locks;
-    private readonly TimeSpan _lockTimeout = TimeSpan.FromSeconds(10);
+    private readonly TimeSpan _lockTimeout;
 
-    public InMemorySessionLockProvider()
+    public InMemorySessionLockProvider(TimeSpan? lockTimeout = null)
     {
+        _lockTimeout = lockTimeout ?? TimeSpan.FromSeconds(10);
         _locks = new SemaphoreSlim[STRIPE_COUNT];
         for (int i = 0; i < STRIPE_COUNT; i++)
-        {
             _locks[i] = new SemaphoreSlim(1, 1);
-        }
     }
 
     public async Task<IDisposable> AcquireLockAsync(long userId, CancellationToken cancellationToken = default)
     {
-        // Вычисляем индекс корзины (stripe) на основе хэша пользователя
-        int index = Math.Abs(userId.GetHashCode()) % STRIPE_COUNT;
+        // Вычисляем индекс корзины (stripe) на основе userId — равномерное распределение без коллизий GetHashCode
+        int index = (int)((ulong)userId % STRIPE_COUNT);
         SemaphoreSlim semaphore = _locks[index];
 
         bool acquired = await semaphore.WaitAsync(_lockTimeout, cancellationToken);

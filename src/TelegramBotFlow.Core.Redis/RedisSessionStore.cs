@@ -100,9 +100,8 @@ public sealed class RedisSessionStore : ISessionStore
         session.Navigation.CurrentScreen = payload.CurrentScreen;
         session.Navigation.NavMessageId = payload.NavMessageId;
         session.Navigation.CurrentMediaType = payload.CurrentMediaType;
-        session.Navigation.NavigationStack = payload.NavigationStack is { Count: > 0 }
-            ? payload.NavigationStack
-            : [];
+        if (payload.NavigationStack is { Count: > 0 })
+            session.Navigation.PopulateNavigationStack(payload.NavigationStack);
         session.Navigation.PendingInputActionId = payload.PendingInputActionId;
         session.Navigation.ActiveWizardId = payload.ActiveWizardId;
 

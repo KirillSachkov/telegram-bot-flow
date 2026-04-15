@@ -62,7 +62,16 @@ public abstract class BotWizard<TState> : IBotWizard where TState : class, new()
         TState state = new();
 
         if (initialStep.OnEnter is not null)
-            await initialStep.OnEnter(context, state);
+        {
+            try
+            {
+                await initialStep.OnEnter(context, state);
+            }
+            catch (Exception)
+            {
+                return new WizardTransition(true, BotResults.Back());
+            }
+        }
 
         ScreenView view = await initialStep.Renderer(context, state);
         storageState.PayloadJson = JsonSerializer.Serialize(state);
@@ -74,9 +83,17 @@ public abstract class BotWizard<TState> : IBotWizard where TState : class, new()
     {
         EnsureConfigured();
 
-        TState state = string.IsNullOrWhiteSpace(storageState.PayloadJson)
-            ? new TState()
-            : JsonSerializer.Deserialize<TState>(storageState.PayloadJson)!;
+        TState state;
+        try
+        {
+            state = string.IsNullOrWhiteSpace(storageState.PayloadJson)
+                ? new TState()
+                : JsonSerializer.Deserialize<TState>(storageState.PayloadJson) ?? new TState();
+        }
+        catch (JsonException)
+        {
+            return new WizardTransition(true, BotResults.Back());
+        }
 
         if (!_steps!.TryGetValue(storageState.CurrentStepId, out WizardStep<TState>? currentStep))
             throw new InvalidOperationException($"Step {storageState.CurrentStepId} not found");
@@ -97,7 +114,17 @@ public abstract class BotWizard<TState> : IBotWizard where TState : class, new()
 
             if (nextStep.OnEnter is not null)
             {
-                await nextStep.OnEnter(context, state);
+                string stateBeforeEnter = JsonSerializer.Serialize(state);
+                try
+                {
+                    await nextStep.OnEnter(context, state);
+                }
+                catch (Exception)
+                {
+                    state = JsonSerializer.Deserialize<TState>(stateBeforeEnter) ?? new TState();
+                    ScreenView stayView = await currentStep.Renderer(context, state);
+                    return new WizardTransition(false, BotResults.ShowView(stayView));
+                }
                 storageState.PayloadJson = JsonSerializer.Serialize(state);
             }
 
@@ -142,9 +169,17 @@ public abstract class BotWizard<TState> : IBotWizard where TState : class, new()
         storageState.StepHistory.RemoveAt(storageState.StepHistory.Count - 1);
         storageState.CurrentStepId = previousStepId;
 
-        TState state = string.IsNullOrWhiteSpace(storageState.PayloadJson)
-            ? new TState()
-            : JsonSerializer.Deserialize<TState>(storageState.PayloadJson)!;
+        TState state;
+        try
+        {
+            state = string.IsNullOrWhiteSpace(storageState.PayloadJson)
+                ? new TState()
+                : JsonSerializer.Deserialize<TState>(storageState.PayloadJson) ?? new TState();
+        }
+        catch (JsonException)
+        {
+            return new WizardTransition(true, BotResults.Back());
+        }
 
         WizardStep<TState> prevStep = _steps![previousStepId];
         ScreenView view = await prevStep.Renderer(context, state);

@@ -27,8 +27,13 @@ internal sealed class SessionMiddleware : IUpdateMiddleware
         UserSession session = await _sessionStore.GetOrCreateAsync(context.UserId, context.CancellationToken);
         context.Session = session;
 
-        await next(context);
-
-        await _sessionStore.SaveAsync(session, context.CancellationToken);
+        try
+        {
+            await next(context);
+        }
+        finally
+        {
+            await _sessionStore.SaveAsync(session, context.CancellationToken);
+        }
     }
 }

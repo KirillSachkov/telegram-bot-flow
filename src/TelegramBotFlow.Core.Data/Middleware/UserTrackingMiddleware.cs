@@ -1,5 +1,5 @@
-﻿using System.Collections.Concurrent;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using TelegramBotFlow.Core.Context;
 using TelegramBotFlow.Core.Pipeline;
 
@@ -12,7 +12,11 @@ namespace TelegramBotFlow.Core.Data.Middleware;
 public sealed class UserTrackingMiddleware<TUser> : IUpdateMiddleware
     where TUser : BotUser, new()
 {
-    private static readonly ConcurrentDictionary<long, byte> _knownUsers = new();
+    private static readonly MemoryCache _knownUsers = new(new MemoryCacheOptions());
+    private static readonly MemoryCacheEntryOptions _cacheOptions = new()
+    {
+        SlidingExpiration = TimeSpan.FromHours(1)
+    };
 
     private readonly BotDbContext<TUser> _db;
 
@@ -26,7 +30,7 @@ public sealed class UserTrackingMiddleware<TUser> : IUpdateMiddleware
         if (context.UserId != 0)
         {
             long userId = context.UserId;
-            if (!_knownUsers.ContainsKey(userId))
+            if (!_knownUsers.TryGetValue(userId, out _))
             {
                 bool exists = await _db.Users.AnyAsync(u => u.TelegramId == userId);
                 if (!exists)
@@ -35,7 +39,7 @@ public sealed class UserTrackingMiddleware<TUser> : IUpdateMiddleware
                     await _db.SaveChangesAsync();
                 }
 
-                _knownUsers.TryAdd(userId, 0);
+                _knownUsers.Set(userId, true, _cacheOptions);
             }
         }
 

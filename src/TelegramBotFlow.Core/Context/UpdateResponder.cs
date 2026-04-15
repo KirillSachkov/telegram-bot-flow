@@ -108,9 +108,11 @@ internal sealed class UpdateResponder : IUpdateResponder
         if (context.Session?.Navigation.NavMessageId is { } oldNavId)
             try
             { await _bot.DeleteMessage(context.ChatId, oldNavId, context.CancellationToken); }
-            catch (ApiRequestException ex) when (ex.ErrorCode is 400 or 403)
+            catch (ApiRequestException ex) when (ex.ErrorCode is 400 or 403 or 429)
             {
-                // Сообщение уже удалено (400) или бот не имеет прав на удаление (403) — игнорируем
+                // 400: message already deleted
+                // 403: bot lacks delete permissions
+                // 429: rate limited — skip deletion, not critical
             }
 
         MessageId copied = await _bot.CopyMessage(

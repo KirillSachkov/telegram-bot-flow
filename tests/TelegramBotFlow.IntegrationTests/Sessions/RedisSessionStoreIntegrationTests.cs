@@ -50,7 +50,7 @@ public sealed class RedisSessionStoreIntegrationTests : RedisSessionTestsBase
         UserSession session = await store.GetOrCreateAsync(300);
         session.Navigation.CurrentScreen = "settings:main";
         session.Navigation.NavMessageId = 42;
-        session.Navigation.NavigationStack.Add("main");
+        session.Navigation.PopulateNavigationStack(["main"]);
 
         await store.SaveAsync(session);
 
@@ -92,8 +92,7 @@ public sealed class RedisSessionStoreIntegrationTests : RedisSessionTestsBase
         original.Navigation.CurrentScreen = "contact:share";
         original.Navigation.NavMessageId = 99;
         original.Navigation.CurrentMediaType = ScreenMediaType.Photo;
-        original.Navigation.NavigationStack.Add("main");
-        original.Navigation.NavigationStack.Add("settings");
+        original.Navigation.PopulateNavigationStack(["main", "settings"]);
         original.Data.Set("age", "30");
         original.Data.Set("city", "Berlin");
         await store.SaveAsync(original);

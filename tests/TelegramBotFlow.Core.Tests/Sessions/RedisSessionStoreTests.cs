@@ -20,7 +20,7 @@ public sealed class RedisSessionStoreTests
                 CurrentScreen = "settings:main", NavMessageId = 100, CurrentMediaType = ScreenMediaType.Photo
             }
         };
-        session.Navigation.NavigationStack.Add("main");
+        session.Navigation.PopulateNavigationStack(["main"]);
 
         JsonElement json = ParseJson(session);
 
@@ -112,8 +112,7 @@ public sealed class RedisSessionStoreTests
         original.Navigation.CurrentScreen = "contact:share";
         original.Navigation.NavMessageId = 55;
         original.Navigation.CurrentMediaType = ScreenMediaType.Video;
-        original.Navigation.NavigationStack.Add("main");
-        original.Navigation.NavigationStack.Add("settings");
+        original.Navigation.PopulateNavigationStack(["main", "settings"]);
 
         UserSession restored = Roundtrip(original, 42);
 
@@ -203,7 +202,7 @@ public sealed class RedisSessionStoreTests
         original.Navigation.NavMessageId = 77;
         original.Navigation.CurrentMediaType = ScreenMediaType.Photo;
         original.Navigation.PendingInputActionId = "settings:set-city";
-        original.Navigation.NavigationStack.Add("main");
+        original.Navigation.PopulateNavigationStack(["main"]);
         original.Data.Set("age", "25");
         original.Data.Set("name", "Alice");
 

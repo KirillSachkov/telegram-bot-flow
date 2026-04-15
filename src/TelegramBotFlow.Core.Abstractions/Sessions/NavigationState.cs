@@ -21,11 +21,13 @@ public sealed class NavigationState
     /// <summary>Тип медиа в текущем nav-сообщении.</summary>
     public ScreenMediaType CurrentMediaType { get; internal set; } = ScreenMediaType.None;
 
+    private readonly List<string> _navigationStack = [];
+
     /// <summary>
     /// Стек истории навигации (список screen ID в порядке посещения).
     /// Используй <c>BotResults.Back()</c> вместо прямого изменения стека.
     /// </summary>
-    public List<string> NavigationStack { get; internal set; } = [];
+    public IReadOnlyList<string> NavigationStack => _navigationStack;
 
     /// <summary>
     /// ID ожидаемого input-действия. Если задан, следующее текстовое сообщение
@@ -75,6 +77,12 @@ public sealed class NavigationState
     {
         foreach ((string key, string value) in navArgs)
             _navArgs[key] = value;
+    }
+
+    internal void PopulateNavigationStack(IEnumerable<string> screenIds)
+    {
+        _navigationStack.Clear();
+        _navigationStack.AddRange(screenIds);
     }
 
     // -- Payload store (LRU 500) --
@@ -133,15 +141,15 @@ public sealed class NavigationState
 
         if (CurrentScreen is not null)
         {
-            int existingIndex = NavigationStack.IndexOf(screenId);
+            int existingIndex = _navigationStack.IndexOf(screenId);
             if (existingIndex >= 0)
-                NavigationStack.RemoveRange(existingIndex, NavigationStack.Count - existingIndex);
+                _navigationStack.RemoveRange(existingIndex, _navigationStack.Count - existingIndex);
             else
             {
-                NavigationStack.Add(CurrentScreen);
+                _navigationStack.Add(CurrentScreen);
 
-                if (NavigationStack.Count > UserSession.MAX_NAVIGATION_DEPTH)
-                    NavigationStack.RemoveRange(0, NavigationStack.Count - UserSession.MAX_NAVIGATION_DEPTH);
+                if (_navigationStack.Count > UserSession.MAX_NAVIGATION_DEPTH)
+                    _navigationStack.RemoveRange(0, _navigationStack.Count - UserSession.MAX_NAVIGATION_DEPTH);
             }
         }
 
@@ -153,11 +161,11 @@ public sealed class NavigationState
     {
         PendingInputActionId = null;
 
-        if (NavigationStack.Count == 0)
+        if (_navigationStack.Count == 0)
             return null;
 
-        string previous = NavigationStack[^1];
-        NavigationStack.RemoveAt(NavigationStack.Count - 1);
+        string previous = _navigationStack[^1];
+        _navigationStack.RemoveAt(_navigationStack.Count - 1);
         CurrentScreen = previous;
         return previous;
     }
@@ -175,7 +183,7 @@ public sealed class NavigationState
     internal void Reset()
     {
         CurrentScreen = null;
-        NavigationStack.Clear();
+        _navigationStack.Clear();
         PendingInputActionId = null;
         ClearNavigationArgs();
         // NavMessageId и CurrentMediaType сохраняются — бот редактирует существующее сообщение
@@ -187,7 +195,7 @@ public sealed class NavigationState
         CurrentScreen = null;
         NavMessageId = null;
         CurrentMediaType = ScreenMediaType.None;
-        NavigationStack.Clear();
+        _navigationStack.Clear();
         PendingInputActionId = null;
         ActiveWizardId = null;
         _navArgs.Clear();
