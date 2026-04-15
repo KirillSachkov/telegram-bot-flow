@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using TelegramBotFlow.Core.Data.Middleware;
@@ -18,13 +18,13 @@ public static class DependencyInjectionExtensions
         string connectionString = configuration.GetConnectionString("Database")
                                   ?? throw new InvalidOperationException("Connection string 'Database' not found.");
 
-        _ = services.AddDbContext<BotDbContext>(options =>
-            options.UseNpgsql(connectionString));
+        services.AddDbContext<BotDbContext>(options =>
+           options.UseNpgsql(connectionString));
 
         // Register base type so UserTrackingMiddleware<BotUser> can resolve BotDbContext<BotUser>
-        _ = services.AddScoped<BotDbContext<BotUser>>(sp => sp.GetRequiredService<BotDbContext>());
+        services.AddScoped<BotDbContext<BotUser>>(sp => sp.GetRequiredService<BotDbContext>());
 
-        _ = services.AddTransient<UserTrackingMiddleware>();
+        services.AddTransient<UserTrackingMiddleware>();
 
         return services;
     }
@@ -45,14 +45,14 @@ public static class DependencyInjectionExtensions
         string connectionString = configuration.GetConnectionString("Database")
                                   ?? throw new InvalidOperationException("Connection string 'Database' not found.");
 
-        _ = services.AddDbContext<TContext>(options =>
-            options.UseNpgsql(connectionString));
+        services.AddDbContext<TContext>(options =>
+           options.UseNpgsql(connectionString));
 
         // Register base type so modules can resolve BotDbContext<TUser>
-        _ = services.AddScoped<BotDbContext<TUser>>(sp => sp.GetRequiredService<TContext>());
+        services.AddScoped<BotDbContext<TUser>>(sp => sp.GetRequiredService<TContext>());
 
-        _ = services.AddTransient<UserTrackingMiddleware<TUser>>();
-        _ = services.AddTransient<UserTrackingMiddleware>();
+        services.AddTransient<UserTrackingMiddleware<TUser>>();
+        services.AddTransient<UserTrackingMiddleware>();
 
         return services;
     }

@@ -1,4 +1,4 @@
-using TelegramBotFlow.Core.Context;
+﻿using TelegramBotFlow.Core.Context;
 using TelegramBotFlow.Core.Screens;
 
 namespace TelegramBotFlow.App.Features.Profile;
@@ -11,7 +11,7 @@ public sealed class ProfileScreen : IScreen
     /// <inheritdoc/>
     public ValueTask<ScreenView> RenderAsync(UpdateContext ctx)
     {
-        string name = ctx.Session?.GetString("name") ?? "Не указано";
+        string name = ctx.Session?.Data.GetString("name") ?? "Не указано";
 
         return ValueTask.FromResult(
             new ScreenView(

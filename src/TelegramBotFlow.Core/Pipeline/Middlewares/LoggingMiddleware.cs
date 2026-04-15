@@ -1,10 +1,10 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using TelegramBotFlow.Core.Context;
 
 namespace TelegramBotFlow.Core.Pipeline.Middlewares;
 
-public sealed class LoggingMiddleware : IUpdateMiddleware
+internal sealed class LoggingMiddleware : IUpdateMiddleware
 {
     private readonly ILogger<LoggingMiddleware> _logger;
 

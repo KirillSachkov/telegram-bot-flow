@@ -1,4 +1,4 @@
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
 using System.Reflection;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
@@ -58,7 +58,8 @@ internal static class PayloadDelegateFactory
                     if (payloadData.StartsWith("s:"))
                     {
                         string shortId = payloadData[2..];
-                        if (ctx.Session is null) throw new PayloadExpiredException();
+                        if (ctx.Session is null)
+                            throw new PayloadExpiredException();
                         return ctx.Session.Navigation.GetPayload<TPayload>(shortId);
                     }
 

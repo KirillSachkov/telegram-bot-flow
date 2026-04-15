@@ -1,4 +1,4 @@
-using System.Reflection;
+﻿using System.Reflection;
 using System.Threading.Channels;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -54,7 +54,9 @@ public static class ServiceCollectionExtensions
 
         Channel<Update> updateChannel = Channel.CreateBounded<Update>(new BoundedChannelOptions(1000)
         {
-            FullMode = BoundedChannelFullMode.Wait, SingleWriter = true, SingleReader = false
+            FullMode = BoundedChannelFullMode.Wait,
+            SingleWriter = true,
+            SingleReader = false
         });
         services.AddSingleton(updateChannel.Writer);
         services.AddSingleton(updateChannel.Reader);

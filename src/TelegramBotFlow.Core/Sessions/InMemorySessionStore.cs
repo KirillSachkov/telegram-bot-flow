@@ -5,7 +5,7 @@ namespace TelegramBotFlow.Core.Sessions;
 /// <summary>
 /// In-memory реализация хранилища сессий на базе <see cref="ConcurrentDictionary{TKey,TValue}"/>.
 /// </summary>
-public sealed class InMemorySessionStore : ISessionStore
+internal sealed class InMemorySessionStore : ISessionStore
 {
     private readonly ConcurrentDictionary<long, UserSession> _sessions = new();
 

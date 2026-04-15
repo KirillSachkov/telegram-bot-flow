@@ -1,12 +1,11 @@
-using System.Collections.Concurrent;
-
+﻿using System.Collections.Concurrent;
 namespace TelegramBotFlow.Core.Wizards;
 
 /// <summary>
 /// Реализация хранилища состояний визардов в памяти. Подходит для разработки.
 /// В продакшене рекомендуется использовать Redis или БД.
 /// </summary>
-public sealed class InMemoryWizardStore : IWizardStore
+internal sealed class InMemoryWizardStore : IWizardStore
 {
     private readonly ConcurrentDictionary<string, WizardStorageState> _store = new();
 
@@ -19,7 +18,7 @@ public sealed class InMemoryWizardStore : IWizardStore
         {
             if (state.ExpiresAt.HasValue && state.ExpiresAt.Value < DateTime.UtcNow)
             {
-                _ = _store.TryRemove(key, out _);
+                _store.TryRemove(key, out _);
                 return Task.FromResult<WizardStorageState?>(null);
             }
 
@@ -40,7 +39,7 @@ public sealed class InMemoryWizardStore : IWizardStore
     public Task DeleteAsync(long userId, string wizardId, CancellationToken cancellationToken = default)
     {
         string key = GetKey(userId, wizardId);
-        _ = _store.TryRemove(key, out _);
+        _store.TryRemove(key, out _);
         return Task.CompletedTask;
     }
 

@@ -4,7 +4,7 @@ using TelegramBotFlow.Core.Pipeline;
 
 namespace TelegramBotFlow.Core.Hosting;
 
-public static class WebhookEndpoints
+internal static class WebhookEndpoints
 {
     public static async Task HandleWebhookUpdate(
         Update update,

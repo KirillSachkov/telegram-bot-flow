@@ -16,6 +16,11 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\TelegramBotFlow.Core\TelegramBotFlow.Core.csproj" />
+    <ProjectReference Include="..\..\src\TelegramBotFlow.Core.Redis\TelegramBotFlow.Core.Redis.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="StackExchange.Redis" />
   </ItemGroup>
 
 </Project>

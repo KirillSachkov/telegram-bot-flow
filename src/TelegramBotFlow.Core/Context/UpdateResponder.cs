@@ -1,4 +1,4 @@
-using Telegram.Bot;
+﻿using Telegram.Bot;
 using Telegram.Bot.Exceptions;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
@@ -8,7 +8,7 @@ using ReplyMarkup = Telegram.Bot.Types.ReplyMarkups.ReplyMarkup;
 
 namespace TelegramBotFlow.Core.Context;
 
-public sealed class UpdateResponder : IUpdateResponder
+internal sealed class UpdateResponder : IUpdateResponder
 {
     private readonly ITelegramBotClient _bot;
 
@@ -40,7 +40,7 @@ public sealed class UpdateResponder : IUpdateResponder
         if (context.MessageId is null)
             return;
 
-        _ = await _bot.EditMessageText(
+        await _bot.EditMessageText(
             context.ChatId,
             context.MessageId.Value,
             text,
@@ -56,7 +56,7 @@ public sealed class UpdateResponder : IUpdateResponder
         InlineKeyboardMarkup? replyMarkup = null,
         ParseMode parseMode = ParseMode.Html)
     {
-        _ = await _bot.EditMessageText(
+        await _bot.EditMessageText(
             context.ChatId,
             messageId,
             text,
@@ -92,7 +92,7 @@ public sealed class UpdateResponder : IUpdateResponder
 
     public async Task CopyMessageAsync(UpdateContext context, long fromChatId, int messageId)
     {
-        _ = await _bot.CopyMessage(
+        await _bot.CopyMessage(
             context.ChatId,
             fromChatId,
             messageId,
@@ -105,8 +105,9 @@ public sealed class UpdateResponder : IUpdateResponder
         int messageId,
         InlineKeyboardMarkup? replyMarkup = null)
     {
-        if (context.Session?.NavMessageId is { } oldNavId)
-            try { await _bot.DeleteMessage(context.ChatId, oldNavId, context.CancellationToken); }
+        if (context.Session?.Navigation.NavMessageId is { } oldNavId)
+            try
+            { await _bot.DeleteMessage(context.ChatId, oldNavId, context.CancellationToken); }
             catch (ApiRequestException ex) when (ex.ErrorCode is 400 or 403)
             {
                 // Сообщение уже удалено (400) или бот не имеет прав на удаление (403) — игнорируем
@@ -121,8 +122,8 @@ public sealed class UpdateResponder : IUpdateResponder
 
         if (context.Session is not null)
         {
-            context.Session.NavMessageId = copied.Id;
-            context.Session.CurrentMediaType = ScreenMediaType.None;
+            context.Session.Navigation.NavMessageId = copied.Id;
+            context.Session.Navigation.CurrentMediaType = ScreenMediaType.None;
         }
     }
 }

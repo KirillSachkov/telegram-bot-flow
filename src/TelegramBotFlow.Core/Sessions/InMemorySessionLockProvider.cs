@@ -1,10 +1,10 @@
-namespace TelegramBotFlow.Core.Sessions;
+﻿namespace TelegramBotFlow.Core.Sessions;
 
 /// <summary>
 /// In-memory реализация провайдера блокировок сессий с использованием паттерна Striped Locking.
 /// Подходит только для single-instance развертывания бота.
 /// </summary>
-public sealed class InMemorySessionLockProvider : ISessionLockProvider
+internal sealed class InMemorySessionLockProvider : ISessionLockProvider
 {
     private const int STRIPE_COUNT = 1024;
     private readonly SemaphoreSlim[] _locks;
@@ -46,7 +46,7 @@ public sealed class InMemorySessionLockProvider : ISessionLockProvider
 
         public void Dispose()
         {
-            _ = _semaphore.Release();
+            _semaphore.Release();
         }
     }
 }

@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using TelegramBotFlow.Core.Sessions;
 
 namespace TelegramBotFlow.Core.Tests.Sessions;
@@ -12,19 +12,19 @@ public sealed class InMemorySessionStoreTests
     {
         UserSession session = await _store.GetOrCreateAsync(123);
 
-        _ = session.Should().NotBeNull();
-        _ = session.UserId.Should().Be(123);
+        session.Should().NotBeNull();
+        session.UserId.Should().Be(123);
     }
 
     [Fact]
     public async Task GetOrCreateAsync_ReturnsSameSessionForSameUser()
     {
         UserSession session1 = await _store.GetOrCreateAsync(123);
-        session1.Set("key", "value");
+        session1.Data.Set("key", "value");
 
         UserSession session2 = await _store.GetOrCreateAsync(123);
 
-        _ = session2.GetString("key").Should().Be("value");
+        session2.Data.GetString("key").Should().Be("value");
     }
 
     [Fact]
@@ -33,7 +33,7 @@ public sealed class InMemorySessionStoreTests
         UserSession session1 = await _store.GetOrCreateAsync(123);
         UserSession session2 = await _store.GetOrCreateAsync(456);
 
-        _ = session1.UserId.Should().NotBe(session2.UserId);
+        session1.UserId.Should().NotBe(session2.UserId);
     }
 
     [Fact]
@@ -43,8 +43,8 @@ public sealed class InMemorySessionStoreTests
         DateTime firstActivity = session.LastActivity;
 
         await Task.Delay(10);
-        _ = await _store.GetOrCreateAsync(123);
+        await _store.GetOrCreateAsync(123);
 
-        _ = session.LastActivity.Should().BeAfter(firstActivity);
+        session.LastActivity.Should().BeAfter(firstActivity);
     }
 }

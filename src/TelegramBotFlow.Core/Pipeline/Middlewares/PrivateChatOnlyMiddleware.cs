@@ -1,10 +1,10 @@
-using Telegram.Bot.Types;
+﻿using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using TelegramBotFlow.Core.Context;
 
 namespace TelegramBotFlow.Core.Pipeline.Middlewares;
 
-public sealed class PrivateChatOnlyMiddleware : IUpdateMiddleware
+internal sealed class PrivateChatOnlyMiddleware : IUpdateMiddleware
 {
     public Task InvokeAsync(UpdateContext context, UpdateDelegate next)
     {

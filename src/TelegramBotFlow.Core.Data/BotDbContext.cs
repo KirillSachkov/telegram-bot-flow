@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 
 namespace TelegramBotFlow.Core.Data;
 
@@ -16,7 +16,7 @@ public class BotDbContext<TUser>(DbContextOptions options)
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-         modelBuilder.ApplyConfigurationsFromAssembly(typeof(BotDbContext<>).Assembly);
+        modelBuilder.ApplyConfigurationsFromAssembly(typeof(BotDbContext<>).Assembly);
     }
 }
 

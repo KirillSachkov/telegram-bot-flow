@@ -1,4 +1,4 @@
-using System.Reflection;
+﻿using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace TelegramBotFlow.Core.Wizards;
@@ -8,7 +8,7 @@ namespace TelegramBotFlow.Core.Wizards;
 /// Аналог <see cref="Screens.ScreenRegistry"/> — Singleton, не создаёт экземпляры визардов.
 /// Экземпляр визарда создаётся из DI on-demand в момент обработки апдейта.
 /// </summary>
-public sealed class WizardRegistry
+internal sealed class WizardRegistry
 {
     private readonly Dictionary<string, Type> _wizards = [];
 

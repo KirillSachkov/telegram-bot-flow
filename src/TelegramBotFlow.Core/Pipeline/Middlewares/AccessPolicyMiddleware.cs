@@ -2,7 +2,7 @@
 
 namespace TelegramBotFlow.Core.Pipeline.Middlewares;
 
-public sealed class AccessPolicyMiddleware : IUpdateMiddleware
+internal sealed class AccessPolicyMiddleware : IUpdateMiddleware
 {
     private readonly IUserAccessPolicy _accessPolicy;
 

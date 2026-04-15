@@ -1,4 +1,4 @@
-using StackExchange.Redis;
+﻿using StackExchange.Redis;
 using Testcontainers.Redis;
 
 namespace TelegramBotFlow.IntegrationTests.Infrastructure;

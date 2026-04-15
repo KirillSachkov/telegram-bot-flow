@@ -1,10 +1,10 @@
-using Telegram.Bot.Types.Enums;
+﻿using Telegram.Bot.Types.Enums;
 using TelegramBotFlow.Core.Context;
 using TelegramBotFlow.Core.Routing;
 
 namespace TelegramBotFlow.Core.Pipeline.Middlewares;
 
-public sealed class PendingInputMiddleware : IUpdateMiddleware
+internal sealed class PendingInputMiddleware : IUpdateMiddleware
 {
     private readonly InputHandlerRegistry _registry;
 
@@ -26,13 +26,13 @@ public sealed class PendingInputMiddleware : IUpdateMiddleware
         if (context.MessageText?.StartsWith('/') == true)
         {
             if (context.Session is not null)
-                context.Session.PendingInputActionId = null;
+                context.Session.Navigation.PendingInputActionId = null;
 
             await next(context);
             return;
         }
 
-        string? actionId = context.Session?.PendingInputActionId;
+        string? actionId = context.Session?.Navigation.PendingInputActionId;
         if (actionId is null)
         {
             await next(context);
@@ -43,7 +43,7 @@ public sealed class PendingInputMiddleware : IUpdateMiddleware
         if (handler is null)
         {
             if (context.Session is not null)
-                context.Session.PendingInputActionId = null;
+                context.Session.Navigation.PendingInputActionId = null;
 
             await next(context);
             return;

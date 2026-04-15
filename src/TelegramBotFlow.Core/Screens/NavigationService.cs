@@ -1,4 +1,4 @@
-using TelegramBotFlow.Core.Screens;
+﻿using TelegramBotFlow.Core.Screens;
 using TelegramBotFlow.Core.Context;
 
 namespace TelegramBotFlow.Core.Screens;
@@ -43,7 +43,7 @@ internal sealed class NavigationService : INavigationService
 
         if (previousScreen is not null)
         {
-             context.Session!.Navigation.PopScreen();
+            context.Session!.Navigation.PopScreen();
             await _screenManager.RenderScreenAsync(context, previousScreen, pushToStack: false);
         }
     }

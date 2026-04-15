@@ -1,4 +1,4 @@
-using System.Reflection;
+﻿using System.Reflection;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using TelegramBotFlow.Core.Endpoints;
@@ -24,16 +24,16 @@ public class EndpointsRegistrationTests : IClassFixture<BotWebApplicationFactory
     {
         // Arrange
         List<Type> expectedEndpointTypes = GetEndpointTypesFromAppAssembly();
-        _ = expectedEndpointTypes.Should().NotBeEmpty(
-            "TelegramBotFlow.App assembly should contain endpoint implementations");
+        expectedEndpointTypes.Should().NotBeEmpty(
+           "TelegramBotFlow.App assembly should contain endpoint implementations");
 
         // Act
         var registeredEndpoints = _factory.Services.GetServices<IBotEndpoint>().ToList();
 
         // Assert
-        _ = registeredEndpoints.Should().NotBeEmpty("endpoints should be registered");
-        _ = registeredEndpoints.Count.Should().BeGreaterThanOrEqualTo(expectedEndpointTypes.Count,
-            "all endpoints from App assembly should be registered");
+        registeredEndpoints.Should().NotBeEmpty("endpoints should be registered");
+        registeredEndpoints.Count.Should().BeGreaterThanOrEqualTo(expectedEndpointTypes.Count,
+           "all endpoints from App assembly should be registered");
     }
 
     [Fact]
@@ -45,8 +45,8 @@ public class EndpointsRegistrationTests : IClassFixture<BotWebApplicationFactory
         // Assert
         foreach (IBotEndpoint endpoint in endpoints)
         {
-            _ = endpoint.Should().BeAssignableTo<IBotEndpoint>();
-            _ = endpoint.Should().NotBeNull();
+            endpoint.Should().BeAssignableTo<IBotEndpoint>();
+            endpoint.Should().NotBeNull();
         }
     }
 
@@ -58,12 +58,12 @@ public class EndpointsRegistrationTests : IClassFixture<BotWebApplicationFactory
         var endpoints2 = _factory.Services.GetServices<IBotEndpoint>().ToList();
 
         // Assert
-        _ = endpoints1.Should().HaveSameCount(endpoints2);
-        
+        endpoints1.Should().HaveSameCount(endpoints2);
+
         for (int i = 0; i < endpoints1.Count && i < endpoints2.Count; i++)
         {
-            _ = endpoints1[i].Should().NotBeSameAs(endpoints2[i],
-                "endpoints should be transient (new instance each resolution)");
+            endpoints1[i].Should().NotBeSameAs(endpoints2[i],
+               "endpoints should be transient (new instance each resolution)");
         }
     }
 
@@ -77,14 +77,14 @@ public class EndpointsRegistrationTests : IClassFixture<BotWebApplicationFactory
         foreach (IBotEndpoint endpoint in endpoints)
         {
             MethodInfo? mapMethod = endpoint.GetType().GetMethod("MapEndpoint");
-            _ = mapMethod.Should().NotBeNull(
-                $"{endpoint.GetType().Name} should implement MapEndpoint method");
+            mapMethod.Should().NotBeNull(
+               $"{endpoint.GetType().Name} should implement MapEndpoint method");
 
-            _ = mapMethod!.GetParameters().Should().HaveCount(1,
-                "MapEndpoint should take one parameter");
+            mapMethod!.GetParameters().Should().HaveCount(1,
+               "MapEndpoint should take one parameter");
 
-            _ = mapMethod.GetParameters()[0].ParameterType.Name.Should().Be("BotApplication",
-                "MapEndpoint parameter should be BotApplication");
+            mapMethod.GetParameters()[0].ParameterType.Name.Should().Be("BotApplication",
+               "MapEndpoint parameter should be BotApplication");
         }
     }
 
@@ -95,14 +95,14 @@ public class EndpointsRegistrationTests : IClassFixture<BotWebApplicationFactory
         List<Type> endpointTypes = GetEndpointTypesFromAppAssembly();
 
         // Assert
-        _ = endpointTypes.Should().NotBeEmpty();
-        _ = endpointTypes.Should().OnlyContain(t =>
-            !t.IsAbstract && !t.IsInterface && t.IsClass,
-            "all endpoint types should be concrete classes");
+        endpointTypes.Should().NotBeEmpty();
+        endpointTypes.Should().OnlyContain(t =>
+           !t.IsAbstract && !t.IsInterface && t.IsClass,
+           "all endpoint types should be concrete classes");
 
-        _ = endpointTypes.Should().OnlyContain(t =>
-            typeof(IBotEndpoint).IsAssignableFrom(t),
-            "all endpoint types should implement IBotEndpoint");
+        endpointTypes.Should().OnlyContain(t =>
+           typeof(IBotEndpoint).IsAssignableFrom(t),
+           "all endpoint types should implement IBotEndpoint");
     }
 
     [Fact]
@@ -114,13 +114,13 @@ public class EndpointsRegistrationTests : IClassFixture<BotWebApplicationFactory
             for (int i = 0; i < 50; i++)
             {
                 IEnumerable<IBotEndpoint> endpoints = _factory.Services.GetServices<IBotEndpoint>();
-                _ = endpoints.Should().NotBeEmpty();
+                endpoints.Should().NotBeEmpty();
             }
         };
 
         // Assert
-        _ = action.Should().NotThrow(
-            "resolving endpoints multiple times should not cause errors");
+        action.Should().NotThrow(
+           "resolving endpoints multiple times should not cause errors");
     }
 
     [Fact]
@@ -134,9 +134,9 @@ public class EndpointsRegistrationTests : IClassFixture<BotWebApplicationFactory
         {
             string typeName = endpoint.GetType().Name;
 
-            _ = typeName.Should().NotBeNullOrEmpty();
-            _ = typeName.Length.Should().BeGreaterThan(3,
-                "endpoint names should be meaningful");
+            typeName.Should().NotBeNullOrEmpty();
+            typeName.Length.Should().BeGreaterThan(3,
+               "endpoint names should be meaningful");
         }
     }
 
@@ -152,8 +152,8 @@ public class EndpointsRegistrationTests : IClassFixture<BotWebApplicationFactory
         // Assert
         foreach (IGrouping<Type, IBotEndpoint> group in typeGroups)
         {
-            _ = group.Should().ContainSingle(
-                $"endpoint type {group.Key.Name} should be registered exactly once");
+            group.Should().ContainSingle(
+               $"endpoint type {group.Key.Name} should be registered exactly once");
         }
     }
 
@@ -162,7 +162,7 @@ public class EndpointsRegistrationTests : IClassFixture<BotWebApplicationFactory
     private static List<Type> GetEndpointTypesFromAppAssembly()
     {
         var appAssembly = Assembly.Load("TelegramBotFlow.App");
-        
+
         return appAssembly
             .DefinedTypes
             .Where(type => type is { IsAbstract: false, IsInterface: false }

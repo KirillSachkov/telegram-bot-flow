@@ -14,13 +14,13 @@ public sealed class UpdateRouterTests
     {
         var handlerCalls = new List<string>();
 
-        _router.AddRoute(RouteEntry.Command("/start", _ =>
+        _router.AddRoute(RouteEntry.Command("/start", ctx =>
         {
             handlerCalls.Add("first");
             return Task.CompletedTask;
         }));
 
-        _router.AddRoute(RouteEntry.Command("/start", _ =>
+        _router.AddRoute(RouteEntry.Command("/start", ctx =>
         {
             handlerCalls.Add("second");
             return Task.CompletedTask;
@@ -31,7 +31,7 @@ public sealed class UpdateRouterTests
 
         await terminal(ctx);
 
-        _ = handlerCalls.Should().Equal("first");
+        handlerCalls.Should().Equal("first");
     }
 
     [Fact]
@@ -44,6 +44,6 @@ public sealed class UpdateRouterTests
 
         Func<Task> act = () => terminal(ctx);
 
-        _ = await act.Should().NotThrowAsync();
+        await act.Should().NotThrowAsync();
     }
 }

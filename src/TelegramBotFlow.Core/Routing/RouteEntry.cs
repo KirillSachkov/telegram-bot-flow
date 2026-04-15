@@ -26,7 +26,7 @@ public enum RoutePriority
 /// <summary>
 /// Описание маршрута и логика его сопоставления с входящим update-ом.
 /// </summary>
-public sealed class RouteEntry
+internal sealed class RouteEntry
 {
     public RouteType Type { get; }
     public string? Pattern { get; }
