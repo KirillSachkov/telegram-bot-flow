@@ -39,15 +39,25 @@ internal sealed class BotRuntime
     {
         _app.MapPost(config.WebhookPath, async (
            Update update,
+           HttpContext httpContext,
            IServiceProvider sp,
            CancellationToken ct) =>
        {
+           if (!string.IsNullOrEmpty(config.WebhookSecretToken))
+           {
+               string? header = httpContext.Request.Headers["X-Telegram-Bot-Api-Secret-Token"];
+               if (header != config.WebhookSecretToken)
+                   return Results.StatusCode(403);
+           }
+
            await WebhookEndpoints.HandleWebhookUpdate(update, pipeline, sp, ct);
            return Results.Ok();
        });
 
         ITelegramBotClient bot = _services.GetRequiredService<ITelegramBotClient>();
-        await bot.SetWebhook(config.WebhookUrl + config.WebhookPath, allowedUpdates: config.AllowedUpdates);
+        await bot.SetWebhook(config.WebhookUrl + config.WebhookPath,
+            allowedUpdates: config.AllowedUpdates,
+            secretToken: config.WebhookSecretToken);
     }
 
     private async Task ApplyMenuAsync(MenuBuilder menuBuilder)
