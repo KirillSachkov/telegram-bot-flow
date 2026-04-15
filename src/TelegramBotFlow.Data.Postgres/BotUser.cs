@@ -1,10 +1,12 @@
-﻿namespace TelegramBotFlow.Core.Data;
+﻿using TelegramBotFlow.Core.Users;
+
+namespace TelegramBotFlow.Core.Data;
 
 /// <summary>
 /// Base user entity tracked by the bot.
 /// Inherit from this class to add custom properties (e.g. FirstName, Language).
 /// </summary>
-public class BotUser
+public class BotUser : IBotUser
 {
     public long TelegramId { get; init; }
 

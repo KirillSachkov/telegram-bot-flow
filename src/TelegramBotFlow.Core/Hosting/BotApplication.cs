@@ -19,6 +19,7 @@ public sealed class BotApplication
     private readonly WebApplication _app;
     private readonly UpdateRouter _router;
     private readonly List<Func<UpdateDelegate, UpdateDelegate>> _middlewares = [];
+    private readonly List<string> _registeredMiddleware = [];
     private MenuBuilder? _menuBuilder;
 
     /// <summary>
@@ -93,7 +94,11 @@ public sealed class BotApplication
     /// Добавляет middleware глобальной обработки исключений.
     /// </summary>
     /// <returns>Текущий экземпляр приложения для fluent-конфигурации.</returns>
-    public BotApplication UseErrorHandling() => Use<ErrorHandlingMiddleware>();
+    public BotApplication UseErrorHandling()
+    {
+        _registeredMiddleware.Add("error_handling");
+        return Use<ErrorHandlingMiddleware>();
+    }
 
     /// <summary>
     /// Добавляет middleware логирования обработки update-ов.
@@ -111,14 +116,22 @@ public sealed class BotApplication
     /// Добавляет middleware загрузки и сохранения пользовательской сессии.
     /// </summary>
     /// <returns>Текущий экземпляр приложения для fluent-конфигурации.</returns>
-    public BotApplication UseSession() => Use<SessionMiddleware>();
+    public BotApplication UseSession()
+    {
+        _registeredMiddleware.Add("session");
+        return Use<SessionMiddleware>();
+    }
 
     /// <summary>
     /// Добавляет middleware обработки визардов (форм). Перехватывает update-ы для активного визарда.
     /// Должен быть добавлен после UseSession().
     /// </summary>
     /// <returns>Текущий экземпляр приложения для fluent-конфигурации.</returns>
-    public BotApplication UseWizards() => Use<WizardMiddleware>();
+    public BotApplication UseWizards()
+    {
+        _registeredMiddleware.Add("wizards");
+        return Use<WizardMiddleware>();
+    }
 
     /// <summary>
     /// Добавляет middleware вычисления административного доступа пользователя.
@@ -131,7 +144,11 @@ public sealed class BotApplication
     /// registered input handler when <c>session.PendingInputActionId</c> is set.
     /// Must be added after <c>UseSession()</c>.
     /// </summary>
-    public BotApplication UsePendingInput() => Use<PendingInputMiddleware>();
+    public BotApplication UsePendingInput()
+    {
+        _registeredMiddleware.Add("pending_input");
+        return Use<PendingInputMiddleware>();
+    }
 
     // -- Route registration (Minimal API style with DI) --
 
@@ -161,18 +178,19 @@ public sealed class BotApplication
 
     /// <summary>
     /// Регистрирует типизированный action-обработчик.
-    /// Callback ID генерируется из имени типа <typeparamref name="TAction"/>.
+    /// Callback ID определяется через <see cref="ActionIdResolver"/> (учитывает <see cref="ActionIdAttribute"/>).
     /// </summary>
     public BotApplication MapAction<TAction>(Delegate handler) where TAction : IBotAction
-        => MapAction(typeof(TAction).Name, handler);
+        => MapAction(ActionIdResolver.GetId<TAction>(), handler);
 
     /// <summary>
     /// Регистрирует типизированный action-обработчик, ожидающий payload.
     /// Отрабатывает маршрут <c>TActionName:*</c> (где * — это shortId payload).
+    /// Action ID определяется через <see cref="ActionIdResolver"/> (учитывает <see cref="ActionIdAttribute"/>).
     /// </summary>
     public BotApplication MapAction<TAction, TPayload>(Delegate handler) where TAction : IBotAction
     {
-        string callbackId = typeof(TAction).Name;
+        string callbackId = ActionIdResolver.GetId<TAction>();
         UpdateDelegate inner = PayloadDelegateFactory.Create<TPayload>(handler, callbackId);
         _router.AddRoute(RouteEntry.Callback($"{callbackId}:*", inner));
         return this;
@@ -226,10 +244,10 @@ public sealed class BotApplication
 
     /// <summary>
     /// Регистрирует типизированный input-обработчик.
-    /// Action ID генерируется из имени типа <typeparamref name="TAction"/>.
+    /// Action ID определяется через <see cref="ActionIdResolver"/> (учитывает <see cref="ActionIdAttribute"/>).
     /// </summary>
     public BotApplication MapInput<TAction>(Delegate handler) where TAction : IBotAction
-        => MapInput(typeof(TAction).Name, handler);
+        => MapInput(ActionIdResolver.GetId<TAction>(), handler);
 
     /// <summary>
     /// Registers an input handler for the given <paramref name="actionId"/>.
@@ -301,10 +319,14 @@ public sealed class BotApplication
     /// <returns>Задача жизненного цикла приложения бота.</returns>
     public async Task RunAsync()
     {
+        ValidateMiddlewareOrder();
         var pipeline = UpdatePipeline.Build(_middlewares, _router.BuildTerminal());
         var runtime = new BotRuntime(_app);
         await runtime.RunAsync(pipeline, _menuBuilder);
     }
+
+    internal void ValidateMiddlewareOrder() =>
+        MiddlewareOrderValidator.Validate(_registeredMiddleware);
 }
 
 internal sealed class PipelineHolder

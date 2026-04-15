@@ -15,7 +15,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\TelegramBotFlow.Core\TelegramBotFlow.Core.csproj" />
-    <ProjectReference Include="..\TelegramBotFlow.Core.Data\TelegramBotFlow.Core.Data.csproj" />
+    <ProjectReference Include="..\TelegramBotFlow.Data.Postgres\TelegramBotFlow.Data.Postgres.csproj" />
   </ItemGroup>
 
 </Project>

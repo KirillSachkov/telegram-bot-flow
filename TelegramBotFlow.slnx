@@ -7,7 +7,7 @@
   <Folder Name="/src/">
     <Project Path="src/TelegramBotFlow.App/TelegramBotFlow.App.csproj" />
     <Project Path="src/TelegramBotFlow.Core.Abstractions/TelegramBotFlow.Core.Abstractions.csproj" />
-    <Project Path="src/TelegramBotFlow.Core.Data/TelegramBotFlow.Core.Data.csproj" />
+    <Project Path="src/TelegramBotFlow.Data.Postgres/TelegramBotFlow.Data.Postgres.csproj" />
     <Project Path="src/TelegramBotFlow.Core.Redis/TelegramBotFlow.Core.Redis.csproj" />
     <Project Path="src/TelegramBotFlow.Core/TelegramBotFlow.Core.csproj" />
   </Folder>

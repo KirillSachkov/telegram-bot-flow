@@ -14,6 +14,7 @@ public sealed class BotConfiguration
     public string ErrorMessage { get; set; } = "An error occurred. Please try again later.";
     public long StorageChannelId { get; set; }
     public UpdateType[] AllowedUpdates { get; set; } = [UpdateType.Message, UpdateType.CallbackQuery];
+    public string? WebhookSecretToken { get; set; }
 }
 
 public enum BotMode
