@@ -161,18 +161,19 @@ public sealed class BotApplication
 
     /// <summary>
     /// Регистрирует типизированный action-обработчик.
-    /// Callback ID генерируется из имени типа <typeparamref name="TAction"/>.
+    /// Callback ID определяется через <see cref="ActionIdResolver"/> (учитывает <see cref="ActionIdAttribute"/>).
     /// </summary>
     public BotApplication MapAction<TAction>(Delegate handler) where TAction : IBotAction
-        => MapAction(typeof(TAction).Name, handler);
+        => MapAction(ActionIdResolver.GetId<TAction>(), handler);
 
     /// <summary>
     /// Регистрирует типизированный action-обработчик, ожидающий payload.
     /// Отрабатывает маршрут <c>TActionName:*</c> (где * — это shortId payload).
+    /// Action ID определяется через <see cref="ActionIdResolver"/> (учитывает <see cref="ActionIdAttribute"/>).
     /// </summary>
     public BotApplication MapAction<TAction, TPayload>(Delegate handler) where TAction : IBotAction
     {
-        string callbackId = typeof(TAction).Name;
+        string callbackId = ActionIdResolver.GetId<TAction>();
         UpdateDelegate inner = PayloadDelegateFactory.Create<TPayload>(handler, callbackId);
         _router.AddRoute(RouteEntry.Callback($"{callbackId}:*", inner));
         return this;
@@ -226,10 +227,10 @@ public sealed class BotApplication
 
     /// <summary>
     /// Регистрирует типизированный input-обработчик.
-    /// Action ID генерируется из имени типа <typeparamref name="TAction"/>.
+    /// Action ID определяется через <see cref="ActionIdResolver"/> (учитывает <see cref="ActionIdAttribute"/>).
     /// </summary>
     public BotApplication MapInput<TAction>(Delegate handler) where TAction : IBotAction
-        => MapInput(typeof(TAction).Name, handler);
+        => MapInput(ActionIdResolver.GetId<TAction>(), handler);
 
     /// <summary>
     /// Registers an input handler for the given <paramref name="actionId"/>.

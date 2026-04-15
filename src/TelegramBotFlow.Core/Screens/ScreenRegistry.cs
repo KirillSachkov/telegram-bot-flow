@@ -6,6 +6,7 @@ namespace TelegramBotFlow.Core.Screens;
 /// <summary>
 /// Реестр экранов с конвенционным вычислением идентификаторов.
 /// Логика конвенции вынесена в <see cref="ScreenIdConvention"/>.
+/// Атрибут <see cref="ScreenIdAttribute"/> позволяет явно задать идентификатор.
 /// </summary>
 internal sealed class ScreenRegistry
 {
@@ -19,7 +20,9 @@ internal sealed class ScreenRegistry
         if (!typeof(IScreen).IsAssignableFrom(screenType))
             throw new ArgumentException($"Type {screenType.Name} does not implement IScreen.");
 
-        _screens[ScreenIdConvention.GetIdFromType(screenType)] = screenType;
+        var attr = screenType.GetCustomAttribute<ScreenIdAttribute>();
+        string id = attr?.Id ?? ScreenIdConvention.GetIdFromType(screenType);
+        _screens[id] = screenType;
     }
 
     public void RegisterWithId(string screenId, Type screenType)
@@ -42,12 +45,15 @@ internal sealed class ScreenRegistry
 
     public IReadOnlyCollection<string> GetRegisteredIds() => _screens.Keys;
 
-    // Kept for backward compat — delegates to ScreenIdConvention
+    // Kept for backward compat — delegates to ScreenIdConvention, respects ScreenIdAttribute
     public static string GetIdFor<TScreen>() where TScreen : class, IScreen =>
-        ScreenIdConvention.GetIdFromType(typeof(TScreen));
+        GetIdFromType(typeof(TScreen));
 
-    public static string GetIdFromType(Type screenType) =>
-        ScreenIdConvention.GetIdFromType(screenType);
+    public static string GetIdFromType(Type screenType)
+    {
+        var attr = screenType.GetCustomAttribute<ScreenIdAttribute>();
+        return attr?.Id ?? ScreenIdConvention.GetIdFromType(screenType);
+    }
 
     internal void RegisterFromAssembly(Assembly assembly)
     {

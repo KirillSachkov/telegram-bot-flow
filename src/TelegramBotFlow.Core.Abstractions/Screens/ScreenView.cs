@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.Reflection;
+using System.Text;
 using System.Text.Json;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
@@ -97,11 +98,11 @@ public sealed class ScreenView
 
     /// <summary>
     /// Типизированная версия <see cref="AwaitInput(string)"/>.
-    /// Action ID генерируется из имени типа <typeparamref name="TAction"/>.
+    /// Action ID определяется через <see cref="ActionIdResolver"/> (учитывает <see cref="ActionIdAttribute"/>).
     /// </summary>
     public ScreenView AwaitInput<TAction>() where TAction : IBotAction
     {
-        PendingInputActionId = typeof(TAction).Name;
+        PendingInputActionId = ActionIdResolver.GetId<TAction>();
         return this;
     }
 
@@ -110,10 +111,13 @@ public sealed class ScreenView
     /// <summary>
     /// Adds an inline button that navigates to the specified screen.
     /// Generates callback data: <c>nav:{screenId}</c>.
+    /// Screen ID is resolved via <see cref="ScreenIdAttribute"/> if present, otherwise by convention.
     /// </summary>
     public ScreenView NavigateButton<TScreen>(string text) where TScreen : IScreen
     {
-        string screenId = ScreenIdConvention.GetIdFromType(typeof(TScreen));
+        Type screenType = typeof(TScreen);
+        var attr = screenType.GetCustomAttribute<ScreenIdAttribute>();
+        string screenId = attr?.Id ?? ScreenIdConvention.GetIdFromType(screenType);
         _buttonList.Add(new CallbackEntry(text, $"nav:{screenId}"));
         return this;
     }
@@ -131,11 +135,11 @@ public sealed class ScreenView
 
     /// <summary>
     /// Добавляет типизированную кнопку действия.
-    /// Callback ID генерируется из имени типа <typeparamref name="TAction"/>.
+    /// Callback ID определяется через <see cref="ActionIdResolver"/> (учитывает <see cref="ActionIdAttribute"/>).
     /// </summary>
     public ScreenView Button<TAction>(string text) where TAction : IBotAction
     {
-        _buttonList.Add(new CallbackEntry(text, typeof(TAction).Name));
+        _buttonList.Add(new CallbackEntry(text, ActionIdResolver.GetId<TAction>()));
         return this;
     }
 
@@ -143,11 +147,12 @@ public sealed class ScreenView
     /// Добавляет типизированную кнопку действия с передачей объекта (Payload).
     /// JSON сериализуется немедленно; выбор между inline (<c>TAction:j:{json}</c>) и
     /// stored (<c>TAction:s:{shortId}</c>) происходит при рендере в <c>ScreenManager</c>.
+    /// Action prefix определяется через <see cref="ActionIdResolver"/> (учитывает <see cref="ActionIdAttribute"/>).
     /// </summary>
     public ScreenView Button<TAction, TPayload>(string text, TPayload payload) where TAction : IBotAction
     {
         string json = JsonSerializer.Serialize(payload);
-        _buttonList.Add(new PayloadEntry(text, typeof(TAction).Name, json));
+        _buttonList.Add(new PayloadEntry(text, ActionIdResolver.GetId<TAction>(), json));
         return this;
     }
 
