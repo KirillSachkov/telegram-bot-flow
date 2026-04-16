@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Caching.Memory;
+using Telegram.Bot.Types.Enums;
 using TelegramBotFlow.Core.Context;
 using TelegramBotFlow.Core.Users;
 
@@ -26,6 +27,14 @@ public sealed class UserTrackingMiddleware<TUser> : IUpdateMiddleware
 
     public async Task InvokeAsync(UpdateContext context, UpdateDelegate next)
     {
+        if (context.Update.MyChatMember is { } chatMember
+            && chatMember.NewChatMember.Status == ChatMemberStatus.Kicked)
+        {
+            await _userStore.MarkBlockedAsync(chatMember.From.Id, context.CancellationToken);
+            await next(context);
+            return;
+        }
+
         if (context.UserId != 0)
         {
             long userId = context.UserId;

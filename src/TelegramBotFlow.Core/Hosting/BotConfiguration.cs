@@ -12,7 +12,7 @@ public sealed class BotConfiguration
     public string WebhookPath { get; set; } = "/api/bot/webhook";
     public long[] AdminUserIds { get; set; } = [];
     public long StorageChannelId { get; set; }
-    public UpdateType[] AllowedUpdates { get; set; } = [UpdateType.Message, UpdateType.CallbackQuery];
+    public UpdateType[] AllowedUpdates { get; set; } = [UpdateType.Message, UpdateType.CallbackQuery, UpdateType.MyChatMember];
     public string? WebhookSecretToken { get; set; }
 
     public int PayloadCacheSize { get; set; } = 500;

@@ -207,6 +207,19 @@ public sealed class BotApplication
     }
 
     /// <summary>
+    /// Registers a handler for <see cref="Telegram.Bot.Types.Update.MyChatMember"/> updates
+    /// (e.g. when a user blocks/unblocks the bot).
+    /// </summary>
+    /// <param name="handler">Handler delegate.</param>
+    /// <returns>Current instance for fluent configuration.</returns>
+    public BotApplication MapChatMember(Delegate handler)
+    {
+        var route = RouteEntry.ChatMember(HandlerDelegateFactory.Create(handler));
+        _router.AddRoute(route);
+        return this;
+    }
+
+    /// <summary>
     /// Регистрирует обработчик произвольного update-а по предикату.
     /// </summary>
     /// <param name="predicate">Условие сопоставления update-а.</param>

@@ -11,7 +11,8 @@ public enum RouteType
     COMMAND,
     CALLBACK,
     MESSAGE,
-    UPDATE
+    UPDATE,
+    CHAT_MEMBER
 }
 
 /// <summary>
@@ -101,6 +102,17 @@ internal sealed class RouteEntry
         new(RouteType.UPDATE, handler, null, predicate);
 
     /// <summary>
+    /// Creates a route that matches <see cref="Telegram.Bot.Types.Update.MyChatMember"/> updates.
+    /// </summary>
+    /// <param name="handler">Handler delegate.</param>
+    /// <returns>A chat member route entry.</returns>
+    internal static RouteEntry ChatMember(UpdateDelegate handler) =>
+        new(RouteType.CHAT_MEMBER, handler,
+            pattern: null,
+            predicate: ctx => ctx.Update.MyChatMember != null,
+            priority: RoutePriority.NORMAL);
+
+    /// <summary>
     /// Проверяет совпадение текущего маршрута с заданным контекстом.
     /// </summary>
     /// <param name="context">Контекст update-а.</param>
@@ -110,7 +122,7 @@ internal sealed class RouteEntry
         {
             RouteType.COMMAND => MatchesCommand(context),
             RouteType.CALLBACK => MatchesCallback(context),
-            RouteType.MESSAGE or RouteType.UPDATE => Predicate?.Invoke(context) == true,
+            RouteType.MESSAGE or RouteType.UPDATE or RouteType.CHAT_MEMBER => Predicate?.Invoke(context) == true,
             _ => false
         };
 
