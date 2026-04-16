@@ -68,6 +68,23 @@ public sealed class BotApplicationBuilder
     }
 
     /// <summary>
+    /// Adds a conditional middleware branch that executes only when the predicate returns <c>true</c>.
+    /// The branch rejoins the main pipeline after execution (same semantics as ASP.NET Core UseWhen).
+    /// </summary>
+    /// <param name="predicate">Predicate evaluated per update to decide whether the branch executes.</param>
+    /// <param name="configureBranch">Action to configure middleware in the conditional branch.</param>
+    /// <returns>This builder for fluent chaining.</returns>
+    public BotApplicationBuilder UseWhen(
+        Func<UpdateContext, bool> predicate,
+        Action<MiddlewareBranchBuilder> configureBranch)
+    {
+        var branchBuilder = new MiddlewareBranchBuilder(Services);
+        configureBranch(branchBuilder);
+        Middlewares.Add(ConditionalMiddleware.Create(predicate, branchBuilder.Middlewares));
+        return this;
+    }
+
+    /// <summary>
     /// Добавляет middleware глобальной обработки исключений.
     /// </summary>
     /// <returns>Текущий builder для fluent-конфигурации.</returns>
