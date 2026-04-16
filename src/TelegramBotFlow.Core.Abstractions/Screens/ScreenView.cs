@@ -53,6 +53,25 @@ public sealed class ScreenView
     public string? PendingInputActionId { get; private set; }
 
     /// <summary>
+    /// Factory for building a reply keyboard. When set, the screen will be sent with a
+    /// <see cref="Telegram.Bot.Types.ReplyMarkups.ReplyKeyboardMarkup"/> built from this factory.
+    /// </summary>
+    internal Func<ReplyKeyboard, ReplyKeyboard>? ReplyKeyboardFactory { get; private set; }
+
+    /// <summary>
+    /// When <see langword="true"/>, the screen will be sent with
+    /// <see cref="Telegram.Bot.Types.ReplyMarkups.ReplyKeyboardRemove"/> to hide any active reply keyboard.
+    /// </summary>
+    public bool ShouldRemoveReplyKeyboard { get; private set; }
+
+    /// <summary>
+    /// Computed reply keyboard built from <see cref="ReplyKeyboardFactory"/>, or <see langword="null"/>
+    /// if no reply keyboard is configured.
+    /// </summary>
+    public ReplyKeyboard? ReplyKeyboard =>
+        ReplyKeyboardFactory != null ? ReplyKeyboardFactory(new ReplyKeyboard()) : null;
+
+    /// <summary>
     /// <see langword="true"/> если в представлении уже есть кнопка навигации
     /// (<see cref="BackButton"/>, <see cref="CloseButton"/> или <see cref="MenuButton"/>).
     /// Используется <c>ScreenManager</c> для автоматического добавления кнопки,
@@ -103,6 +122,31 @@ public sealed class ScreenView
     public ScreenView AwaitInput<TAction>() where TAction : IBotAction
     {
         PendingInputActionId = ActionIdResolver.GetId<TAction>();
+        return this;
+    }
+
+    // -- Reply keyboard --
+
+    /// <summary>
+    /// Configures a reply keyboard for this screen view. The reply keyboard appears
+    /// at the bottom of the chat and supports contact/location requests and custom text buttons.
+    /// Mutually exclusive with <see cref="RemoveReplyKeyboard"/>.
+    /// </summary>
+    public ScreenView WithReplyKeyboard(Func<ReplyKeyboard, ReplyKeyboard> configure)
+    {
+        ReplyKeyboardFactory = configure;
+        ShouldRemoveReplyKeyboard = false;
+        return this;
+    }
+
+    /// <summary>
+    /// Removes any active reply keyboard when this screen is rendered.
+    /// Mutually exclusive with <see cref="WithReplyKeyboard"/>.
+    /// </summary>
+    public ScreenView RemoveReplyKeyboard()
+    {
+        ReplyKeyboardFactory = null;
+        ShouldRemoveReplyKeyboard = true;
         return this;
     }
 
