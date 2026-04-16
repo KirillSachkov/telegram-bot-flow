@@ -27,6 +27,30 @@ public abstract class BotWizard<TState> : IBotWizard where TState : class, new()
     public abstract Task<IEndpointResult> OnFinishedAsync(UpdateContext context, TState state);
 
     /// <summary>
+    /// Called when the wizard is cancelled. Override to perform cleanup.
+    /// </summary>
+    protected virtual Task OnCancelledAsync(UpdateContext context, TState state)
+        => Task.CompletedTask;
+
+    /// <inheritdoc />
+    async Task IBotWizard.OnCancelledAsync(UpdateContext context, WizardStorageState state)
+    {
+        TState typedState;
+        try
+        {
+            typedState = string.IsNullOrWhiteSpace(state.PayloadJson)
+                ? new TState()
+                : JsonSerializer.Deserialize<TState>(state.PayloadJson) ?? new TState();
+        }
+        catch (JsonException)
+        {
+            typedState = new TState();
+        }
+
+        await OnCancelledAsync(context, typedState);
+    }
+
+    /// <summary>
     /// Время жизни состояния визарда (опционально).
     /// По умолчанию <see langword="null"/> (никогда не истекает).
     /// </summary>
@@ -162,7 +186,7 @@ public abstract class BotWizard<TState> : IBotWizard where TState : class, new()
         if (storageState.StepHistory.Count == 0)
         {
             // Первый шаг — выходим из визарда целиком, возвращаясь на предыдущий экран.
-            return new WizardTransition(true, BotResults.Back());
+            return new WizardTransition(true, BotResults.Back(), WasCancelled: true);
         }
 
         string previousStepId = storageState.StepHistory[^1];

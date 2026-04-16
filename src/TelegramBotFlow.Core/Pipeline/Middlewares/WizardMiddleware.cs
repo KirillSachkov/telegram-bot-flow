@@ -48,6 +48,7 @@ internal sealed class WizardMiddleware : IUpdateMiddleware
         if (context.MessageText is BotCommands.CANCEL or BotCommands.START)
         {
             _logger.LogInformation("Wizard {WizardId} cancelled by user via command", activeWizardId);
+            await InvokeOnCancelledAsync(context, activeWizardId);
             context.Session.Navigation.ActiveWizardId = null;
             await _wizardStore.DeleteAsync(context.UserId, activeWizardId, context.CancellationToken);
             await next(context);
@@ -60,6 +61,7 @@ internal sealed class WizardMiddleware : IUpdateMiddleware
         {
             _logger.LogInformation("Wizard {WizardId} cancelled by user via nav callback {Callback}",
                 activeWizardId, context.CallbackData);
+            await InvokeOnCancelledAsync(context, activeWizardId);
             context.Session.Navigation.ActiveWizardId = null;
             await _wizardStore.DeleteAsync(context.UserId, activeWizardId, context.CancellationToken);
             await next(context);
@@ -105,6 +107,12 @@ internal sealed class WizardMiddleware : IUpdateMiddleware
 
             if (transition.IsFinished)
             {
+                if (transition.WasCancelled)
+                {
+                    try { await wizardInstance.OnCancelledAsync(context, storageState); }
+                    catch (Exception ex) { _logger.LogWarning(ex, "OnCancelledAsync failed for wizard {WizardId}", activeWizardId); }
+                }
+
                 context.Session.Navigation.ActiveWizardId = null;
                 await _wizardStore.DeleteAsync(context.UserId, activeWizardId, context.CancellationToken);
             }
@@ -121,6 +129,27 @@ internal sealed class WizardMiddleware : IUpdateMiddleware
             _logger.LogError(ex, "Error processing wizard {WizardId} for user {UserId}",
                 activeWizardId, context.UserId);
             throw;
+        }
+    }
+
+    /// <summary>
+    /// Resolves the wizard and invokes OnCancelledAsync. Swallows exceptions to avoid
+    /// cancellation cleanup failures from breaking the pipeline.
+    /// </summary>
+    private async Task InvokeOnCancelledAsync(UpdateContext context, string wizardId)
+    {
+        var storageState = await _wizardStore.GetAsync(context.UserId, wizardId, context.CancellationToken);
+        if (storageState is null || !_wizardRegistry.HasWizard(wizardId))
+            return;
+
+        var wizard = _wizardRegistry.Resolve(wizardId, context.RequestServices);
+        try
+        {
+            await wizard.OnCancelledAsync(context, storageState);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "OnCancelledAsync failed for wizard {WizardId}", wizardId);
         }
     }
 }
