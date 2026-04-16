@@ -13,6 +13,7 @@ using TelegramBotFlow.Core.Screens;
 using TelegramBotFlow.Core.Context;
 using TelegramBotFlow.Core.Hosting;
 using TelegramBotFlow.Core.Http;
+using TelegramBotFlow.Core.Messaging;
 using TelegramBotFlow.Core.Pipeline.Middlewares;
 using TelegramBotFlow.Core.Routing;
 using TelegramBotFlow.Core.Sessions;
@@ -83,6 +84,9 @@ public static class ServiceCollectionExtensions
 
         services.AddSingleton<ISessionStore, InMemorySessionStore>();
         services.AddSingleton<ISessionLockProvider, InMemorySessionLockProvider>();
+
+        services.AddSingleton<IBotNotifier, BotNotifier>();
+        services.AddSingleton<IBotBroadcaster, BotBroadcaster>();
 
         services.AddSingleton<InputHandlerRegistry>();
         services.AddScoped<PendingInputMiddleware>();
