@@ -8,6 +8,58 @@ All notable changes to this project are documented in this file.
 
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [2.0.0] - 2026-04-16
+
+### Breaking Changes
+- **Middleware registration moved to BotApplicationBuilder.** All `app.Use*()` calls are now `builder.Use*()`, called before `builder.Build()`.
+- **`BotConfiguration.ErrorMessage` removed** — use `BotMessages.ErrorMessage` via Options pattern.
+
+### Added
+- `BotMessages` class for localizable framework strings (BackButton, MenuButton, CloseButton, PayloadExpired, ErrorMessage)
+- Configurable parameters in `BotConfiguration`: PayloadCacheSize, SessionLockTimeoutSeconds, MaxConcurrentUpdates, MaxNavigationDepth, UpdateChannelCapacity, WizardDefaultTtlMinutes, ShutdownTimeoutSeconds, TelegramRateLimitPerSecond, MaxRetryOnRateLimit, HealthCheckPath
+- `UpdateContext.User` (IBotUser?) — set by UserTrackingMiddleware
+- `UpdateContext.HandlerName` (string?) — set by router for structured logging
+- Typed input properties on UpdateContext: Photos, Document, Contact, Location, Voice, VideoNote, Video, HasMedia
+- Reply Keyboard support in ScreenView: `WithReplyKeyboard()`, `RemoveReplyKeyboard()`
+- `IBotNotifier` — proactive messaging outside the pipeline
+- `IBotBroadcaster` — batch messaging with error tracking, blocked user detection, configurable concurrency
+- Telegram API rate limiting via `TokenBucketRateLimiter` (System.Threading.RateLimiting)
+- HTTP retry policy via `Microsoft.Extensions.Http.Resilience` (Polly v8) for 429/500/503
+- `MapDeepLink()` — deep link routing with HIGH priority
+- `MapChatMember()` — route MyChatMember updates
+- `UseWhen()` — conditional middleware execution
+- `BotWizard<TState>.OnCancelledAsync()` — cleanup callback on wizard cancellation
+- Health check endpoint (configurable path, default `/health`)
+- Graceful shutdown timeout configuration
+- Structured error logging with UpdateType, UserId, Screen, HandlerName
+- ChatMemberUpdated in default AllowedUpdates — auto-block on Kicked status
+- `.claude/` AI configuration (settings, agents, rules, memory)
+
+### Fixed
+- InMemoryWizardStore memory leak — replaced ConcurrentDictionary with IMemoryCache
+- Hardcoded Russian strings replaced with English defaults
+
+### Changed
+- Default button text: "← Назад" → "← Back", "☰ Главное меню" → "☰ Menu"
+- PayloadExpiredException message changed to English
+- InMemorySessionLockProvider reads timeout from BotConfiguration
+- UpdateProcessingWorker reads concurrency from BotConfiguration
+- Update channel capacity reads from BotConfiguration
+
+### Tests
+- +60 new tests (374 total: 309 unit + 65 integration)
+- EfBotUserStore integration tests
+- UserTrackingMiddleware unit tests
+- Concurrent session stress tests
+- TelegramRateLimitHandler tests
+- BotNotifier and BotBroadcaster tests
+- DeepLink and ChatMember routing tests
+- UseWhen conditional middleware tests
+- Wizard cancellation tests
+- InMemoryWizardStore tests
+- PendingInputMiddleware photo input test
+- Reply Keyboard tests
+
 ## [Unreleased]
 
 ### Добавлено (Added)
