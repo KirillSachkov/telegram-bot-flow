@@ -9,7 +9,7 @@
 /// </summary>
 public sealed class UserSession
 {
-    /// <summary>Максимальная глубина стека навигации.</summary>
+    /// <summary>Максимальная глубина стека навигации (default value, actual limit is on NavigationState).</summary>
     public const int MAX_NAVIGATION_DEPTH = 20;
 
     /// <summary>Идентификатор пользователя Telegram.</summary>

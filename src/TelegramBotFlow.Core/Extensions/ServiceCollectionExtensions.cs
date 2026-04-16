@@ -53,7 +53,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<SessionMiddleware>();
         services.AddScoped<AccessPolicyMiddleware>();
 
-        Channel<Update> updateChannel = Channel.CreateBounded<Update>(new BoundedChannelOptions(1000)
+        Channel<Update> updateChannel = Channel.CreateBounded<Update>(new BoundedChannelOptions(botConfig.UpdateChannelCapacity)
         {
             FullMode = BoundedChannelFullMode.Wait,
             SingleWriter = true,

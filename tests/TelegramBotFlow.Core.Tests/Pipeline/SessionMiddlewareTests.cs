@@ -1,4 +1,6 @@
+using Microsoft.Extensions.Options;
 using NSubstitute;
+using TelegramBotFlow.Core.Hosting;
 using TelegramBotFlow.Core.Pipeline.Middlewares;
 using TelegramBotFlow.Core.Sessions;
 using UpdateContext = TelegramBotFlow.Core.Context.UpdateContext;
@@ -22,7 +24,8 @@ public sealed class SessionMiddlewareTests
             .AcquireLockAsync(Arg.Any<long>(), Arg.Any<CancellationToken>())
             .Returns(_sessionLock);
 
-        _middleware = new SessionMiddleware(_sessionStore, _lockProvider);
+        var config = Options.Create(new BotConfiguration { Token = "test" });
+        _middleware = new SessionMiddleware(_sessionStore, _lockProvider, config);
     }
 
     [Fact]
