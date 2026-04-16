@@ -2,8 +2,11 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using TelegramBotFlow.Core.Context;
 using TelegramBotFlow.Core.Endpoints;
 using TelegramBotFlow.Core.Extensions;
+using TelegramBotFlow.Core.Pipeline;
+using TelegramBotFlow.Core.Pipeline.Middlewares;
 
 namespace TelegramBotFlow.Core.Hosting;
 
@@ -12,6 +15,9 @@ namespace TelegramBotFlow.Core.Hosting;
 /// </summary>
 public sealed class BotApplicationBuilder
 {
+    internal readonly List<Func<UpdateDelegate, UpdateDelegate>> Middlewares = [];
+    internal readonly List<string> RegisteredMiddleware = [];
+
     /// <summary>
     /// Базовый web-builder приложения.
     /// </summary>
@@ -31,6 +37,97 @@ public sealed class BotApplicationBuilder
     {
         WebAppBuilder = WebApplication.CreateBuilder(args);
     }
+
+    // -- Middleware registration --
+
+    /// <summary>
+    /// Добавляет middleware-фабрику в pipeline обработки update-ов.
+    /// </summary>
+    /// <param name="middleware">Фабрика middleware-делегата.</param>
+    /// <returns>Текущий builder для fluent-конфигурации.</returns>
+    public BotApplicationBuilder Use(Func<UpdateDelegate, UpdateDelegate> middleware)
+    {
+        Middlewares.Add(middleware);
+        return this;
+    }
+
+    /// <summary>
+    /// Добавляет middleware, резолвимый из DI-контейнера.
+    /// </summary>
+    /// <typeparam name="TMiddleware">Тип middleware, реализующий <see cref="IUpdateMiddleware"/>.</typeparam>
+    /// <returns>Текущий builder для fluent-конфигурации.</returns>
+    public BotApplicationBuilder Use<TMiddleware>() where TMiddleware : IUpdateMiddleware
+    {
+        Middlewares.Add(next => async context =>
+        {
+            TMiddleware middleware = context.RequestServices.GetRequiredService<TMiddleware>();
+            await middleware.InvokeAsync(context, next);
+        });
+
+        return this;
+    }
+
+    /// <summary>
+    /// Добавляет middleware глобальной обработки исключений.
+    /// </summary>
+    /// <returns>Текущий builder для fluent-конфигурации.</returns>
+    public BotApplicationBuilder UseErrorHandling()
+    {
+        RegisteredMiddleware.Add("error_handling");
+        return Use<ErrorHandlingMiddleware>();
+    }
+
+    /// <summary>
+    /// Добавляет middleware логирования обработки update-ов.
+    /// </summary>
+    /// <returns>Текущий builder для fluent-конфигурации.</returns>
+    public BotApplicationBuilder UseLogging() => Use<LoggingMiddleware>();
+
+    /// <summary>
+    /// Добавляет middleware, блокирующий запросы не из личных чатов (группы, другие каналы).
+    /// </summary>
+    /// <returns>Текущий builder для fluent-конфигурации.</returns>
+    public BotApplicationBuilder UsePrivateChatOnly() => Use<PrivateChatOnlyMiddleware>();
+
+    /// <summary>
+    /// Добавляет middleware загрузки и сохранения пользовательской сессии.
+    /// </summary>
+    /// <returns>Текущий builder для fluent-конфигурации.</returns>
+    public BotApplicationBuilder UseSession()
+    {
+        RegisteredMiddleware.Add("session");
+        return Use<SessionMiddleware>();
+    }
+
+    /// <summary>
+    /// Добавляет middleware обработки визардов (форм). Перехватывает update-ы для активного визарда.
+    /// Должен быть добавлен после UseSession().
+    /// </summary>
+    /// <returns>Текущий builder для fluent-конфигурации.</returns>
+    public BotApplicationBuilder UseWizards()
+    {
+        RegisteredMiddleware.Add("wizards");
+        return Use<WizardMiddleware>();
+    }
+
+    /// <summary>
+    /// Добавляет middleware вычисления административного доступа пользователя.
+    /// </summary>
+    /// <returns>Текущий builder для fluent-конфигурации.</returns>
+    public BotApplicationBuilder UseAccessPolicy() => Use<AccessPolicyMiddleware>();
+
+    /// <summary>
+    /// Adds a middleware that intercepts incoming text messages and routes them to the
+    /// registered input handler when <c>session.PendingInputActionId</c> is set.
+    /// Must be added after <c>UseSession()</c>.
+    /// </summary>
+    public BotApplicationBuilder UsePendingInput()
+    {
+        RegisteredMiddleware.Add("pending_input");
+        return Use<PendingInputMiddleware>();
+    }
+
+    // -- Build --
 
     /// <summary>
     /// Builds the <see cref="BotApplication"/>.
