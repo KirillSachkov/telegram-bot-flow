@@ -125,6 +125,7 @@ public static class ServiceCollectionExtensions
 
     public static IServiceCollection AddWizards(this IServiceCollection services, params Assembly[] assemblies)
     {
+        services.AddMemoryCache();
         services.AddSingleton<IWizardStore, InMemoryWizardStore>();
         services.AddScoped<IWizardLauncher, WizardLauncher>();
         services.AddScoped<WizardMiddleware>();
