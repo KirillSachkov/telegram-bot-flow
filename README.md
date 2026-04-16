@@ -8,10 +8,10 @@ A .NET framework for building Telegram bots with middleware pipeline, screen nav
 BotApplicationBuilder builder = BotApplication.CreateBuilder(args);
 builder.Services.AddScreens(typeof(Program).Assembly);
 
-BotApplication app = builder.Build();
+builder.UseErrorHandling();
+builder.UseSession();
 
-app.UseErrorHandling();
-app.UseSession();
+BotApplication app = builder.Build();
 
 app.MapCommand("start", (UpdateContext ctx) =>
 {
@@ -43,16 +43,23 @@ Add `appsettings.json`:
 
 ## Features
 
-- **Middleware pipeline** -- composable request processing (error handling, logging, sessions, access control, custom middleware)
-- **Screen navigation** -- stack-based UI with back/forward/root transitions, media support, navigation args
-- **Wizard FSM** -- multi-step forms with state management, step history, validation, OnEnter hooks
+- **Middleware pipeline** -- composable request processing (error handling, logging, sessions, access control, conditional middleware via `UseWhen()`)
+- **Screen navigation** -- stack-based UI with back/forward/root transitions, media support, navigation args, reply keyboards
+- **Wizard FSM** -- multi-step forms with state management, step history, validation, OnEnter hooks, cancellation callback
 - **Sessions** -- per-user session with data storage and navigation state (in-memory or Redis)
 - **User storage** -- `IBotUserStore<TUser>` abstraction with EF Core/PostgreSQL implementation
 - **Typed actions** -- `IBotAction` marker interface for type-safe callback routing (no magic strings)
-- **Input handling** -- `AwaitInput<T>()` / `MapInput<T>()` pattern for text input flows
+- **Input handling** -- `AwaitInput<T>()` / `MapInput<T>()` pattern for text and media input flows
 - **Payload encoding** -- automatic inline/stored payload strategy based on Telegram's 64-byte callback_data limit
+- **Deep link routing** -- `MapDeepLink()` for start parameter routing with HIGH priority
+- **Chat member tracking** -- `MapChatMember()` routing with auto-block on Kicked status
+- **Proactive messaging** -- `IBotNotifier` for out-of-pipeline messages, `IBotBroadcaster` for batch sends with error tracking
+- **Rate limiting & resilience** -- Telegram API rate limiting via `TokenBucketRateLimiter`, HTTP retry policy (Polly v8) for 429/500/503
+- **Localizable strings** -- `BotMessages` class for framework text (buttons, errors) via Options pattern
+- **Health checks** -- configurable health endpoint (default `/health`)
 - **Polling & Webhook** -- both modes supported, webhook includes secret token validation
 - **Startup validation** -- middleware ordering verified at startup to prevent runtime errors
+- **Graceful shutdown** -- configurable shutdown timeout for in-flight update processing
 
 ## Installation
 
@@ -71,18 +78,18 @@ dotnet add package TelegramBotFlow.Data.Postgres
 
 ### Pipeline
 
-Every Telegram update flows through a middleware pipeline before reaching the router. Middlewares are registered with `Use<T>()` and execute in registration order. Built-in middlewares:
+Every Telegram update flows through a middleware pipeline before reaching the router. Middlewares are registered on the `BotApplicationBuilder` with `Use<T>()` and execute in registration order. Built-in middlewares:
 
 | Middleware | Method | Purpose |
 |---|---|---|
-| `ErrorHandlingMiddleware` | `UseErrorHandling()` | Catches exceptions, sends error message to user |
-| `LoggingMiddleware` | `UseLogging()` | Logs update processing |
-| `PrivateChatOnlyMiddleware` | `UsePrivateChatOnly()` | Blocks non-private-chat updates |
-| `SessionMiddleware` | `UseSession()` | Loads/saves per-user session with lock |
-| `AccessPolicyMiddleware` | `UseAccessPolicy()` | Resolves admin access from config |
-| `WizardMiddleware` | `UseWizards()` | Intercepts updates for active wizards |
-| `UserTrackingMiddleware<T>` | `Use<UserTrackingMiddleware<T>>()` | Auto-creates user records in DB |
-| `PendingInputMiddleware` | `UsePendingInput()` | Routes text messages to input handlers |
+| `ErrorHandlingMiddleware` | `builder.UseErrorHandling()` | Catches exceptions, sends error message to user |
+| `LoggingMiddleware` | `builder.UseLogging()` | Logs update processing |
+| `PrivateChatOnlyMiddleware` | `builder.UsePrivateChatOnly()` | Blocks non-private-chat updates |
+| `SessionMiddleware` | `builder.UseSession()` | Loads/saves per-user session with lock |
+| `AccessPolicyMiddleware` | `builder.UseAccessPolicy()` | Resolves admin access from config |
+| `WizardMiddleware` | `builder.UseWizards()` | Intercepts updates for active wizards |
+| `UserTrackingMiddleware<T>` | `builder.Use<UserTrackingMiddleware<T>>()` | Auto-creates user records in DB |
+| `PendingInputMiddleware` | `builder.UsePendingInput()` | Routes text messages to input handlers |
 
 ### Screens
 
@@ -179,8 +186,27 @@ Bot settings are read from the `"Bot"` configuration section:
 | `WebhookPath` | `string` | `/api/bot/webhook` | Webhook endpoint path |
 | `WebhookSecretToken` | `string?` | `null` | Webhook secret validation |
 | `AdminUserIds` | `long[]` | `[]` | Admin Telegram user IDs |
-| `ErrorMessage` | `string` | `"An error occurred..."` | Error message for users |
-| `AllowedUpdates` | `UpdateType[]` | `[Message, CallbackQuery]` | Allowed update types |
+| `AllowedUpdates` | `UpdateType[]` | `[Message, CallbackQuery, ChatMember]` | Allowed update types |
+| `PayloadCacheSize` | `int` | `500` | LRU cache size for large payloads |
+| `SessionLockTimeoutSeconds` | `int` | `30` | Per-user session lock timeout |
+| `MaxConcurrentUpdates` | `int` | `10` | Concurrent update processing limit |
+| `MaxNavigationDepth` | `int` | `20` | Maximum navigation stack depth |
+| `UpdateChannelCapacity` | `int` | `1000` | Bounded channel capacity for updates |
+| `WizardDefaultTtlMinutes` | `int` | `60` | Default wizard state TTL |
+| `ShutdownTimeoutSeconds` | `int` | `30` | Graceful shutdown timeout |
+| `TelegramRateLimitPerSecond` | `int` | `30` | Telegram API rate limit |
+| `MaxRetryOnRateLimit` | `int` | `3` | Max retries on 429 responses |
+| `HealthCheckPath` | `string` | `/health` | Health endpoint path |
+
+Framework strings (button text, error messages) are configured via `BotMessages` using the Options pattern:
+
+```csharp
+builder.Services.Configure<BotMessages>(msg =>
+{
+    msg.ErrorMessage = "Something went wrong, please try again.";
+    msg.BackButton = "Back";
+});
+```
 
 ## Packages
 
