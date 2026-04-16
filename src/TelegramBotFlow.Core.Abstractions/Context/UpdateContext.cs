@@ -76,6 +76,47 @@ public sealed class UpdateContext
     public string? CommandArgument { get; }
 
     /// <summary>
+    /// Массив фотографий из входящего сообщения (разные размеры одной фотографии).
+    /// </summary>
+    public PhotoSize[]? Photos { get; }
+
+    /// <summary>
+    /// Документ из входящего сообщения.
+    /// </summary>
+    public Document? Document { get; }
+
+    /// <summary>
+    /// Контакт из входящего сообщения.
+    /// </summary>
+    public Contact? Contact { get; }
+
+    /// <summary>
+    /// Локация из входящего сообщения.
+    /// </summary>
+    public Location? Location { get; }
+
+    /// <summary>
+    /// Голосовое сообщение из входящего сообщения.
+    /// </summary>
+    public Voice? Voice { get; }
+
+    /// <summary>
+    /// Видеосообщение (кружок) из входящего сообщения.
+    /// </summary>
+    public VideoNote? VideoNote { get; }
+
+    /// <summary>
+    /// Видео из входящего сообщения.
+    /// </summary>
+    public Video? Video { get; }
+
+    /// <summary>
+    /// Указывает, содержит ли сообщение медиа-контент (фото, документ, голосовое, видео, видеосообщение).
+    /// </summary>
+    public bool HasMedia => Photos != null || Document != null
+                         || Voice != null || Video != null || VideoNote != null;
+
+    /// <summary>
     /// Тип входящего update.
     /// </summary>
     public UpdateType UpdateType { get; }
@@ -107,6 +148,13 @@ public sealed class UpdateContext
         CallbackData = update.CallbackQuery?.Data;
         MessageText = update.Message?.Text;
         CommandArgument = ExtractCommandArgument(MessageText);
+        Photos = update.Message?.Photo;
+        Document = update.Message?.Document;
+        Contact = update.Message?.Contact;
+        Location = update.Message?.Location;
+        Voice = update.Message?.Voice;
+        VideoNote = update.Message?.VideoNote;
+        Video = update.Message?.Video;
     }
 
     // -- Extractors --
