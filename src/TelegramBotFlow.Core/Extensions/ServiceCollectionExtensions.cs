@@ -1,13 +1,18 @@
-﻿using System.Reflection;
+﻿using System.Net;
+using System.Reflection;
 using System.Threading.Channels;
+using System.Threading.RateLimiting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Http.Resilience;
+using Polly;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using TelegramBotFlow.Core.Screens;
 using TelegramBotFlow.Core.Context;
 using TelegramBotFlow.Core.Hosting;
+using TelegramBotFlow.Core.Http;
 using TelegramBotFlow.Core.Pipeline.Middlewares;
 using TelegramBotFlow.Core.Routing;
 using TelegramBotFlow.Core.Sessions;
@@ -28,7 +33,42 @@ public static class ServiceCollectionExtensions
                                      ?? throw new InvalidOperationException(
                                          $"Bot configuration section '{BotConfiguration.SECTION_NAME}' is missing or invalid.");
 
-        services.AddSingleton<ITelegramBotClient>(_ => new TelegramBotClient(botConfig.Token));
+        var rateLimiter = new TokenBucketRateLimiter(new TokenBucketRateLimiterOptions
+        {
+            TokenLimit = botConfig.TelegramRateLimitPerSecond,
+            ReplenishmentPeriod = TimeSpan.FromSeconds(1),
+            TokensPerPeriod = botConfig.TelegramRateLimitPerSecond,
+            QueueLimit = botConfig.TelegramRateLimitPerSecond * 10
+        });
+
+        services.AddHttpClient("telegram")
+            .AddHttpMessageHandler(() => new TelegramRateLimitHandler(rateLimiter))
+            .AddResilienceHandler("telegram-retry", builder =>
+            {
+                builder.AddRetry(new HttpRetryStrategyOptions
+                {
+                    MaxRetryAttempts = botConfig.MaxRetryOnRateLimit,
+                    BackoffType = DelayBackoffType.Exponential,
+                    ShouldHandle = args => ValueTask.FromResult(
+                        args.Outcome.Result?.StatusCode is
+                            HttpStatusCode.TooManyRequests or
+                            HttpStatusCode.InternalServerError or
+                            HttpStatusCode.ServiceUnavailable),
+                    DelayGenerator = args =>
+                    {
+                        if (args.Outcome.Result?.Headers.RetryAfter?.Delta is { } delta)
+                            return ValueTask.FromResult<TimeSpan?>(delta);
+                        return ValueTask.FromResult<TimeSpan?>(null);
+                    }
+                });
+            });
+
+        services.AddSingleton<ITelegramBotClient>(sp =>
+        {
+            var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+            var httpClient = httpClientFactory.CreateClient("telegram");
+            return new TelegramBotClient(botConfig.Token, httpClient);
+        });
 
         services.AddSingleton<PipelineHolder>();
         services.AddSingleton(sp => sp.GetRequiredService<PipelineHolder>().Pipeline);
