@@ -177,7 +177,7 @@ public sealed class ScreenView
     // -- System navigation buttons --
 
     /// <summary>Добавляет кнопку возврата на предыдущий экран из стека.</summary>
-    public ScreenView BackButton(string text = "← Назад")
+    public ScreenView BackButton(string text = "\u2190 Back")
     {
         HasNavigationButton = true;
         Row();
@@ -189,7 +189,7 @@ public sealed class ScreenView
     /// Кнопка для action-результатов. Перерисовывает текущий экран из стека
     /// без изменения истории навигации (в отличие от BackButton, которая делает Pop).
     /// </summary>
-    public ScreenView CloseButton(string text = "← Назад")
+    public ScreenView CloseButton(string text = "\u2190 Back")
     {
         HasNavigationButton = true;
         Row();
@@ -200,7 +200,7 @@ public sealed class ScreenView
     /// <summary>
     /// Кнопка для возврата в главное меню. Очищает всю историю навигации.
     /// </summary>
-    public ScreenView MenuButton(string text = "☰ Главное меню")
+    public ScreenView MenuButton(string text = "\u2630 Menu")
     {
         HasNavigationButton = true;
         Row();

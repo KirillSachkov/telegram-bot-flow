@@ -6,7 +6,7 @@
 public sealed class PayloadExpiredException : Exception
 {
     public PayloadExpiredException()
-        : base("Данные кнопки устарели. Пожалуйста, обновите меню.")
+        : base("Button data expired. Please refresh the menu.")
     {
     }
 }
