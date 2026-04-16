@@ -18,6 +18,8 @@ public sealed class ProfileScreen : IScreen
                     $"<b>Профиль</b>\n\n" +
                     $"ID: <code>{ctx.UserId}</code>\n" +
                     $"Имя: {name}")
+                .NavigateButton<ContactScreen>("\ud83d\udcf1 Контакт")
+                .Row()
                 .BackButton());
     }
 }
