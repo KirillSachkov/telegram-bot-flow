@@ -58,6 +58,20 @@ internal sealed class RouteEntry
         new(RouteType.COMMAND, handler, NormalizeCommand(command), null);
 
     /// <summary>
+    /// Creates a deep link route for <c>/command payload</c> (e.g. <c>/start ref_abc</c>).
+    /// Matches only when <see cref="UpdateContext.CommandArgument"/> is present.
+    /// Uses <see cref="RoutePriority.HIGH"/> to take precedence over regular command routes.
+    /// </summary>
+    /// <param name="command">Command with or without leading <c>/</c>.</param>
+    /// <param name="handler">Handler delegate.</param>
+    /// <returns>A high-priority command route entry.</returns>
+    internal static RouteEntry DeepLink(string command, UpdateDelegate handler) =>
+        new(RouteType.COMMAND, handler,
+            pattern: NormalizeCommand(command),
+            predicate: ctx => ctx.CommandArgument != null,
+            priority: RoutePriority.HIGH);
+
+    /// <summary>
     /// Создаёт маршрут для callback-data с поддержкой wildcard-суффикса <c>*</c>.
     /// </summary>
     /// <param name="pattern">Точное значение или префикс шаблона callback.</param>
@@ -118,7 +132,10 @@ internal sealed class RouteEntry
         if (atIndex > 0)
             commandPart = commandPart[..atIndex];
 
-        return string.Equals(commandPart, Pattern, StringComparison.OrdinalIgnoreCase);
+        if (!string.Equals(commandPart, Pattern, StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        return Predicate is null || Predicate(context);
     }
 
     private bool MatchesCallback(UpdateContext context)

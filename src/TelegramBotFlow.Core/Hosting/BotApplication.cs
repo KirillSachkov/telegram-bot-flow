@@ -82,6 +82,21 @@ public sealed class BotApplication
     }
 
     /// <summary>
+    /// Maps a deep link handler for <c>/command</c> with payload (e.g. <c>/start ref_abc</c>).
+    /// Higher priority than <see cref="MapCommand"/>; the payload is available via
+    /// <see cref="UpdateContext.CommandArgument"/>.
+    /// </summary>
+    /// <param name="command">Command with or without leading <c>/</c>.</param>
+    /// <param name="handler">Handler delegate.</param>
+    /// <returns>Current instance for fluent configuration.</returns>
+    public BotApplication MapDeepLink(string command, Delegate handler)
+    {
+        var route = RouteEntry.DeepLink(command, HandlerDelegateFactory.Create(handler));
+        _router.AddRoute(route);
+        return this;
+    }
+
+    /// <summary>
     /// Регистрирует обработчик callback-data по шаблону.
     /// </summary>
     /// <param name="pattern">Шаблон callback-data, включая wildcard-суффикс <c>*</c>.</param>
