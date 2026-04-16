@@ -1,5 +1,7 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
+using Telegram.Bot.Types;
+using Telegram.Bot.Types.Enums;
 using TelegramBotFlow.Core.Pipeline.Middlewares;
 using TelegramBotFlow.Core.Routing;
 using TelegramBotFlow.Core.Sessions;
@@ -126,5 +128,37 @@ public sealed class PendingInputMiddlewareTests
 
         Assert.True(nextCalled);
         Assert.Null(context.Session!.Navigation.PendingInputActionId);
+    }
+
+    [Fact]
+    public async Task PhotoMessage_WithPendingAction_RoutesToHandler()
+    {
+        bool handlerCalled = false;
+        _registry.Register("photo_action", _ => { handlerCalled = true; return Task.CompletedTask; });
+
+        var update = new Update
+        {
+            Message = new Message
+            {
+                Photo = [new PhotoSize { FileId = "p1", Width = 100, Height = 100, FileUniqueId = "u1" }],
+                From = new User { Id = 123, FirstName = "Test" },
+                Chat = new Chat { Id = 456, Type = ChatType.Private },
+                Date = DateTime.UtcNow,
+                Id = 1
+            }
+        };
+        var ctx = new UpdateContext(update, Substitute.For<IServiceProvider>());
+        ctx.Session = CreateSession();
+        ctx.Session.Navigation.SetPending("photo_action");
+
+        bool nextCalled = false;
+        await _middleware.InvokeAsync(ctx, _ =>
+        {
+            nextCalled = true;
+            return Task.CompletedTask;
+        });
+
+        Assert.True(handlerCalled);
+        Assert.False(nextCalled);
     }
 }
