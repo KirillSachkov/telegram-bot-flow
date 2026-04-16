@@ -1,47 +1,49 @@
-﻿using System.Collections.Concurrent;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Options;
+using TelegramBotFlow.Core.Hosting;
+
 namespace TelegramBotFlow.Core.Wizards;
 
 /// <summary>
-/// Реализация хранилища состояний визардов в памяти. Подходит для разработки.
-/// В продакшене рекомендуется использовать Redis или БД.
+/// In-memory wizard state store backed by IMemoryCache with automatic expiration.
+/// Suitable for development. In production consider Redis or a database.
 /// </summary>
 internal sealed class InMemoryWizardStore : IWizardStore
 {
-    private readonly ConcurrentDictionary<string, WizardStorageState> _store = new();
+    private readonly IMemoryCache _cache;
+    private readonly int _defaultTtlMinutes;
+
+    public InMemoryWizardStore(IMemoryCache cache, IOptions<BotConfiguration> config)
+    {
+        _cache = cache;
+        _defaultTtlMinutes = config.Value.WizardDefaultTtlMinutes;
+    }
 
     public Task<WizardStorageState?> GetAsync(long userId, string wizardId,
         CancellationToken cancellationToken = default)
     {
-        string key = GetKey(userId, wizardId);
-
-        if (_store.TryGetValue(key, out WizardStorageState? state))
-        {
-            if (state.ExpiresAt.HasValue && state.ExpiresAt.Value < DateTime.UtcNow)
-            {
-                _store.TryRemove(key, out _);
-                return Task.FromResult<WizardStorageState?>(null);
-            }
-
-            return Task.FromResult<WizardStorageState?>(state);
-        }
-
-        return Task.FromResult<WizardStorageState?>(null);
+        _cache.TryGetValue(FormatKey(userId, wizardId), out WizardStorageState? state);
+        return Task.FromResult(state);
     }
 
     public Task SaveAsync(long userId, string wizardId, WizardStorageState state,
         CancellationToken cancellationToken = default)
     {
-        string key = GetKey(userId, wizardId);
-        _store[key] = state;
+        var options = new MemoryCacheEntryOptions();
+        if (state.ExpiresAt.HasValue)
+            options.SetAbsoluteExpiration(state.ExpiresAt.Value);
+        else
+            options.SetSlidingExpiration(TimeSpan.FromMinutes(_defaultTtlMinutes));
+
+        _cache.Set(FormatKey(userId, wizardId), state, options);
         return Task.CompletedTask;
     }
 
     public Task DeleteAsync(long userId, string wizardId, CancellationToken cancellationToken = default)
     {
-        string key = GetKey(userId, wizardId);
-        _store.TryRemove(key, out _);
+        _cache.Remove(FormatKey(userId, wizardId));
         return Task.CompletedTask;
     }
 
-    private static string GetKey(long userId, string wizardId) => $"{userId}:{wizardId}";
+    private static string FormatKey(long userId, string wizardId) => $"wizard:{userId}:{wizardId}";
 }

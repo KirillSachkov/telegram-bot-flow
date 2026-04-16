@@ -1,7 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using TelegramBotFlow.Core.Context;
-using TelegramBotFlow.Core.Hosting;
 
 namespace TelegramBotFlow.Core.Pipeline.Middlewares;
 
@@ -14,11 +13,11 @@ internal sealed class ErrorHandlingMiddleware : IUpdateMiddleware
     public ErrorHandlingMiddleware(
         ILogger<ErrorHandlingMiddleware> logger,
         IUpdateResponder responder,
-        IOptions<BotConfiguration> config)
+        IOptions<BotMessages> messages)
     {
         _logger = logger;
         _responder = responder;
-        _errorMessage = config.Value.ErrorMessage;
+        _errorMessage = messages.Value.ErrorMessage;
     }
 
     public async Task InvokeAsync(UpdateContext context, UpdateDelegate next)
@@ -35,10 +34,11 @@ internal sealed class ErrorHandlingMiddleware : IUpdateMiddleware
         {
             _logger.LogError(
                 ex,
-                "Unhandled exception while processing update {UpdateId} for user {UserId} in chat {ChatId}",
-                context.Update.Id,
+                "Unhandled exception processing {UpdateType} from user {UserId} on screen {Screen}, handler {Handler}",
+                context.UpdateType,
                 context.UserId,
-                context.ChatId);
+                context.Session?.Navigation.CurrentScreen,
+                context.HandlerName);
 
             await TryNotifyUser(context);
             throw;

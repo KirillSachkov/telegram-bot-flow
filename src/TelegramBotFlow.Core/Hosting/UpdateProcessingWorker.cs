@@ -2,6 +2,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Telegram.Bot.Types;
 using TelegramBotFlow.Core.Context;
 using TelegramBotFlow.Core.Pipeline;
@@ -17,24 +18,27 @@ internal sealed class UpdateProcessingWorker : BackgroundService
     private readonly UpdatePipeline _pipeline;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<UpdateProcessingWorker> _logger;
+    private readonly BotConfiguration _config;
 
     public UpdateProcessingWorker(
         ChannelReader<Update> reader,
         UpdatePipeline pipeline,
         IServiceScopeFactory scopeFactory,
-        ILogger<UpdateProcessingWorker> logger)
+        ILogger<UpdateProcessingWorker> logger,
+        IOptions<BotConfiguration> config)
     {
         _reader = reader;
         _pipeline = pipeline;
         _scopeFactory = scopeFactory;
         _logger = logger;
+        _config = config.Value;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         var options = new ParallelOptions
         {
-            MaxDegreeOfParallelism = 100, // Hard limit to prevent DB pool exhaustion
+            MaxDegreeOfParallelism = _config.MaxConcurrentUpdates,
             CancellationToken = stoppingToken
         };
 

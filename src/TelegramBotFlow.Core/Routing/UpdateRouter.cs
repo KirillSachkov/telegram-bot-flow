@@ -52,6 +52,7 @@ internal sealed class UpdateRouter
                     route.Pattern ?? "(predicate)",
                     context.UserId);
 
+                context.HandlerName = route.Pattern ?? route.Type.ToString();
                 await route.Handler(context);
                 return;
             }

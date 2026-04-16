@@ -1,0 +1,49 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dotnet *)",
+      "Bash(git *)",
+      "Bash(ls *)",
+      "Bash(docker *)",
+      "Bash(docker compose *)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "filepath=\"$CLAUDE_FILE_PATH\"; if [[ \"$filepath\" == */Migrations/* && \"$filepath\" == *.cs ]]; then echo '⚠️  Migrations are immutable! Create a NEW migration instead of editing an existing one.' >&2; exit 2; fi",
+            "timeout": 5000
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "filepath=\"$CLAUDE_FILE_PATH\"; if [[ \"$filepath\" == *.cs || \"$filepath\" == *.csproj ]]; then (nohup uvx --from git+https://github.com/oraios/serena serena project index-file \"$filepath\" \"$CLAUDE_PROJECT_DIR\" >/dev/null 2>&1 &) ; fi",
+            "timeout": 3000
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "(nohup uvx --from git+https://github.com/oraios/serena serena project index \"$CLAUDE_PROJECT_DIR\" >/dev/null 2>&1 &)",
+            "timeout": 3000
+          }
+        ]
+      }
+    ]
+  }
+}

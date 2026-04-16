@@ -32,6 +32,8 @@ internal sealed class BotRuntime
         if (menuBuilder is not null)
             await ApplyMenuAsync(menuBuilder);
 
+        _app.MapGet(config.HealthCheckPath, () => Results.Ok(new { status = "healthy" }));
+
         await _app.RunAsync();
     }
 

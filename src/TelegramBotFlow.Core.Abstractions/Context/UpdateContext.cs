@@ -1,6 +1,7 @@
 ﻿using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using TelegramBotFlow.Core.Sessions;
+using TelegramBotFlow.Core.Users;
 
 namespace TelegramBotFlow.Core.Context;
 
@@ -35,6 +36,16 @@ public sealed class UpdateContext
     public bool IsAdmin { get; set; }
 
     /// <summary>
+    /// Current bot user, set by UserTrackingMiddleware. Null if middleware not registered.
+    /// </summary>
+    public IBotUser? User { get; internal set; }
+
+    /// <summary>
+    /// Name of the matched handler, set by UpdateRouter at dispatch time. For structured logging.
+    /// </summary>
+    public string? HandlerName { get; internal set; }
+
+    /// <summary>
     /// Идентификатор чата из update-а.
     /// </summary>
     public long ChatId { get; }
@@ -63,6 +74,47 @@ public sealed class UpdateContext
     /// Аргумент команды после пробела, например в <c>/start value</c>.
     /// </summary>
     public string? CommandArgument { get; }
+
+    /// <summary>
+    /// Массив фотографий из входящего сообщения (разные размеры одной фотографии).
+    /// </summary>
+    public PhotoSize[]? Photos { get; }
+
+    /// <summary>
+    /// Документ из входящего сообщения.
+    /// </summary>
+    public Document? Document { get; }
+
+    /// <summary>
+    /// Контакт из входящего сообщения.
+    /// </summary>
+    public Contact? Contact { get; }
+
+    /// <summary>
+    /// Локация из входящего сообщения.
+    /// </summary>
+    public Location? Location { get; }
+
+    /// <summary>
+    /// Голосовое сообщение из входящего сообщения.
+    /// </summary>
+    public Voice? Voice { get; }
+
+    /// <summary>
+    /// Видеосообщение (кружок) из входящего сообщения.
+    /// </summary>
+    public VideoNote? VideoNote { get; }
+
+    /// <summary>
+    /// Видео из входящего сообщения.
+    /// </summary>
+    public Video? Video { get; }
+
+    /// <summary>
+    /// Указывает, содержит ли сообщение медиа-контент (фото, документ, голосовое, видео, видеосообщение).
+    /// </summary>
+    public bool HasMedia => Photos != null || Document != null
+                         || Voice != null || Video != null || VideoNote != null;
 
     /// <summary>
     /// Тип входящего update.
@@ -96,6 +148,13 @@ public sealed class UpdateContext
         CallbackData = update.CallbackQuery?.Data;
         MessageText = update.Message?.Text;
         CommandArgument = ExtractCommandArgument(MessageText);
+        Photos = update.Message?.Photo;
+        Document = update.Message?.Document;
+        Contact = update.Message?.Contact;
+        Location = update.Message?.Location;
+        Voice = update.Message?.Voice;
+        VideoNote = update.Message?.VideoNote;
+        Video = update.Message?.Video;
     }
 
     // -- Extractors --

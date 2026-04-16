@@ -12,10 +12,15 @@ namespace TelegramBotFlow.Core.Wizards;
 /// Middleware должен удалить входящее текстовое сообщение пользователя.
 /// Решение принимает визард, а не middleware (отсутствует инспекция типа результата).
 /// </param>
+/// <param name="WasCancelled">
+/// Indicates the wizard was cancelled (e.g. GoBack from first step) rather than completed successfully.
+/// Middleware uses this to invoke <see cref="IBotWizard.OnCancelledAsync"/> before cleanup.
+/// </param>
 public sealed record WizardTransition(
     bool IsFinished,
     IEndpointResult? EndpointResult = null,
-    bool ShouldDeleteUserMessage = false);
+    bool ShouldDeleteUserMessage = false,
+    bool WasCancelled = false);
 
 /// <summary>
 /// Общий контракт для всех визардов, независимый от типа состояния.
@@ -41,4 +46,10 @@ public interface IBotWizard
     /// результатом <c>BotResults.Back()</c> для выхода из визарда.
     /// </summary>
     Task<WizardTransition> GoBackAsync(UpdateContext context, WizardStorageState storageState);
+
+    /// <summary>
+    /// Called when the wizard is cancelled (e.g. via /cancel, nav:menu, or back from first step).
+    /// Override to perform cleanup.
+    /// </summary>
+    Task OnCancelledAsync(UpdateContext context, WizardStorageState state);
 }

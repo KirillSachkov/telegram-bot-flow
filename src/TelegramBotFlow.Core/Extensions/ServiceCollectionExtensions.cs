@@ -1,13 +1,20 @@
-﻿using System.Reflection;
+﻿using System.Net;
+using System.Reflection;
 using System.Threading.Channels;
+using System.Threading.RateLimiting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Http.Resilience;
+using Polly;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using TelegramBotFlow.Core.Screens;
 using TelegramBotFlow.Core.Context;
 using TelegramBotFlow.Core.Hosting;
+using TelegramBotFlow.Core.Http;
+using TelegramBotFlow.Core.Messaging;
 using TelegramBotFlow.Core.Pipeline.Middlewares;
 using TelegramBotFlow.Core.Routing;
 using TelegramBotFlow.Core.Sessions;
@@ -22,12 +29,48 @@ public static class ServiceCollectionExtensions
         IConfiguration configuration)
     {
         services.Configure<BotConfiguration>(configuration.GetSection(BotConfiguration.SECTION_NAME));
+        services.Configure<BotMessages>(configuration.GetSection("Bot:Messages"));
 
         BotConfiguration botConfig = configuration.GetSection(BotConfiguration.SECTION_NAME).Get<BotConfiguration>()
                                      ?? throw new InvalidOperationException(
                                          $"Bot configuration section '{BotConfiguration.SECTION_NAME}' is missing or invalid.");
 
-        services.AddSingleton<ITelegramBotClient>(_ => new TelegramBotClient(botConfig.Token));
+        var rateLimiter = new TokenBucketRateLimiter(new TokenBucketRateLimiterOptions
+        {
+            TokenLimit = botConfig.TelegramRateLimitPerSecond,
+            ReplenishmentPeriod = TimeSpan.FromSeconds(1),
+            TokensPerPeriod = botConfig.TelegramRateLimitPerSecond,
+            QueueLimit = botConfig.TelegramRateLimitPerSecond * 10
+        });
+
+        services.AddHttpClient("telegram")
+            .AddHttpMessageHandler(() => new TelegramRateLimitHandler(rateLimiter))
+            .AddResilienceHandler("telegram-retry", builder =>
+            {
+                builder.AddRetry(new HttpRetryStrategyOptions
+                {
+                    MaxRetryAttempts = botConfig.MaxRetryOnRateLimit,
+                    BackoffType = DelayBackoffType.Exponential,
+                    ShouldHandle = args => ValueTask.FromResult(
+                        args.Outcome.Result?.StatusCode is
+                            HttpStatusCode.TooManyRequests or
+                            HttpStatusCode.InternalServerError or
+                            HttpStatusCode.ServiceUnavailable),
+                    DelayGenerator = args =>
+                    {
+                        if (args.Outcome.Result?.Headers.RetryAfter?.Delta is { } delta)
+                            return ValueTask.FromResult<TimeSpan?>(delta);
+                        return ValueTask.FromResult<TimeSpan?>(null);
+                    }
+                });
+            });
+
+        services.AddSingleton<ITelegramBotClient>(sp =>
+        {
+            var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+            var httpClient = httpClientFactory.CreateClient("telegram");
+            return new TelegramBotClient(botConfig.Token, httpClient);
+        });
 
         services.AddSingleton<PipelineHolder>();
         services.AddSingleton(sp => sp.GetRequiredService<PipelineHolder>().Pipeline);
@@ -43,6 +86,9 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ISessionStore, InMemorySessionStore>();
         services.AddSingleton<ISessionLockProvider, InMemorySessionLockProvider>();
 
+        services.AddSingleton<IBotNotifier, BotNotifier>();
+        services.AddSingleton<IBotBroadcaster, BotBroadcaster>();
+
         services.AddSingleton<InputHandlerRegistry>();
         services.AddScoped<PendingInputMiddleware>();
 
@@ -52,7 +98,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<SessionMiddleware>();
         services.AddScoped<AccessPolicyMiddleware>();
 
-        Channel<Update> updateChannel = Channel.CreateBounded<Update>(new BoundedChannelOptions(1000)
+        Channel<Update> updateChannel = Channel.CreateBounded<Update>(new BoundedChannelOptions(botConfig.UpdateChannelCapacity)
         {
             FullMode = BoundedChannelFullMode.Wait,
             SingleWriter = true,
@@ -65,6 +111,9 @@ public static class ServiceCollectionExtensions
             services.AddHostedService<PollingService>();
 
         services.AddHostedService<UpdateProcessingWorker>();
+
+        services.Configure<HostOptions>(opts =>
+            opts.ShutdownTimeout = TimeSpan.FromSeconds(botConfig.ShutdownTimeoutSeconds));
 
         return services;
     }
@@ -80,6 +129,7 @@ public static class ServiceCollectionExtensions
 
     public static IServiceCollection AddWizards(this IServiceCollection services, params Assembly[] assemblies)
     {
+        services.AddMemoryCache();
         services.AddSingleton<IWizardStore, InMemoryWizardStore>();
         services.AddScoped<IWizardLauncher, WizardLauncher>();
         services.AddScoped<WizardMiddleware>();

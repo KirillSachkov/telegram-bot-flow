@@ -1,4 +1,7 @@
-﻿namespace TelegramBotFlow.Core.Sessions;
+﻿using Microsoft.Extensions.Options;
+using TelegramBotFlow.Core.Hosting;
+
+namespace TelegramBotFlow.Core.Sessions;
 
 /// <summary>
 /// In-memory реализация провайдера блокировок сессий с использованием паттерна Striped Locking.
@@ -10,7 +13,13 @@ internal sealed class InMemorySessionLockProvider : ISessionLockProvider
     private readonly SemaphoreSlim[] _locks;
     private readonly TimeSpan _lockTimeout;
 
-    public InMemorySessionLockProvider(TimeSpan? lockTimeout = null)
+    public InMemorySessionLockProvider(IOptions<BotConfiguration> config)
+        : this(TimeSpan.FromSeconds(config.Value.SessionLockTimeoutSeconds))
+    {
+    }
+
+    /// <summary>Test-only constructor for explicit timeout override.</summary>
+    internal InMemorySessionLockProvider(TimeSpan? lockTimeout = null)
     {
         _lockTimeout = lockTimeout ?? TimeSpan.FromSeconds(10);
         _locks = new SemaphoreSlim[STRIPE_COUNT];

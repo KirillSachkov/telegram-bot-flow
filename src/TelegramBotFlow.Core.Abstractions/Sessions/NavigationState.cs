@@ -85,9 +85,14 @@ public sealed class NavigationState
         _navigationStack.AddRange(screenIds);
     }
 
-    // -- Payload store (LRU 500) --
+    // -- Payload store (LRU, configurable via BotConfiguration.PayloadCacheSize) --
 
-    private const int MAX_PAYLOADS = 500;
+    /// <summary>Maximum number of payloads to keep in the LRU cache.</summary>
+    internal int MaxPayloads { get; set; } = 500;
+
+    /// <summary>Maximum depth of the navigation stack.</summary>
+    internal int MaxNavigationDepth { get; set; } = 20;
+
     private readonly Dictionary<string, string> _payloads = [];
     private readonly LinkedList<string> _payloadOrder = new();
 
@@ -99,7 +104,7 @@ public sealed class NavigationState
             return;
         }
 
-        if (_payloads.Count >= MAX_PAYLOADS)
+        if (_payloads.Count >= MaxPayloads)
         {
             string oldest = _payloadOrder.First!.Value;
             _payloadOrder.RemoveFirst();
@@ -148,8 +153,8 @@ public sealed class NavigationState
             {
                 _navigationStack.Add(CurrentScreen);
 
-                if (_navigationStack.Count > UserSession.MAX_NAVIGATION_DEPTH)
-                    _navigationStack.RemoveRange(0, _navigationStack.Count - UserSession.MAX_NAVIGATION_DEPTH);
+                if (_navigationStack.Count > MaxNavigationDepth)
+                    _navigationStack.RemoveRange(0, _navigationStack.Count - MaxNavigationDepth);
             }
         }
 

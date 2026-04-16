@@ -23,16 +23,16 @@ try
     builder.Services.AddScreens(typeof(Program).Assembly);
     builder.Services.AddWizards(typeof(Program).Assembly);
 
-    BotApplication app = builder.Build();
+    builder.UseErrorHandling();
+    builder.UseLogging();
+    builder.UsePrivateChatOnly();
+    builder.UseSession();
+    builder.UseAccessPolicy();
+    builder.UseWizards();
+    builder.Use<UserTrackingMiddleware<BotUser>>();
+    builder.UsePendingInput();
 
-    app.UseErrorHandling();
-    app.UseLogging();
-    app.UsePrivateChatOnly();
-    app.UseSession();
-    app.UseAccessPolicy();
-    app.UseWizards();
-    app.Use<UserTrackingMiddleware<BotUser>>();
-    app.UsePendingInput();
+    BotApplication app = builder.Build();
 
     app.SetMenu(menu => menu
         .Command("start", "Главное меню"));

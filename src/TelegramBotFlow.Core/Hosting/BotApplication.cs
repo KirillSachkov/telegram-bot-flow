@@ -5,21 +5,21 @@ using TelegramBotFlow.Core.Context;
 using TelegramBotFlow.Core.Endpoints;
 using TelegramBotFlow.Core.Extensions;
 using TelegramBotFlow.Core.Pipeline;
-using TelegramBotFlow.Core.Pipeline.Middlewares;
 using TelegramBotFlow.Core.Screens;
 using TelegramBotFlow.Core.UI;
 
 namespace TelegramBotFlow.Core.Hosting;
 
 /// <summary>
-/// Центральный API конфигурации middleware, маршрутов и запуска Telegram-бота.
+/// Центральный API регистрации маршрутов и запуска Telegram-бота.
+/// Middleware регистрируется через <see cref="BotApplicationBuilder"/>.
 /// </summary>
 public sealed class BotApplication
 {
     private readonly WebApplication _app;
     private readonly UpdateRouter _router;
-    private readonly List<Func<UpdateDelegate, UpdateDelegate>> _middlewares = [];
-    private readonly List<string> _registeredMiddleware = [];
+    private readonly List<Func<UpdateDelegate, UpdateDelegate>> _middlewares;
+    private readonly List<string> _registeredMiddleware;
     private MenuBuilder? _menuBuilder;
 
     /// <summary>
@@ -32,10 +32,16 @@ public sealed class BotApplication
     /// </summary>
     public WebApplication WebApp => _app;
 
-    private BotApplication(WebApplication app, UpdateRouter router)
+    private BotApplication(
+        WebApplication app,
+        UpdateRouter router,
+        List<Func<UpdateDelegate, UpdateDelegate>> middlewares,
+        List<string> registeredMiddleware)
     {
         _app = app;
         _router = router;
+        _middlewares = middlewares;
+        _registeredMiddleware = registeredMiddleware;
     }
 
     /// <summary>
@@ -58,96 +64,7 @@ public sealed class BotApplication
 
         UpdateRouter router = app.Services.GetRequiredService<UpdateRouter>();
 
-        return new BotApplication(app, router);
-    }
-
-    // -- Middleware registration --
-
-    /// <summary>
-    /// Добавляет middleware-фабрику в pipeline обработки update-ов.
-    /// </summary>
-    /// <param name="middleware">Фабрика middleware-делегата.</param>
-    /// <returns>Текущий экземпляр приложения для fluent-конфигурации.</returns>
-    public BotApplication Use(Func<UpdateDelegate, UpdateDelegate> middleware)
-    {
-        _middlewares.Add(middleware);
-        return this;
-    }
-
-    /// <summary>
-    /// Добавляет middleware, резолвимый из DI-контейнера.
-    /// </summary>
-    /// <typeparam name="TMiddleware">Тип middleware, реализующий <see cref="IUpdateMiddleware"/>.</typeparam>
-    /// <returns>Текущий экземпляр приложения для fluent-конфигурации.</returns>
-    public BotApplication Use<TMiddleware>() where TMiddleware : IUpdateMiddleware
-    {
-        _middlewares.Add(next => async context =>
-        {
-            TMiddleware middleware = context.RequestServices.GetRequiredService<TMiddleware>();
-            await middleware.InvokeAsync(context, next);
-        });
-
-        return this;
-    }
-
-    /// <summary>
-    /// Добавляет middleware глобальной обработки исключений.
-    /// </summary>
-    /// <returns>Текущий экземпляр приложения для fluent-конфигурации.</returns>
-    public BotApplication UseErrorHandling()
-    {
-        _registeredMiddleware.Add("error_handling");
-        return Use<ErrorHandlingMiddleware>();
-    }
-
-    /// <summary>
-    /// Добавляет middleware логирования обработки update-ов.
-    /// </summary>
-    /// <returns>Текущий экземпляр приложения для fluent-конфигурации.</returns>
-    public BotApplication UseLogging() => Use<LoggingMiddleware>();
-
-    /// <summary>
-    /// Добавляет middleware, блокирующий запросы не из личных чатов (группы, другие каналы).
-    /// </summary>
-    /// <returns>Текущий экземпляр приложения для fluent-конфигурации.</returns>
-    public BotApplication UsePrivateChatOnly() => Use<PrivateChatOnlyMiddleware>();
-
-    /// <summary>
-    /// Добавляет middleware загрузки и сохранения пользовательской сессии.
-    /// </summary>
-    /// <returns>Текущий экземпляр приложения для fluent-конфигурации.</returns>
-    public BotApplication UseSession()
-    {
-        _registeredMiddleware.Add("session");
-        return Use<SessionMiddleware>();
-    }
-
-    /// <summary>
-    /// Добавляет middleware обработки визардов (форм). Перехватывает update-ы для активного визарда.
-    /// Должен быть добавлен после UseSession().
-    /// </summary>
-    /// <returns>Текущий экземпляр приложения для fluent-конфигурации.</returns>
-    public BotApplication UseWizards()
-    {
-        _registeredMiddleware.Add("wizards");
-        return Use<WizardMiddleware>();
-    }
-
-    /// <summary>
-    /// Добавляет middleware вычисления административного доступа пользователя.
-    /// </summary>
-    /// <returns>Текущий экземпляр приложения для fluent-конфигурации.</returns>
-    public BotApplication UseAccessPolicy() => Use<AccessPolicyMiddleware>();
-
-    /// <summary>
-    /// Adds a middleware that intercepts incoming text messages and routes them to the
-    /// registered input handler when <c>session.PendingInputActionId</c> is set.
-    /// Must be added after <c>UseSession()</c>.
-    /// </summary>
-    public BotApplication UsePendingInput()
-    {
-        _registeredMiddleware.Add("pending_input");
-        return Use<PendingInputMiddleware>();
+        return new BotApplication(app, router, builder.Middlewares, builder.RegisteredMiddleware);
     }
 
     // -- Route registration (Minimal API style with DI) --
@@ -161,6 +78,21 @@ public sealed class BotApplication
     public BotApplication MapCommand(string command, Delegate handler)
     {
         _router.AddRoute(RouteEntry.Command(command, HandlerDelegateFactory.Create(handler)));
+        return this;
+    }
+
+    /// <summary>
+    /// Maps a deep link handler for <c>/command</c> with payload (e.g. <c>/start ref_abc</c>).
+    /// Higher priority than <see cref="MapCommand"/>; the payload is available via
+    /// <see cref="UpdateContext.CommandArgument"/>.
+    /// </summary>
+    /// <param name="command">Command with or without leading <c>/</c>.</param>
+    /// <param name="handler">Handler delegate.</param>
+    /// <returns>Current instance for fluent configuration.</returns>
+    public BotApplication MapDeepLink(string command, Delegate handler)
+    {
+        var route = RouteEntry.DeepLink(command, HandlerDelegateFactory.Create(handler));
+        _router.AddRoute(route);
         return this;
     }
 
@@ -271,6 +203,19 @@ public sealed class BotApplication
     public BotApplication MapMessage(Func<UpdateContext, bool> predicate, Delegate handler)
     {
         _router.AddRoute(RouteEntry.Message(predicate, HandlerDelegateFactory.Create(handler)));
+        return this;
+    }
+
+    /// <summary>
+    /// Registers a handler for <see cref="Telegram.Bot.Types.Update.MyChatMember"/> updates
+    /// (e.g. when a user blocks/unblocks the bot).
+    /// </summary>
+    /// <param name="handler">Handler delegate.</param>
+    /// <returns>Current instance for fluent configuration.</returns>
+    public BotApplication MapChatMember(Delegate handler)
+    {
+        var route = RouteEntry.ChatMember(HandlerDelegateFactory.Create(handler));
+        _router.AddRoute(route);
         return this;
     }
 
