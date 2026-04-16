@@ -5,6 +5,7 @@ using System.Threading.RateLimiting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Http.Resilience;
 using Polly;
 using Telegram.Bot;
@@ -110,6 +111,9 @@ public static class ServiceCollectionExtensions
             services.AddHostedService<PollingService>();
 
         services.AddHostedService<UpdateProcessingWorker>();
+
+        services.Configure<HostOptions>(opts =>
+            opts.ShutdownTimeout = TimeSpan.FromSeconds(botConfig.ShutdownTimeoutSeconds));
 
         return services;
     }
