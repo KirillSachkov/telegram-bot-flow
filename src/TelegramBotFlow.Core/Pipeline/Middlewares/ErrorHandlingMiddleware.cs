@@ -34,10 +34,11 @@ internal sealed class ErrorHandlingMiddleware : IUpdateMiddleware
         {
             _logger.LogError(
                 ex,
-                "Unhandled exception while processing update {UpdateId} for user {UserId} in chat {ChatId}",
-                context.Update.Id,
+                "Unhandled exception processing {UpdateType} from user {UserId} on screen {Screen}, handler {Handler}",
+                context.UpdateType,
                 context.UserId,
-                context.ChatId);
+                context.Session?.Navigation.CurrentScreen,
+                context.HandlerName);
 
             await TryNotifyUser(context);
             throw;
