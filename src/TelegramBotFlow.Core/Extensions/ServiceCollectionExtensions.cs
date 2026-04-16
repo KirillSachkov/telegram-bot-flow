@@ -22,6 +22,7 @@ public static class ServiceCollectionExtensions
         IConfiguration configuration)
     {
         services.Configure<BotConfiguration>(configuration.GetSection(BotConfiguration.SECTION_NAME));
+        services.Configure<BotMessages>(configuration.GetSection("Bot:Messages"));
 
         BotConfiguration botConfig = configuration.GetSection(BotConfiguration.SECTION_NAME).Get<BotConfiguration>()
                                      ?? throw new InvalidOperationException(

@@ -11,10 +11,20 @@ public sealed class BotConfiguration
     public string? WebhookUrl { get; set; }
     public string WebhookPath { get; set; } = "/api/bot/webhook";
     public long[] AdminUserIds { get; set; } = [];
-    public string ErrorMessage { get; set; } = "An error occurred. Please try again later.";
     public long StorageChannelId { get; set; }
     public UpdateType[] AllowedUpdates { get; set; } = [UpdateType.Message, UpdateType.CallbackQuery];
     public string? WebhookSecretToken { get; set; }
+
+    public int PayloadCacheSize { get; set; } = 500;
+    public int SessionLockTimeoutSeconds { get; set; } = 10;
+    public int MaxConcurrentUpdates { get; set; } = 100;
+    public int MaxNavigationDepth { get; set; } = 20;
+    public int UpdateChannelCapacity { get; set; } = 1000;
+    public int WizardDefaultTtlMinutes { get; set; } = 60;
+    public int ShutdownTimeoutSeconds { get; set; } = 30;
+    public int TelegramRateLimitPerSecond { get; set; } = 25;
+    public int MaxRetryOnRateLimit { get; set; } = 3;
+    public string HealthCheckPath { get; set; } = "/health";
 }
 
 public enum BotMode

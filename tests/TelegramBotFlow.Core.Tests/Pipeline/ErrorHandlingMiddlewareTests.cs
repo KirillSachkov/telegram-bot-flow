@@ -3,8 +3,8 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
+using TelegramBotFlow.Core;
 using TelegramBotFlow.Core.Context;
-using TelegramBotFlow.Core.Hosting;
 using TelegramBotFlow.Core.Pipeline.Middlewares;
 using UpdateContext = TelegramBotFlow.Core.Context.UpdateContext;
 
@@ -19,12 +19,8 @@ public sealed class ErrorHandlingMiddlewareTests
     {
         _responder = Substitute.For<IUpdateResponder>();
 
-        var config = new BotConfiguration
-        {
-            Token = "test-token",
-            ErrorMessage = "An error occurred. Please try again later."
-        };
-        IOptions<BotConfiguration> options = Options.Create(config);
+        var messages = new BotMessages();
+        IOptions<BotMessages> options = Options.Create(messages);
         ILogger<ErrorHandlingMiddleware> logger = NullLogger<ErrorHandlingMiddleware>.Instance;
 
         _middleware = new ErrorHandlingMiddleware(logger, _responder, options);
