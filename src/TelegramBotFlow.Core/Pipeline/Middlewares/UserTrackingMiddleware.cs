@@ -29,13 +29,21 @@ public sealed class UserTrackingMiddleware<TUser> : IUpdateMiddleware
         if (context.UserId != 0)
         {
             long userId = context.UserId;
-            if (!_knownUsers.TryGetValue(userId, out _))
+            if (!_knownUsers.TryGetValue(userId, out TUser? cached))
             {
                 TUser? existing = await _userStore.FindByTelegramIdAsync(userId, context.CancellationToken);
                 if (existing is null)
-                    await _userStore.CreateAsync(new TUser { TelegramId = userId }, context.CancellationToken);
+                {
+                    existing = new TUser { TelegramId = userId };
+                    await _userStore.CreateAsync(existing, context.CancellationToken);
+                }
 
-                _knownUsers.Set(userId, true, _cacheOptions);
+                _knownUsers.Set(userId, existing, _cacheOptions);
+                context.User = existing;
+            }
+            else
+            {
+                context.User = cached;
             }
         }
 

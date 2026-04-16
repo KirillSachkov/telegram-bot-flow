@@ -1,6 +1,7 @@
 ﻿using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using TelegramBotFlow.Core.Sessions;
+using TelegramBotFlow.Core.Users;
 
 namespace TelegramBotFlow.Core.Context;
 
@@ -33,6 +34,16 @@ public sealed class UpdateContext
     /// Флаг административного доступа, вычисляемый политикой доступа.
     /// </summary>
     public bool IsAdmin { get; set; }
+
+    /// <summary>
+    /// Current bot user, set by UserTrackingMiddleware. Null if middleware not registered.
+    /// </summary>
+    public IBotUser? User { get; internal set; }
+
+    /// <summary>
+    /// Name of the matched handler, set by UpdateRouter at dispatch time. For structured logging.
+    /// </summary>
+    public string? HandlerName { get; internal set; }
 
     /// <summary>
     /// Идентификатор чата из update-а.
