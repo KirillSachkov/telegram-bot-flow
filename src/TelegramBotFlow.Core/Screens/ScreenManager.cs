@@ -1,7 +1,10 @@
 ﻿using Microsoft.Extensions.Logging;
+using Telegram.Bot;
 using Telegram.Bot.Types;
+using Telegram.Bot.Types.ReplyMarkups;
 using TelegramBotFlow.Core.Context;
 using TelegramBotFlow.Core.Sessions;
+using TelegramBotFlow.Core.UI;
 
 namespace TelegramBotFlow.Core.Screens;
 
@@ -13,15 +16,18 @@ internal sealed class ScreenManager
 {
     private readonly ScreenRegistry _registry;
     private readonly IScreenMessageRenderer _messageRenderer;
+    private readonly ITelegramBotClient _bot;
     private readonly ILogger<ScreenManager> _logger;
 
     public ScreenManager(
         ScreenRegistry registry,
         IScreenMessageRenderer messageRenderer,
+        ITelegramBotClient bot,
         ILogger<ScreenManager> logger)
     {
         _registry = registry;
         _messageRenderer = messageRenderer;
+        _bot = bot;
         _logger = logger;
     }
 
@@ -63,6 +69,8 @@ internal sealed class ScreenManager
 
             foreach (KeyValuePair<string, string> kvp in payloads)
                 session.Navigation.StorePayloadJson(kvp.Key, kvp.Value);
+
+            await HandleReplyKeyboardAsync(ctx, view, session);
         }
     }
 
@@ -110,7 +118,55 @@ internal sealed class ScreenManager
             foreach (KeyValuePair<string, string> kvp in payloads)
                 session.Navigation.StorePayloadJson(kvp.Key, kvp.Value);
 
+            await HandleReplyKeyboardAsync(ctx, view, session);
+
             session.Navigation.ClearNavigationArgs();
+        }
+    }
+
+    /// <summary>
+    /// Sends or removes reply keyboard based on ScreenView configuration.
+    /// Reply keyboard requires a separate message because Telegram doesn't allow
+    /// InlineKeyboardMarkup and ReplyKeyboardMarkup on the same message.
+    /// </summary>
+    private async Task HandleReplyKeyboardAsync(UpdateContext ctx, ScreenView view, UserSession session)
+    {
+        bool hadReplyKeyboard = session.Navigation.HasActiveReplyKeyboard;
+        bool wantsReplyKeyboard = view.ReplyKeyboard != null;
+        bool wantsRemove = view.ShouldRemoveReplyKeyboard;
+
+        if (wantsReplyKeyboard)
+        {
+            ReplyKeyboardMarkup markup = view.ReplyKeyboard!.Resize().Build();
+            try
+            {
+                await _bot.SendMessage(
+                    ctx.ChatId,
+                    "\u200B", // zero-width space — invisible carrier message
+                    replyMarkup: markup,
+                    cancellationToken: ctx.CancellationToken);
+                session.Navigation.HasActiveReplyKeyboard = true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to send reply keyboard for user {UserId}", ctx.UserId);
+            }
+        }
+        else if (hadReplyKeyboard && (wantsRemove || !wantsReplyKeyboard))
+        {
+            try
+            {
+                await _bot.SendMessage(
+                    ctx.ChatId,
+                    "\u200B",
+                    replyMarkup: new ReplyKeyboardRemove(),
+                    cancellationToken: ctx.CancellationToken);
+                session.Navigation.HasActiveReplyKeyboard = false;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to remove reply keyboard for user {UserId}", ctx.UserId);
+            }
         }
     }
 }

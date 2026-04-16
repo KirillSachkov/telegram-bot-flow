@@ -21,6 +21,9 @@ public sealed class NavigationState
     /// <summary>Тип медиа в текущем nav-сообщении.</summary>
     public ScreenMediaType CurrentMediaType { get; internal set; } = ScreenMediaType.None;
 
+    /// <summary>Whether the current screen has an active reply keyboard.</summary>
+    public bool HasActiveReplyKeyboard { get; internal set; }
+
     private readonly List<string> _navigationStack = [];
 
     /// <summary>
