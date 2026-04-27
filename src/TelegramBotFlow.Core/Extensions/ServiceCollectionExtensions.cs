@@ -88,6 +88,7 @@ public static class ServiceCollectionExtensions
 
         services.AddSingleton<IBotNotifier, BotNotifier>();
         services.AddSingleton<IBotBroadcaster, BotBroadcaster>();
+        services.AddSingleton<IChatAdministrationApi, ChatAdministrationApi>();
 
         services.AddSingleton<InputHandlerRegistry>();
         services.AddScoped<PendingInputMiddleware>();

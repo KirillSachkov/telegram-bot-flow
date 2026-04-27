@@ -244,6 +244,48 @@ public class MyService(IBotBroadcaster broadcaster)
 }
 ```
 
+### Chat administration (IChatAdministrationApi)
+
+Admin-операции над чатами/каналами: resolve, проверка прав/членства, invite-link CRUD,
+approve/decline `chat_join_request`, kick. Все методы возвращают `ChatApiResult<T>` —
+никаких exception'ов на бизнес-фейлы (минимальный Result-тип в `Core.Abstractions`,
+чтобы не тащить CSharpFunctionalExtensions в contracts).
+
+```csharp
+public class CourseChatBinder(IChatAdministrationApi chatApi)
+{
+    public async Task<string?> BindChatAsync(long chatId)
+    {
+        ChatApiResult<BotChatPermissions> perms = await chatApi.GetBotPermissionsAsync(chatId);
+        if (perms.IsFailure || !perms.Value!.IsAdministrator) return null;
+
+        ChatApiResult<string> link = await chatApi.CreateJoinRequestInviteLinkAsync(
+            chatId, name: "course-XXX");
+
+        return link.IsSuccess ? link.Value : null;
+    }
+}
+
+// Approve/decline join request handler:
+app.MapUpdate(
+    ctx => ctx.Update.Type == UpdateType.ChatJoinRequest,
+    async (UpdateContext ctx, IChatAdministrationApi chatApi) =>
+    {
+        var req = ctx.Update.ChatJoinRequest!;
+        ChatApiResult<ChatMemberInfo> member = await chatApi.GetChatMemberAsync(req.Chat.Id, req.From.Id);
+        if (member.IsSuccess && member.Value!.IsActiveMember)
+            await chatApi.ApproveChatJoinRequestAsync(req.Chat.Id, req.From.Id);
+        else
+            await chatApi.DeclineChatJoinRequestAsync(req.Chat.Id, req.From.Id);
+        return BotResults.Empty();
+    });
+```
+
+`ChatMembership` enum: `NOT_MEMBER | MEMBER | ADMINISTRATOR | CREATOR | RESTRICTED_BUT_MEMBER`.
+`ChatApiErrorCode` enum: `None | ChatNotReachable | RateLimited | Other`.
+
+`KickChatMemberAsync` = ban + unban сразу — выкинуть юзера, но позволить ему снова вступить через invite link. Permanent ban делается через прямой вызов `Telegram.Bot.ITelegramBotClient.BanChatMember`.
+
 ### Deep link routing
 
 Route `/start payload` deep links with HIGH priority:
@@ -292,7 +334,7 @@ builder.Services.Configure<BotMessages>(m =>
 });
 ```
 
-`AddTelegramBotFlow` registers `IBotNotifier` and `IBotBroadcaster` automatically.
+`AddTelegramBotFlow` registers `IBotNotifier`, `IBotBroadcaster`, and `IChatAdministrationApi` automatically.
 
 ## Configuration
 
