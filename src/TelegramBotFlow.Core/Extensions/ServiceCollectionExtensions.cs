@@ -47,6 +47,16 @@ public static class ServiceCollectionExtensions
             .AddHttpMessageHandler(() => new TelegramRateLimitHandler(rateLimiter))
             .AddResilienceHandler("telegram-retry", builder =>
             {
+                // Per-attempt timeout — caps how long a single Telegram HTTP call can block
+                // before Polly fails the attempt. Without it, slow TG responses (50s+
+                // observed in prod) blocked Wolverine handlers past their own timeout,
+                // causing handler retries with the same payload → duplicate messages
+                // delivered to users.
+                if (botConfig.TelegramRequestTimeoutSeconds > 0)
+                {
+                    builder.AddTimeout(TimeSpan.FromSeconds(botConfig.TelegramRequestTimeoutSeconds));
+                }
+
                 builder.AddRetry(new HttpRetryStrategyOptions
                 {
                     MaxRetryAttempts = botConfig.MaxRetryOnRateLimit,
@@ -55,7 +65,11 @@ public static class ServiceCollectionExtensions
                         args.Outcome.Result?.StatusCode is
                             HttpStatusCode.TooManyRequests or
                             HttpStatusCode.InternalServerError or
-                            HttpStatusCode.ServiceUnavailable),
+                            HttpStatusCode.ServiceUnavailable
+                        // Timeouts из AddTimeout — тоже retry-able. Если TG отдаёт
+                        // медленно из-за всплеска нагрузки, exponential backoff даст
+                        // ему шанс восстановиться без эскалации к Wolverine retry.
+                        || args.Outcome.Exception is Polly.Timeout.TimeoutRejectedException),
                     DelayGenerator = args =>
                     {
                         if (args.Outcome.Result?.Headers.RetryAfter?.Delta is { } delta)
