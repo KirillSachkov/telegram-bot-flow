@@ -18,6 +18,37 @@ Tests:
 - `tests/TelegramBotFlow.Core.Tests` -- unit tests
 - `tests/TelegramBotFlow.IntegrationTests` -- integration tests (Redis via Testcontainers)
 
+## Feature Folder Convention
+
+Каждая фича в `App/Features/{FeatureName}/` (и в любом сервисе, использующем TBF) разбита на роль-папки. Цель — чётко отделить **рендер UI** от **бизнес-логики** и **роутинга TBF pipeline'а**:
+
+| Папка | Что лежит | Тип | Когда заводится |
+|---|---|---|---|
+| `Screens/` | `IScreen` impls — только рендер `ScreenView` | UI | у фичи есть экраны (≥1 IScreen) |
+| `Endpoints/` | `IBotEndpoint` impls + `IBotAction` маркеры — TBF route mappings | Routing | у фичи есть commands / callback actions / deep-links |
+| `Handlers/` | Scoped DI services с реальной логикой; вызываются из endpoint'ов через DI-параметр | Business | endpoint вырастает за 20 строк или нужна тестируемость без `BotApplication` |
+| `Wizards/` | `BotWizard<TState>` impls + State-классы (`{Name}State.cs` + `{Name}Wizard.cs` рядом) | Multi-step | многошаговый FSM флоу |
+| `Middleware/` | `IUpdateMiddleware` impls (фича-специфичные) | Pipeline | редко |
+| `Services/` | `IHostedService`, periodic jobs, доменные services | Background | startup/scheduled jobs или сервисы, переиспользуемые между endpoint'ами |
+
+Namespace всегда зеркалит путь до файла: `TelegramBotFlow.App.Features.{Feature}.Screens`, `...Features.{Feature}.Endpoints` и т.д. — это согласуется с уже существующей `UseCases/` конвенцией для HTTP IEndpoint'ов в сервисах.
+
+**Endpoint vs Handler convention.** `IBotEndpoint` — только маппинг команды/deep-link/callback на TBF pipeline (короткий файл, никакой бизнес-логики). Тяжёлая логика выносится в обычный класс-handler со scoped DI-регистрацией — handler инъектится как параметр TBF-делегата и тестируется юнит-тестами без поднятия `BotApplication`.
+
+```
+Features/
+  Onboarding/
+    Endpoints/
+      ProfileSetupEndpoint.cs    # StartProfileSetupAction + IBotEndpoint
+    Wizards/
+      ProfileSetupState.cs       # public class ProfileSetupState
+      ProfileSetupWizard.cs      # BotWizard<ProfileSetupState>
+    Screens/
+      ProfileSetupResultScreen.cs
+```
+
+Все три роли auto-discovery'тся стандартными extension-методами: `AddScreens(typeof(Program).Assembly)`, `AddBotEndpoints(...)`, `AddWizards(...)`. Папки сами по себе не влияют на DI.
+
 ## Build & Test Commands
 
 ```bash

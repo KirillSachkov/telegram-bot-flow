@@ -1,5 +1,5 @@
 ﻿using Serilog;
-using TelegramBotFlow.App.Features.MainMenu;
+using TelegramBotFlow.App.Features.MainMenu.Screens;
 using TelegramBotFlow.Core.Data;
 using TelegramBotFlow.Core.Pipeline.Middlewares;
 using TelegramBotFlow.Core.Endpoints;

@@ -7,7 +7,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using NSubstitute;
 using Telegram.Bot;
 using Telegram.Bot.Types;
-using TelegramBotFlow.App.Features.MainMenu;
+using TelegramBotFlow.App.Features.MainMenu.Screens;
 using TelegramBotFlow.Core.Context;
 using TelegramBotFlow.Core.Data;
 using TelegramBotFlow.Core.Screens;
