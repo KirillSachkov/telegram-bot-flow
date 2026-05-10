@@ -75,6 +75,7 @@ public sealed class RedisSessionStore : ISessionStore
             NavMessageId = session.Navigation.NavMessageId,
             CurrentMediaType = session.Navigation.CurrentMediaType,
             HasActiveReplyKeyboard = session.Navigation.HasActiveReplyKeyboard,
+            IsActionViewActive = session.Navigation.IsActionViewActive,
             NavigationStack = session.Navigation.NavigationStack.Count > 0
                 ? [.. session.Navigation.NavigationStack]
                 : null,
@@ -102,6 +103,7 @@ public sealed class RedisSessionStore : ISessionStore
         session.Navigation.NavMessageId = payload.NavMessageId;
         session.Navigation.CurrentMediaType = payload.CurrentMediaType;
         session.Navigation.HasActiveReplyKeyboard = payload.HasActiveReplyKeyboard;
+        session.Navigation.IsActionViewActive = payload.IsActionViewActive;
         if (payload.NavigationStack is { Count: > 0 })
             session.Navigation.PopulateNavigationStack(payload.NavigationStack);
         session.Navigation.PendingInputActionId = payload.PendingInputActionId;
@@ -129,6 +131,7 @@ public sealed class RedisSessionStore : ISessionStore
         public int? NavMessageId { get; init; }
         public ScreenMediaType CurrentMediaType { get; init; }
         public bool HasActiveReplyKeyboard { get; init; }
+        public bool IsActionViewActive { get; init; }
         public List<string>? NavigationStack { get; init; }
         public string? PendingInputActionId { get; init; }
         public string? ActiveWizardId { get; init; }

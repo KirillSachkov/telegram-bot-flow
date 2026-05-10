@@ -5,7 +5,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <PackageId>TelegramBotFlow.Core.Redis</PackageId>
-    <Version>1.0.0</Version>
+    <Version>1.0.1</Version>
     <Authors>SachkovTech</Authors>
     <Description>Redis session store для TelegramBotFlow — опциональная зависимость</Description>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
