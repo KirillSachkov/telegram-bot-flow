@@ -24,6 +24,14 @@ public sealed class NavigationState
     /// <summary>Whether the current screen has an active reply keyboard.</summary>
     public bool HasActiveReplyKeyboard { get; internal set; }
 
+    /// <summary>
+    /// True пока поверх <see cref="CurrentScreen"/> показано временное представление,
+    /// рендеренное через <c>BotResults.ShowView(...)</c>. Влияет на семантику <c>BackButton</c>:
+    /// «Назад» на action-view закрывает overlay и возвращает на текущий экран, а не делает
+    /// pop из <see cref="NavigationStack"/>. Сбрасывается при следующем рендере любого экрана.
+    /// </summary>
+    public bool IsActionViewActive { get; internal set; }
+
     private readonly List<string> _navigationStack = [];
 
     /// <summary>
@@ -193,6 +201,7 @@ public sealed class NavigationState
         CurrentScreen = null;
         _navigationStack.Clear();
         PendingInputActionId = null;
+        IsActionViewActive = false;
         ClearNavigationArgs();
         // NavMessageId и CurrentMediaType сохраняются — бот редактирует существующее сообщение
     }
@@ -206,6 +215,7 @@ public sealed class NavigationState
         _navigationStack.Clear();
         PendingInputActionId = null;
         ActiveWizardId = null;
+        IsActionViewActive = false;
         _navArgs.Clear();
         _payloads.Clear();
         _payloadOrder.Clear();
