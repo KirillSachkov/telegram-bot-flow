@@ -63,6 +63,9 @@ internal sealed class ScreenManager
         {
             session.Navigation.NavMessageId = sentMessage.Id;
             session.Navigation.CurrentMediaType = view.MediaType;
+            // Помечаем что поверх CurrentScreen активна временная overlay'я. Любой следующий
+            // рендер «настоящего» экрана (или NavigateBackAsync) снимет флаг.
+            session.Navigation.IsActionViewActive = true;
 
             if (view.PendingInputActionId is not null)
                 session.Navigation.PendingInputActionId = view.PendingInputActionId;
@@ -110,6 +113,8 @@ internal sealed class ScreenManager
 
             session.Navigation.NavMessageId = sentMessage.Id;
             session.Navigation.CurrentMediaType = newMediaType;
+            // Любой рендер «настоящего» экрана снимает флаг overlay'я.
+            session.Navigation.IsActionViewActive = false;
 
             // View может явно задать pending input (перекрывает сброс из PushScreen)
             if (view.PendingInputActionId is not null)

@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.1] - 2026-05-10
+
+### Fixed
+- `BackButton` на временном представлении, показанном через `BotResults.ShowView(...)`,
+  теперь закрывает overlay и возвращает пользователя на `CurrentScreen`, а не делает pop
+  из `NavigationStack`. Раньше callback `nav:back` на action-view ошибочно попадал в
+  обычный `NavigateBackAsync` и юзер уезжал на экран *до* `CurrentScreen`, поверх
+  которого overlay был показан. Введён `NavigationState.IsActionViewActive` (выставляется
+  в `ShowViewAsync`, сбрасывается при любом рендере экрана), который различает два режима
+  Back. Поведение `BackButton` на обычном screen-view не изменилось.
+
 ## [1.0.0] - 2026-04-15
 
 ### Removed

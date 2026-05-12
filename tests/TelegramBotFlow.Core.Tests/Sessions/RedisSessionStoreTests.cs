@@ -192,6 +192,27 @@ public sealed class RedisSessionStoreTests
         restored.Navigation.PendingInputActionId.Should().BeNull();
     }
 
+    [Fact]
+    public void Roundtrip_PreservesIsActionViewActive_True()
+    {
+        var session = new UserSession(42);
+        session.Navigation.IsActionViewActive = true;
+
+        UserSession restored = Roundtrip(session, 42);
+
+        restored.Navigation.IsActionViewActive.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Roundtrip_PreservesIsActionViewActive_FalseDefault()
+    {
+        var session = new UserSession(42);
+
+        UserSession restored = Roundtrip(session, 42);
+
+        restored.Navigation.IsActionViewActive.Should().BeFalse();
+    }
+
     // ── Roundtrip ─────────────────────────────────────────────────────────────
 
     [Fact]
