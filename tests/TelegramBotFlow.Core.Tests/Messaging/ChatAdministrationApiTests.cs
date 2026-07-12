@@ -176,6 +176,34 @@ public class ChatAdministrationApiTests
         result.ErrorCode.Should().Be(ChatApiErrorCode.ChatNotReachable);
     }
 
+    [Theory]
+    [InlineData(429, ChatApiErrorCode.RateLimited)]
+    [InlineData(500, ChatApiErrorCode.ServiceUnavailable)]
+    public async Task ApproveChatJoinRequestAsync_TransientApiException_IsClassified(
+        int statusCode,
+        ChatApiErrorCode expected)
+    {
+        _bot.SendRequest(Arg.Any<IRequest<bool>>(), Arg.Any<CancellationToken>())
+            .Throws(new ApiRequestException("transient", statusCode));
+
+        ChatApiResult<bool> result = await _api.ApproveChatJoinRequestAsync(-1, 1001);
+
+        result.IsFailure.Should().BeTrue();
+        result.ErrorCode.Should().Be(expected);
+    }
+
+    [Fact]
+    public async Task DeclineChatJoinRequestAsync_429_Maps_To_RateLimited()
+    {
+        _bot.SendRequest(Arg.Any<IRequest<bool>>(), Arg.Any<CancellationToken>())
+            .Throws(new ApiRequestException("Too Many Requests", 429));
+
+        ChatApiResult<bool> result = await _api.DeclineChatJoinRequestAsync(-1, 1001);
+
+        result.IsFailure.Should().BeTrue();
+        result.ErrorCode.Should().Be(ChatApiErrorCode.RateLimited);
+    }
+
     [Fact]
     public async Task KickChatMemberAsync_Calls_Ban_Then_Unban()
     {
@@ -188,5 +216,29 @@ public class ChatAdministrationApiTests
         // Two API calls: BanChatMember + UnbanChatMember
         await _bot.Received(2).SendRequest(
             Arg.Any<IRequest<bool>>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task KickChatMemberAsync_429_Maps_To_RateLimited()
+    {
+        _bot.SendRequest(Arg.Any<IRequest<bool>>(), Arg.Any<CancellationToken>())
+            .Throws(new ApiRequestException("Too Many Requests", 429));
+
+        ChatApiResult<bool> result = await _api.KickChatMemberAsync(-1, 1001);
+
+        result.IsFailure.Should().BeTrue();
+        result.ErrorCode.Should().Be(ChatApiErrorCode.RateLimited);
+    }
+
+    [Fact]
+    public async Task KickChatMemberAsync_500_Maps_To_ServiceUnavailable()
+    {
+        _bot.SendRequest(Arg.Any<IRequest<bool>>(), Arg.Any<CancellationToken>())
+            .Throws(new ApiRequestException("Server error", 500));
+
+        ChatApiResult<bool> result = await _api.KickChatMemberAsync(-1, 1001);
+
+        result.IsFailure.Should().BeTrue();
+        result.ErrorCode.Should().Be(ChatApiErrorCode.ServiceUnavailable);
     }
 }
