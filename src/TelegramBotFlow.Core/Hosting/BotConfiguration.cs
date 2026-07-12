@@ -13,6 +13,7 @@ public sealed class BotConfiguration
     public long[] AdminUserIds { get; set; } = [];
     public long StorageChannelId { get; set; }
     public UpdateType[] AllowedUpdates { get; set; } = [UpdateType.Message, UpdateType.CallbackQuery, UpdateType.MyChatMember];
+    public bool DropPendingUpdates { get; set; }
     public string? WebhookSecretToken { get; set; }
 
     public int PayloadCacheSize { get; set; } = 500;

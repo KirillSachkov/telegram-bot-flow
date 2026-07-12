@@ -42,7 +42,7 @@ internal sealed class PollingService : BackgroundService
         var receiverOptions = new ReceiverOptions
         {
             AllowedUpdates = _config.AllowedUpdates,
-            DropPendingUpdates = true
+            DropPendingUpdates = _config.DropPendingUpdates
         };
 
         try
@@ -53,13 +53,14 @@ internal sealed class PollingService : BackgroundService
                 receiverOptions: receiverOptions,
                 cancellationToken: stoppingToken);
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
         {
-            // Игнорируем штатную отмену
+            // Игнорируем штатную отмену.
         }
         catch (Exception ex)
         {
             _logger.LogCritical(ex, "Fatal error in polling loop");
+            throw;
         }
         finally
         {
