@@ -20,5 +20,6 @@ public sealed class BotConfigurationTests
         config.TelegramRateLimitPerSecond.Should().Be(25);
         config.MaxRetryOnRateLimit.Should().Be(3);
         config.HealthCheckPath.Should().Be("/health");
+        config.DropPendingUpdates.Should().BeFalse();
     }
 }

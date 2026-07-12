@@ -39,5 +39,7 @@ public enum ChatApiErrorCode
     /// <summary>Bot API rate-limit (429). Caller может ретраить.</summary>
     RateLimited = 2,
     /// <summary>Прочая ошибка Telegram Bot API (например 400 PARAMETER_INVALID).</summary>
-    Other = 3
+    Other = 3,
+    /// <summary>Временная ошибка Telegram Bot API (5xx). Caller может ретраить.</summary>
+    ServiceUnavailable = 4
 }

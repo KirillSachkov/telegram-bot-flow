@@ -24,6 +24,8 @@ namespace TelegramBotFlow.IntegrationTests.Infrastructure;
 /// </summary>
 public class BotWebApplicationFactory : WebApplicationFactory<Program>
 {
+    private readonly string? _previousBotToken;
+
     /// <summary>
     /// Мок <see cref="IUpdateResponder"/>, регистрируемый в DI вместо реальной реализации.
     /// Все методы возвращают разумные значения по умолчанию.
@@ -32,7 +34,18 @@ public class BotWebApplicationFactory : WebApplicationFactory<Program>
 
     public BotWebApplicationFactory()
     {
+        // BotApplication eagerly binds BotConfiguration before WebApplicationFactory's
+        // ConfigureWebHost callback runs. Seed only the mandatory value early; the rest of
+        // the test configuration and service replacements still belong below.
+        _previousBotToken = Environment.GetEnvironmentVariable("Bot__Token");
+        Environment.SetEnvironmentVariable("Bot__Token", "fake-token-for-testing");
         ConfigureMockDefaults();
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        base.Dispose(disposing);
+        Environment.SetEnvironmentVariable("Bot__Token", _previousBotToken);
     }
 
     private void ConfigureMockDefaults()

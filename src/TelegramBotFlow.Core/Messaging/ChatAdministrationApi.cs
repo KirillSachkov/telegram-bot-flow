@@ -146,7 +146,7 @@ internal sealed class ChatAdministrationApi : IChatAdministrationApi
         catch (ApiRequestException ex)
         {
             _logger.LogWarning(ex, "ApproveChatJoinRequest failed chat {ChatId} user {UserId}: {Code}", chatId, userId, ex.ErrorCode);
-            return ChatApiResult<bool>.Failure(ChatApiErrorCode.ChatNotReachable, ex.Message);
+            return ChatApiResult<bool>.Failure(MapMutationError(ex.ErrorCode), ex.Message);
         }
     }
 
@@ -160,7 +160,7 @@ internal sealed class ChatAdministrationApi : IChatAdministrationApi
         catch (ApiRequestException ex)
         {
             _logger.LogWarning(ex, "DeclineChatJoinRequest failed chat {ChatId} user {UserId}: {Code}", chatId, userId, ex.ErrorCode);
-            return ChatApiResult<bool>.Failure(ChatApiErrorCode.ChatNotReachable, ex.Message);
+            return ChatApiResult<bool>.Failure(MapMutationError(ex.ErrorCode), ex.Message);
         }
     }
 
@@ -175,9 +175,16 @@ internal sealed class ChatAdministrationApi : IChatAdministrationApi
         catch (ApiRequestException ex)
         {
             _logger.LogWarning(ex, "Kick failed chat {ChatId} user {UserId}: {Code}", chatId, userId, ex.ErrorCode);
-            return ChatApiResult<bool>.Failure(ChatApiErrorCode.ChatNotReachable, ex.Message);
+            return ChatApiResult<bool>.Failure(MapMutationError(ex.ErrorCode), ex.Message);
         }
     }
+
+    private static ChatApiErrorCode MapMutationError(int errorCode) => errorCode switch
+    {
+        429 => ChatApiErrorCode.RateLimited,
+        >= 500 => ChatApiErrorCode.ServiceUnavailable,
+        _ => ChatApiErrorCode.ChatNotReachable,
+    };
 
     private static ChatInfo ToChatInfo(ChatFullInfo chat) =>
         new(chat.Id, chat.Type.ToString().ToLowerInvariant(), chat.Title, chat.Username);
