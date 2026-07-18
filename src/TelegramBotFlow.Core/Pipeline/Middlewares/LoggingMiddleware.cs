@@ -18,12 +18,13 @@ internal sealed class LoggingMiddleware : IUpdateMiddleware
         var sw = Stopwatch.StartNew();
 
         _logger.LogInformation(
-            "Processing {UpdateType} from user {UserId} in chat {ChatId}. Text: {Text}, Callback: {Callback}",
+            "Processing {UpdateType} from user {UserId} in chat {ChatId}. Command: {Command}, HasText: {HasText}, HasCallback: {HasCallback}",
             context.UpdateType,
             context.UserId,
             context.ChatId,
-            context.MessageText ?? "(none)",
-            context.CallbackData ?? "(none)");
+            GetCommandName(context.MessageText),
+            context.MessageText is not null,
+            context.CallbackData is not null);
 
         await next(context);
 
@@ -34,5 +35,14 @@ internal sealed class LoggingMiddleware : IUpdateMiddleware
             context.UpdateType,
             context.UserId,
             sw.ElapsedMilliseconds);
+    }
+
+    private static string GetCommandName(string? messageText)
+    {
+        if (string.IsNullOrWhiteSpace(messageText) || messageText[0] != '/')
+            return "(none)";
+
+        int separator = messageText.IndexOfAny([' ', '\t', '\r', '\n']);
+        return separator > 0 ? messageText[..separator] : messageText;
     }
 }
